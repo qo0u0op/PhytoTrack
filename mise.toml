@@ -1,0 +1,17 @@
+[tools]
+java = "openjdk-21.0.2"
+maven = "3.9.15"
+
+[tasks.d2]
+description = "Compile D2 diagrams to docs/img"
+
+run = '''
+mkdir -p docs/img
+
+find docs/d2 -type f -name '*.d2' | while IFS= read -r f; do
+  rel="${f#docs/d2/}"
+  out="docs/img/${rel%.d2}.svg"
+  mkdir -p "$(dirname "$out")"
+  d2 "$f" "$out"
+done
+'''

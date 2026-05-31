@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+	<head>
+		<meta charset="UTF-8">
+		<title data-th-replace="~{::title}">PhytoTrack</title>
+	</head>
+	<body>
+
+		<!-- ══════════════════════════════════════════
+     公版 Navbar（所有頁面共用）
+     使用方式：<div data-th-replace="~{fragments/layout :: navbar}"></div>
+     ══════════════════════════════════════════ -->
+		<nav data-th-fragment="navbar" class="site-navbar">
+			<div class="nav-inner">
+
+				<!-- Logo -->
+				<a class="nav-logo" data-th-href="@{/}" href="/">
+					<svg class="logo-mark"
+					     viewBox="0 0 32 32"
+					     fill="none"
+					     xmlns="http://www.w3.org/2000/svg"
+					     aria-hidden="true"
+					>
+						<defs>
+							<!-- leaf mask -->
+							<mask id="leaf-cut-mask">
+								<!-- visible area -->
+								<rect width="32" height="32" fill="white"/>
+
+								<!-- bite holes -->
+								<circle cx="22.2" cy="12.8" r="1.5" fill="black"/>
+							</mask>
+						</defs>
+
+						<!-- leaf with real cut holes -->
+						<path mask="url(#leaf-cut-mask)" d="M16 7
+       C22 9 25 14 24 19
+       C23 24 19 27 16 28
+       C13 27 9 24 8 19
+       C7 14 10 9 16 7Z" fill="currentColor" opacity="0.18"/>
+
+						<!-- center vein -->
+						<path d="M16 10V24" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+
+						<!-- side veins -->
+						<path d="M16 16
+       C14 15 12.5 13.5 11.5 12" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity="0.9"/>
+
+						<path d="M16 19
+       C18 18 20 16.5 21 15" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity="0.9"/>
+					</svg>
+					<span class="logo-text">PhytoTrack-診斷案件管理系統</span>
+				</a>
+
+				<!-- 純 CSS 漢堡選單 checkbox -->
+				<input type="checkbox" id="nav-toggle" class="nav-toggle-check">
+				<label for="nav-toggle" class="nav-hamburger" aria-label="切換導覽選單">
+					<span></span>
+					<span></span>
+					<span></span>
+				</label>
+
+				<!-- 導覽連結 -->
+				<ul class="nav-links">
+					<li><a data-th-href="@{/}" href="/">首頁</a></li>
+					<li><a data-th-href="@{/customers/search}" href="/customers/search">客戶查詢(尚未實作)</a></li>
+					<li><a data-th-href="@{/user/login}" href="/user/login">登入</a></li>
+					<li><a data-th-href="@{/user/register}" href="/user/register" class="nav-cta">註冊</a></li>
+				</ul>
+			</div>
+		</nav>
+
+		<!-- ══════════════════════════════════════════
+     公版 Footer（所有頁面共用）
+     使用方式：<div data-th-replace="~{fragments/layout :: footer}"></div>
+     ══════════════════════════════════════════ -->
+		<footer data-th-fragment="footer" class="site-footer">
+			<div class="footer-inner">
+
+				<!-- 品牌欄 -->
+				<div class="footer-brand">
+					<div class="footer-logo">
+						<svg class="logo-mark"
+						     viewBox="0 0 32 32"
+						     fill="none"
+						     xmlns="http://www.w3.org/2000/svg"
+						     aria-hidden="true"
+						>
+							<defs>
+								<!-- leaf mask -->
+								<mask id="leaf-cut-mask">
+									<!-- visible area -->
+									<rect width="32" height="32" fill="white"/>
+
+									<!-- bite holes -->
+									<circle cx="22.2" cy="12.8" r="1.5" fill="black"/>
+								</mask>
+							</defs>
+
+							<!-- leaf with real cut holes -->
+							<path mask="url(#leaf-cut-mask)" d="M16 7
+       C22 9 25 14 24 19
+       C23 24 19 27 16 28
+       C13 27 9 24 8 19
+       C7 14 10 9 16 7Z" fill="currentColor" opacity="0.18"/>
+
+							<!-- center vein -->
+							<path d="M16 10V24" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+
+							<!-- side veins -->
+							<path d="M16 16
+       C14 15 12.5 13.5 11.5 12" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity="0.9"/>
+
+							<path d="M16 19
+       C18 18 20 16.5 21 15" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity="0.9"/>
+						</svg>
+						<span>PhytoTrack</span>
+					</div>
+					<p class="footer-tagline">植物病蟲害案件管理平臺<br>整合本地資料庫，追蹤病蟲害趨勢。</p>
+				</div>
+
+				<!-- 快速連結 -->
+				<nav class="footer-nav" aria-label="頁尾快速連結">
+					<a data-th-href="@{/}" href="/">首頁</a>
+					<a data-th-href="@{/customers/search}" href="/customers/search">客戶查詢(尚未實作)</a>
+					<a data-th-href="@{/user/login}" href="/user/login">登入</a>
+					<a data-th-href="@{/user/register}" href="/user/register">註冊</a>
+				</nav>
+
+				<!-- 版權 -->
+				<p class="footer-copy">© 2026 PhytoTrack<br>All rights reserved.</p>
+			</div>
+		</footer>
+	</body>
+</html>
