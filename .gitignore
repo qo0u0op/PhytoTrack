@@ -38,4 +38,4 @@ build/
 
 ### AI Agent ###
 .antigravitycli/
-.agents/
+.opencode/
