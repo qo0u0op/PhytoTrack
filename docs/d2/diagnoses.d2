@@ -1,0 +1,278 @@
+direction: right
+vars: {
+  d2-config: {
+    layout-engine: elk
+    # Terminal theme code
+    theme-id: 0
+  }
+}
+
+# ─── 核心案件表 ───────────────────────────────────────
+cases: {
+  shape: sql_table
+  case_id: int {constraint: primary_key}
+  receive_date: date
+  crop_scale: varchar(30)
+  damage_scale: varchar(30)
+  pest_description: text
+  hint_description: text
+  status: tinyint(1)
+  created_at: datetime
+  updated_at: datetime
+  sender_id: int {constraint: foreign_key}
+  method_id: int {constraint: foreign_key}
+  crop_id: int {constraint: foreign_key}
+  service_id: int {constraint: foreign_key}
+  deliver_id: int {constraint: foreign_key}
+  created_by: int {constraint: foreign_key}
+}
+# status: 0=診斷中, 1=已完成
+
+# 月報流水號排序依據：receive_date ASC, created_at ASC, case_id ASC
+# case_number 為動態計算：yyyyMM + ROW_NUMBER()，不存入 DB
+# index: (receive_date, created_at) for 月統計查詢
+# index: (sender_id) for 送件人查詢
+
+# ─── 多對多 junction tables ──────────────────────────
+case_damages: {
+  shape: sql_table
+  cd_id: int {constraint: primary_key}
+  case_id: int {constraint: foreign_key}
+  damage_id: int {constraint: foreign_key}
+}
+
+case_hints: {
+  shape: sql_table
+  ch_id: int {constraint: primary_key}
+  case_id: int {constraint: foreign_key}
+  hint_id: int {constraint: foreign_key}
+}
+
+case_pest_categories: {
+  shape: sql_table
+  cpc_id: int {constraint: primary_key}
+  case_id: int {constraint: foreign_key}
+  pest_category_id: int {constraint: foreign_key}
+}
+
+case_identifiers: {
+  shape: sql_table
+  ci_id: int {constraint: primary_key}
+  case_id: int {constraint: foreign_key}
+  identifier_id: int {constraint: foreign_key}
+}
+
+# ─── 送件人 ──────────────────────────────────────────
+senders: {
+  shape: sql_table
+  sender_id: int {constraint: primary_key}
+  name: varchar(50)
+  phone: varchar(20)
+  address: varchar(300)
+  district_id: int {constraint: foreign_key}
+  sender_type_id: int {constraint: foreign_key}
+}
+# unique constraint: (name, phone)
+# password 欄位由 users 表管理，senders 不儲存登入資訊
+
+sender_types: {
+  shape: sql_table
+  sender_type_id: int {constraint: primary_key}
+  sender_type: varchar(10)
+}
+
+# ─── 地理層級 ─────────────────────────────────────────
+cities: {
+  shape: sql_table
+  city_id: int {constraint: primary_key}
+  city: varchar(6)
+  sort_order: tinyint(2)
+}
+
+districts: {
+  shape: sql_table
+  district_id: int {constraint: primary_key}
+  district: varchar(10)
+  city_id: int {constraint: foreign_key}
+  sort_order: tinyint(2)
+}
+
+# ─── 作物層級 ─────────────────────────────────────────
+crops: {
+  shape: sql_table
+  crop_id: int {constraint: primary_key}
+  crop: varchar(30)
+  crop_category_id: int {constraint: foreign_key}
+}
+
+crop_categories: {
+  shape: sql_table
+  crop_category_id: int {constraint: primary_key}
+  crop_category: varchar(30)
+}
+
+
+# ─── 病蟲害層級 ──────────────────────────────────────
+pest_types: {
+  shape: sql_table
+  pest_type_id: int {constraint: primary_key}
+  pest_type: varchar(30)
+}
+
+pest_categories: {
+  shape: sql_table
+  pest_category_id: int {constraint: primary_key}
+  pest_category_code: char(4)
+  pest_category: varchar(30)
+  pest_type_id: int {constraint: foreign_key}
+  sort_order: tinyint(2)
+}
+
+# ─── Lookup 表（固定選項，PK 改 int auto）────────────
+damages: {
+  shape: sql_table
+  damage_id: int {constraint: primary_key}
+  damage: varchar(4)
+}
+
+hints: {
+  shape: sql_table
+  hint_id: int {constraint: primary_key}
+  hint: varchar(10)
+}
+# hint_description 在 cases 為自由填寫補充說明
+
+methods: {
+  shape: sql_table
+  method_id: int {constraint: primary_key}
+  method: varchar(10)
+}
+
+deliveries: {
+  shape: sql_table
+  deliver_id: int {constraint: primary_key}
+  deliver: varchar(20)
+}
+
+services: {
+  shape: sql_table
+  service_id: int {constraint: primary_key}
+  service: varchar(4)
+}
+
+# ─── 診斷負責人 ──────────────────────────────────────
+identifiers: {
+  shape: sql_table
+  identifier_id: int {constraint: primary_key}
+  identifier: varchar(20)
+  user_id: int {constraint: foreign_key}
+}
+# user_id=NULL: 外部專家（僅簽名、無帳號）
+# user_id != NULL: 對應 users.user_id（內部人員兼簽名人）
+
+# ─── 系統使用者（內部客服/管理員）───────────────────
+users: {
+  shape: sql_table
+  user_id: int {constraint: primary_key}
+  username: varchar(50) {constraint: unique}
+  display_name: varchar(50)
+  password: varchar(60)
+  email: TEXT {constraint: unique}
+  role: varchar(10)
+  active: tinyint(1)
+}
+# role: ADMIN / STAFF / VIEWER
+# password: Bcrypt
+# MVP 內部系統，不對外開放註冊
+
+# ─── 關聯線 ──────────────────────────────────────────
+
+cases.sender_id <-> senders.sender_id: {
+  source-arrowhead.shape: cf-many-required
+  target-arrowhead.shape: cf-one-required
+}
+cases.method_id <-> methods.method_id: {
+  source-arrowhead.shape: cf-many-required
+  target-arrowhead.shape: cf-one-required
+}
+cases.service_id <-> services.service_id: {
+  source-arrowhead.shape: cf-many-required
+  target-arrowhead.shape: cf-one-required
+}
+cases.deliver_id <-> deliveries.deliver_id: {
+  source-arrowhead.shape: cf-many-required
+  target-arrowhead.shape: cf-one-required
+}
+cases.crop_id <-> crops.crop_id: {
+  source-arrowhead.shape: cf-many-required
+  target-arrowhead.shape: cf-one-required
+}
+cases.created_by <-> users.user_id: {
+  source-arrowhead.shape: cf-many-required
+  target-arrowhead.shape: cf-one-required
+}
+identifiers.user_id <-> users.user_id: {
+  source-arrowhead.shape: cf-many
+  target-arrowhead.shape: cf-one-required
+}
+
+senders.district_id <-> districts.district_id: {
+  source-arrowhead.shape: cf-many-required
+  target-arrowhead.shape: cf-one-required
+}
+
+senders.sender_type_id <-> sender_types.sender_type_id: {
+  source-arrowhead.shape: cf-many-required
+  target-arrowhead.shape: cf-one-required
+}
+
+districts.city_id <-> cities.city_id: {
+  source-arrowhead.shape: cf-many-required
+  target-arrowhead.shape: cf-one-required
+}
+
+crops.crop_category_id <-> crop_categories.crop_category_id: {
+  source-arrowhead.shape: cf-many-required
+  target-arrowhead.shape: cf-one-required
+}
+
+pest_categories.pest_type_id <-> pest_types.pest_type_id: {
+  source-arrowhead.shape: cf-many-required
+  target-arrowhead.shape: cf-one-required
+}
+
+cases.case_id <-> case_damages.case_id: {
+  source-arrowhead.shape: cf-one-required
+  target-arrowhead.shape: cf-many
+}
+case_damages.damage_id <-> damages.damage_id: {
+  source-arrowhead.shape: cf-many
+  target-arrowhead.shape: cf-one-required
+}
+
+cases.case_id <-> case_hints.case_id: {
+  source-arrowhead.shape: cf-one-required
+  target-arrowhead.shape: cf-many
+}
+case_hints.hint_id <-> hints.hint_id: {
+  source-arrowhead.shape: cf-many
+  target-arrowhead.shape: cf-one-required
+}
+
+cases.case_id <-> case_pest_categories.case_id: {
+  source-arrowhead.shape: cf-one-required
+  target-arrowhead.shape: cf-many
+}
+case_pest_categories.pest_category_id <-> pest_categories.pest_category_id: {
+  source-arrowhead.shape: cf-many
+  target-arrowhead.shape: cf-one-required
+}
+
+cases.case_id <-> case_identifiers.case_id: {
+  source-arrowhead.shape: cf-one-required
+  target-arrowhead.shape: cf-many
+}
+case_identifiers.identifier_id <-> identifiers.identifier_id: {
+  source-arrowhead.shape: cf-many
+  target-arrowhead.shape: cf-one-required
+}
