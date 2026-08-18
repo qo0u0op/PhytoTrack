@@ -74,6 +74,9 @@ npm run dev
 # 後端測試
 cd backend && ./mvnw test
 
+# 前端單元測試（vitest）
+cd frontend && npm test
+
 # 前端型別檢查與建置
 cd frontend && npm run build
 ```
@@ -87,4 +90,4 @@ cd frontend && npm run build
 
 ## 規劃中（見 openspec）
 
-案件生命週期（狀態流轉）、統計 Dashboard、案件搜尋、使用者管理完整化、參照資料維護、監控與備份等，詳見 `openspec/changes/`。
+案件生命週期（狀態流轉）、統計 Dashboard、案件搜尋、使用者管理完整化、參照資料維護、監控與備份等，詳見 `openspec/specs/`（9 份能力契約）與 `openspec/changes/`。

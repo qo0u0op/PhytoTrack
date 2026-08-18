@@ -18,7 +18,7 @@
 
 - **Service 層**拋「有業務語意的例外」：以單一 `ApiException(code, status, message)` 表達（`code` 為機器可讀字串，如 `USERNAME_TAKEN`），替代回傳 `null`，呼叫方不會踩空指標
 - **Controller 層**不 try-catch，一律交由 `@RestControllerAdvice` + `@ExceptionHandler` 集中處理
-- **requestId 串接日誌**：`RequestIdFilter` 為每個請求產生 requestId 寫入 MDC 並回傳於 `X-Request-Id` 標頭；advice 從 MDC 讀取回傳，與伺服器 log 對照（可觀測性底線）
+- **requestId 串接**：`RequestIdFilter` 為每個請求產生 requestId 寫入 MDC 並回傳於 `X-Request-Id` 標頭；advice 從 MDC 讀取回傳。MDC 值供日誌 pattern 取用——`%X{requestId}` 於 Phase 2 的 `logback-spring.xml` 加入，屆時伺服器 log 方能實際印出 requestId（可觀測性底線）
 - 統一錯誤回應格式：
 
 ```json
