@@ -1,0 +1,31 @@
+# ============================================================
+# PostgreSQL 設定檔（預留的資料庫升級路徑）
+#
+# 啟用方式：./mvnw spring-boot:run -Dspring-boot.run.profiles=postgres
+#
+# 升級說明：
+#   - SQLite 是檔案型資料庫，無法支援真正的並發寫入，僅適合 5 人內團隊。
+#   - 本 profile 僅切換 DataSource 與方言（Dialect），業務程式碼不需修改
+#     （這是使用 JPA 抽象層的好處）。
+#   - 切換前需以 dump/migrate 遷移既有 diagnoses.db 資料。
+# ============================================================
+spring:
+  datasource:
+    url: ${POSTGRES_URL:jdbc:postgresql://localhost:5432/phytotrack}
+    username: ${POSTGRES_USER:phytotrack}
+    password: ${POSTGRES_PASSWORD:phytotrack}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      # PostgreSQL 支援真正的連線池
+      maximum-pool-size: 10
+  jpa:
+    # PostgreSQL 方言（自動偵測即可，此行僅為明確標示）
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      # 正式環境建議改用遷移工具（Migration Tool，如 Flyway）管理結構
+      ddl-auto: update
+    show-sql: false
+  sql:
+    # 停用 schema.sql（其 SQLite 語法與 PostgreSQL 不相容）
+    init:
+      mode: never

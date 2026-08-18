@@ -1,0 +1,66 @@
+spring:
+  application:
+    # 應用程式名稱（顯示於 Spring 啟動資訊）
+    name: PhytoTrack
+  datasource:
+    # SQLite DataSource（本機檔案型資料庫）
+    url: jdbc:sqlite:./diagnoses.db
+    driver-class-name: org.sqlite.JDBC
+    hikari:
+      # HikariCP（連線池） - SQLite 相容設定
+      # 檔案型資料庫無法支援連線池（Connection Pool），
+      # 因此設定最大連接數為 1，並使用簡單的測試查詢來確保連接有效。
+      connection-test-query: SELECT 1
+      maximum-pool-size: 1
+  jpa:
+    # Hibernate 方言（Dialect）設定，使用 SQLite 專用方言
+    database-platform: org.hibernate.community.dialect.SQLiteDialect
+    # Hibernate DDL 自動更新設定，根據實體類別自動更新資料庫結構（不會刪除現有資料）
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    # 關閉 Open Session in View：API 回應不得依賴交易外的 Lazy 載入（見 ADR-003/ADR-006）
+    open-in-view: false
+  sql:
+    # 啟動時自動執行 schema.sql 建立資料表與種子資料（IF NOT EXISTS 確保重複啟動不報錯）
+    init:
+      mode: always
+  # ============================================================
+  # Spring AI：以 OpenAI 相容格式（/v1/chat/completions）串接本機 llama.cpp
+  # ============================================================
+  ai:
+    # 指定要使用的聊天模型供應商
+    model:
+      chat: openai
+    openai:
+      # llama-server 的 base-url（含 /v1 前綴）。
+      # 注意：llama-server 預設 port 8080 與 Spring Boot 相衝，本專案以 8081 錯開。
+      base-url: http://localhost:8081/v1
+      # llama.cpp 不驗證 API Key，此處僅為滿足 Spring AI 的必填欄位
+      api-key: llama-local-dummy-key
+      chat:
+        options:
+          # 需對應 llama-server 載入的模型名稱（可查 GET /v1/models）
+          model: llama
+          temperature: 0.7
+          max-tokens: 512
+
+# ============================================================
+# 應用程式自訂設定
+# ============================================================
+app:
+  jwt:
+    # JWT 簽章密鑰（HS256 至少需 32 bytes）。
+    # 正式環境請以環境變數 JWT_SECRET 覆蓋，切勿沿用開發預設值。
+    secret: ${JWT_SECRET:phytotrack-dev-secret-please-change-in-production-0123456789}
+    # Token 有效期限（毫秒）：預設 1 小時
+    expiration-ms: 3600000
+  ai:
+    # llama-server 存活檢查端點（不含 /v1 前綴）
+    health-url: http://localhost:8081/health
+  bootstrap:
+    # 首次啟動自動建立的管理者與一般員工帳號（見 DataInitializer）
+    admin-username: admin
+    admin-password: admin123
+    staff-username: staff
+    staff-password: staff123
