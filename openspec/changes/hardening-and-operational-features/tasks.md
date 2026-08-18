@@ -1,24 +1,24 @@
 ## 1. Phase 0：文件對齊
 
-- [ ] 1.1 重寫根 `README.md`：前後分離架構、技術堆疊（Boot 4/Java 21/Vue 3/SQLite/Spring AI）、功能清單、llama-server 啟動方式、測試指令、目錄結構
-- [ ] 1.2 新增 `RequestIdFilter`（OncePerRequestFilter，最優先序）為每個請求產生 UUID 寫入 MDC
-- [ ] 1.3 `ErrorResponse` 增加 `details` 欄位；`GlobalExceptionHandler` 從 MDC 讀取 requestId，`ApiException` 亦記錄 log，validation 錯誤填入 `details`
-- [ ] 1.4 10 個 ADR 檔狀態標題「已決定」→「已實作」與索引同步；更新 ADR-010 描述對齊實作（泛用 ApiException、details）
+- [x] 1.1 重寫根 `README.md`：前後分離架構、技術堆疊（Boot 4/Java 21/Vue 3/SQLite/Spring AI）、功能清單、llama-server 啟動方式、測試指令、目錄結構
+- [x] 1.2 新增 `RequestIdFilter`（OncePerRequestFilter，最優先序）為每個請求產生 UUID 寫入 MDC
+- [x] 1.3 `ErrorResponse` 增加 `details` 欄位；`GlobalExceptionHandler` 從 MDC 讀取 requestId，`ApiException` 亦記錄 log，validation 錯誤填入 `details`
+- [x] 1.4 10 個 ADR 檔狀態標題「已決定」→「已實作」與索引同步；更新 ADR-010 描述對齊實作（泛用 ApiException、details）
 
 ## 2. Phase 0：安全補洞
 
-- [ ] 2.1 `application.yaml` 設 `spring.jpa.open-in-view: false`
-- [ ] 2.2 前端新增 `escapeHtml` 工具並套用於 `CaseFormView.vue` AI 建議渲染（不再以未轉義 HTML 注入 SweetAlert）
-- [ ] 2.3 JWT 密鑰 fail-fast：非 dev profile 使用開發預設密鑰時啟動失敗（新增啟動期檢查 bean，密鑰值常數化）
-- [ ] 2.4 以 `./mvnw test` 與 `npm run build` 驗證 Phase 0 無回歸
+- [x] 2.1 `application.yaml` 設 `spring.jpa.open-in-view: false`
+- [x] 2.2 前端新增 `escapeHtml` 工具並套用於 `CaseFormView.vue` AI 建議渲染（不再以未轉義 HTML 注入 SweetAlert）
+- [x] 2.3 JWT 密鑰 fail-fast：非 dev profile 使用開發預設密鑰時啟動失敗（新增啟動期檢查 bean，密鑰值常數化）
+- [x] 2.4 以 `./mvnw test` 與 `npm run build` 驗證 Phase 0 無回歸
 
 ## 3. Phase 0：測試補強
 
-- [ ] 3.1 `@WebMvcTest` AuthController：登入、註冊、Bean Validation、未授權 401/403
-- [ ] 3.2 `@WebMvcTest` CaseController：RBAC（viewer 建案 403、登入可列）、Security filter chain
-- [ ] 3.3 `@DataJpaTest` CaseRepository：junctions 儲存/讀取、SQLite 方言、日期 converter
-- [ ] 3.4 `@SpringBootTest`＋MockMvc 整合測試：登入→建立案件→查詢→權限拒絕流程
-- [ ] 3.5 前端最小 vitest（auth store 邏輯），加入 `npm test` script
+- [x] 3.1 `@WebMvcTest` AuthController：登入、註冊、Bean Validation、未授權 401/403
+- [x] 3.2 `@WebMvcTest` CaseController：RBAC（viewer 建案 403、登入可列）、Security filter chain
+- [x] 3.3 `@DataJpaTest` CaseRepository：junctions 儲存/讀取、SQLite 方言、日期 converter
+- [x] 3.4 `@SpringBootTest`＋MockMvc 整合測試：登入→建立案件→查詢→權限拒絕流程
+- [x] 3.5 前端最小 vitest（auth store 邏輯），加入 `npm test` script
 
 ## 4. Phase 1：案件生命週期與更新契約
 
@@ -75,7 +75,7 @@
 
 ## 12. Phase 2：型別與建置驗證
 
-- [ ] 12.1 以 openapi-typescript 重新生成 `frontend/src/types/api.ts`
+- [ ] 12.1 `frontend/src/types/api.ts` 已由 openapi-typescript 生成；Phase 1 API 變更後需重新生成
 - [ ] 12.2 `./mvnw test` 全綠、`npm run build`（vue-tsc）綠、前端型別檢查無誤
 
 ## 13. Phase 2：文件收尾

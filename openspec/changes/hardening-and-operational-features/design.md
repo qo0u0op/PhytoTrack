@@ -6,9 +6,9 @@
 - `Case.status` 為 `int = 0`，`Case` 的 `sender/method/crop/service/delivery` 皆為 `@ManyToOne`，四組 junction（`caseDamages/caseHints/casePestCategories/caseIdentifiers`）以 `@OneToMany + CascadeType.ALL + orphanRemoval` 管理。
 - `Sender` 依 `name + phone` 複用（`findOrCreateSender`），同一 Sender 可被多個案件共用——更新時不可就地改共用 Sender。
 - `CaseUpdateRequest` 目前缺送件人與 junction 欄位（打錯字無法修）。
-- JWT filter 為純無狀態（不查 DB），token 內含角色；`User.active` 已存在但登入與 filter 皆未檢查。
+- JWT filter 為純無狀態（不查 DB），token 內含角色；`User.active` 已存在——登入路徑經 `isEnabled()` 間接檢查（停用帳號登入會回 500，尚無專屬錯誤處理），filter 完全未檢查。
 - `application.yaml` 的 `app.jwt.secret` 有開發預設值並可由 `JWT_SECRET` 覆蓋。
-- `docs/adr/` 共 10 個 ADR，索引標「已實作」，但各檔狀態標題仍為「已決定」。
+- `docs/adr/` 共 10 個 ADR，狀態標題與索引皆已同步為「已實作」。
 
 ## Goals / Non-Goals
 
@@ -26,13 +26,13 @@
 
 ## Decisions
 
-### D1 安全補救
+### D1 安全補救（已實作）
 
 - **OSIV**：`application.yaml` 設 `spring.jpa.open-in-view: false`。既有程式在 Service 交易內讀取 Lazy 關聯，關閉後無影響。
 - **AI XSS**：`CaseFormView.vue` 的 `Swal.fire({ html: ... })` 改為先對 AI 建議做 HTML 轉義（新增 `escapeHtml` 工具，或改用 `textContent`/純文字 `swal` 渲染）。決策：在 `frontend/src/utils` 新增 `escapeHtml` 並套用於 AI 建議與任何動態內文，最小改動、可複用。
 - **JWT fail-fast**：新增 `@Configuration`（或 `ApplicationRunner`）於非 `dev` profile 且 `app.jwt.secret` 等於開發預設值時拋例外中止啟動。將預設值常數化，避免 magic string。
 
-### D2 可觀測性（對齊 ADR-010）
+### D2 可觀測性（對齊 ADR-010）（部分實作：requestId/details 已完成；Actuator 與 logback 屬 Phase 2）
 
 - **requestId**：新增 `RequestIdFilter`（`OncePerRequestFilter`，優先序最前）為每個請求產生 UUID 並放入 `MDC`，`finally` 清除。`GlobalExceptionHandler` 改為從 `MDC` 讀取 requestId（與回應一致），業務例外（`ApiException`）也記錄 log。此舉兌現 ADR-010「requestId 串接日誌」。
 - **錯誤契約**：`ErrorResponse` 增加 `details`（`Map<String,Object>`，可空）；`MethodArgumentNotValidException` 將欄位錯誤填入 `details`。
