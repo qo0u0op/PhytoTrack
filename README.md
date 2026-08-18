@@ -19,7 +19,7 @@
 | 資料庫 | SQLite（`hibernate-community-dialects`），預留 PostgreSQL profile（見 ADR-007） |
 | API 規格 | springdoc-openapi 3.x（單一來源，見 ADR-008） |
 | 前端 | Vue 3 + TypeScript + Vite + Pinia + Vue Router + Bootstrap 5 + axios + SweetAlert2 |
-| AI | llama.cpp（`llama-server` 於 8081）+ Spring AI ChatClient（見 ADR-009） |
+| AI | llama.cpp（`llama-server` 於 11435）+ Spring AI ChatClient（見 ADR-009） |
 
 ## 專案結構
 
@@ -43,10 +43,10 @@ cd backend
 
 ### 2. AI 模型（選用）
 
-AI 診斷功能需要本機 llama.cpp 在線（後端代理於 `app.ai.health-url`，預設 8081）：
+AI 診斷功能需要本機 llama.cpp 在線（後端代理於 `app.ai.health-url`，預設 11435）：
 
 ```bash
-llama-server -m <模型檔>.gguf --port 8081 --api-key dummy
+llama-server -m <模型檔>.gguf --port 11435 --api-key dummy
 ```
 
 - 可在前端 Dashboard 檢查模型連線狀態，或 `GET /api/ai/health`

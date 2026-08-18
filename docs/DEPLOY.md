@@ -31,20 +31,20 @@ cd backend
 |------|------|------|
 | `app.jwt.secret` | 開發用密鑰 | JWT 簽章密鑰。正式環境務必以 `JWT_SECRET` 環境變數覆蓋 |
 | `app.bootstrap.*` | admin/admin123、staff/staff123 | 首次啟動自動建立的管理者與診斷員帳號 |
-| `app.ai.health-url` | `http://localhost:8081/health` | llama-server 存活檢查端點 |
+| `app.ai.health-url` | `http://localhost:11435/health` | llama-server 存活檢查端點 |
 
 ## 3. llama-server 啟動（AI 診斷）
 
 ```bash
-# 以 OpenAI 相容模式啟動，port 用 8081 避開 Spring Boot 的 8080
-llama-server -m /path/to/model.gguf --port 8081
+# 以 OpenAI 相容模式啟動，port 用 11435 避開 Spring Boot 的 8080
+llama-server -m /path/to/model.gguf --port 11435
 ```
 
 確認連線：
 
 ```bash
-curl http://localhost:8081/health        # 回傳 ok
-curl http://localhost:8081/v1/models     # 列出模型名稱（須與後端 model 設定一致）
+curl http://localhost:11435/health        # 回傳 ok
+curl http://localhost:11435/v1/models     # 列出模型名稱（須與後端 model 設定一致）
 ```
 
 若未啟動 llama-server，系統其餘功能（案件管理、登入）仍可正常使用，僅 AI 診斷無法執行。

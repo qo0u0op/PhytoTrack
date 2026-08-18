@@ -18,7 +18,7 @@ PhytoTrack 是**前後分離**的網頁應用：
           Spring Boot :8080  ──▶ SQLite（diagnoses.db）
               │ Spring AI（OpenAI 相容格式）
               ▼
-          llama-server :8081（本機 GGUF 模型）
+          llama-server :11435（本機 GGUF 模型）
 ```
 
 ## 2. 技術選型

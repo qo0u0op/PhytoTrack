@@ -19,8 +19,8 @@
 
 - 後端提供 **`POST /api/ai/analyze`**（限 STAFF+）：接收案件欄位 DTO → 用 Spring AI 組 System/User 提示詞（Prompt）→ 呼叫 llama-server（**非串流** `.call()`）→ 回傳診斷建議與耗時
 - 提供 **`GET /api/ai/health`**（公開）檢查 llama-server 存活（打 `/health` 端點）
-- 使用 **Spring AI 2.0**（`spring-ai-starter-model-openai`），設定集中在 `application.yaml` 的 `spring.ai.openai.*`：`base-url: http://localhost:8081/v1`、`api-key` 填 dummy、`model: llama`
-- llama-server 掛 **8081**（避開 Spring Boot 預設 8080）
+- 使用 **Spring AI 2.0**（`spring-ai-starter-model-openai`），設定集中在 `application.yaml` 的 `spring.ai.openai.*`：`base-url: http://localhost:11435/v1`、`api-key` 填 dummy、`model: llama`
+- llama-server 掛 **11435**（避開 Spring Boot 預設 8080）
 
 **原因**:
 
@@ -34,6 +34,6 @@
 **取捨**:
 
 - 每次呼叫是 blocking 且耗時（本地 LLM 可能數秒）——對 <5 人 LAN 可接受；若未來要並發，再考慮快取或非同步/串流
-- llama-server 與 Spring Boot 都預設 8080 會**撞 port**，需以設定錯開（llama 掛 8081）
+- llama-server 與 Spring Boot 都預設 8080 會**撞 port**，需以設定錯開（llama 掛 11435）
 - 模型品質依賴本機硬體與所選 GGUF——這是硬體限制，不是架構問題
 - llama.cpp 不驗證 API Key，`api-key` 僅為滿足 Spring AI 必填欄位，不代表真實授權

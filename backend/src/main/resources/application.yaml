@@ -34,8 +34,8 @@ spring:
       chat: openai
     openai:
       # llama-server 的 base-url（含 /v1 前綴）。
-      # 注意：llama-server 預設 port 8080 與 Spring Boot 相衝，本專案以 8081 錯開。
-      base-url: http://localhost:8081/v1
+      # 注意：llama-server 預設 port 8080 與 Spring Boot 相衝，本專案以 11435 錯開。
+      base-url: http://localhost:11435/v1
       # llama.cpp 不驗證 API Key，此處僅為滿足 Spring AI 的必填欄位
       api-key: llama-local-dummy-key
       chat:
@@ -57,7 +57,7 @@ app:
     expiration-ms: 3600000
   ai:
     # llama-server 存活檢查端點（不含 /v1 前綴）
-    health-url: http://localhost:8081/health
+    health-url: http://localhost:11435/health
   bootstrap:
     # 首次啟動自動建立的管理者與一般員工帳號（見 DataInitializer）
     admin-username: admin
