@@ -36,6 +36,12 @@ build/
 *.db
 *.sqlite
 
+### Personal Learning Notes ###
+docs/notebook/
+
 ### AI Agent ###
-.antigravitycli/
 .opencode/
+
+### pdf ###
+*.pdf
+
