@@ -3,6 +3,7 @@ import { onMounted, ref } from 'vue'
 import Swal from 'sweetalert2'
 import { caseApi } from '../api'
 import { useAuthStore } from '../stores/auth'
+import { escapeHtml } from '../utils/escapeHtml'
 
 // 分頁資料型別（對應後端 Page<CaseSummaryResponse>）
 interface CaseSummary {
@@ -41,27 +42,29 @@ onMounted(load)
 // 檢視案件詳細：以 SweetAlert 彈窗呈現
 async function viewDetail(id: number) {
   const { data } = await caseApi.detail(id)
+  // 彈窗內容以 HTML 插入，所有動態內文必須轉義（防 XSS）
+  const esc = (v?: string | null) => escapeHtml(v ?? '')
   const join = (items?: { id: number; name: string }[]) =>
-    items?.map((i) => i.name).join('、') ?? '無'
+    items?.map((i) => esc(i.name)).join('、') ?? '無'
 
   Swal.fire({
     title: `案件 #${data.caseId}`,
     width: 640,
     html: `
       <div class="text-start small">
-        <p><strong>收件日期：</strong>${data.receiveDate}</p>
-        <p><strong>作物：</strong>${data.cropName}</p>
-        <p><strong>送件人：</strong>${data.senderName}（${data.senderPhone}）</p>
-        <p><strong>地址：</strong>${data.senderAddress ?? '無'}</p>
-        <p><strong>耕種方式：</strong>${data.methodName}</p>
+        <p><strong>收件日期：</strong>${esc(data.receiveDate)}</p>
+        <p><strong>作物：</strong>${esc(data.cropName)}</p>
+        <p><strong>送件人：</strong>${esc(data.senderName)}（${esc(data.senderPhone)}）</p>
+        <p><strong>地址：</strong>${esc(data.senderAddress ?? '無')}</p>
+        <p><strong>耕種方式：</strong>${esc(data.methodName)}</p>
         <p><strong>被害部位：</strong>${join(data.damages)}</p>
         <p><strong>病蟲害分類：</strong>${join(data.pestCategories)}</p>
         <p><strong>防治建議：</strong>${join(data.hints)}</p>
         <p><strong>診斷簽名人：</strong>${join(data.identifiers)}</p>
         <hr />
-        <p><strong>病害情形：</strong>${data.pestDescription ?? '無'}</p>
-        <p><strong>防治措施：</strong>${data.hintDescription ?? '無'}</p>
-        <p class="text-muted">建立者：${data.createdByName}／建立時間：${data.createdAt}</p>
+        <p><strong>病害情形：</strong>${esc(data.pestDescription ?? '無')}</p>
+        <p><strong>防治措施：</strong>${esc(data.hintDescription ?? '無')}</p>
+        <p class="text-muted">建立者：${esc(data.createdByName)}／建立時間：${esc(data.createdAt)}</p>
       </div>
     `,
     confirmButtonText: '關閉',
