@@ -15,13 +15,17 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.d0w0b.phytotrack.dto.CaseDtos.CaseCreateRequest;
+import com.d0w0b.phytotrack.dto.CaseDtos.CaseFilter;
 import com.d0w0b.phytotrack.dto.CaseDtos.CaseResponse;
 import com.d0w0b.phytotrack.dto.CaseDtos.CaseSummaryResponse;
 import com.d0w0b.phytotrack.dto.CaseDtos.CaseUpdateRequest;
 import com.d0w0b.phytotrack.service.CaseService;
+
+import java.time.LocalDate;
 
 /**
  * 案件控制器（Case Controller）
@@ -41,12 +45,26 @@ public class CaseController {
     this.caseService = caseService;
   }
 
-  /** 分頁查詢案件列表，預設依收件日期遞減 */
+  /**
+   * 分頁查詢案件列表，預設依收件日期遞減。
+   *
+   * 篩選參數皆可選：cropId、serviceId、senderName（部分比對）、
+   * receiveDateFrom、receiveDateTo、status（PENDING/RESOLVED/CLOSED）；
+   * 多個參數同時存在時以 AND 組合。
+   */
   @GetMapping
   @PreAuthorize("isAuthenticated()")
   public ResponseEntity<Page<CaseSummaryResponse>> list(
+      @RequestParam(required = false) Long cropId,
+      @RequestParam(required = false) Long serviceId,
+      @RequestParam(required = false) String senderName,
+      @RequestParam(required = false) LocalDate receiveDateFrom,
+      @RequestParam(required = false) LocalDate receiveDateTo,
+      @RequestParam(required = false) String status,
       @PageableDefault(size = 20, sort = "receiveDate", direction = Sort.Direction.DESC) Pageable pageable) {
-    return ResponseEntity.ok(caseService.list(pageable));
+    CaseFilter filter = new CaseFilter(cropId, serviceId, senderName,
+        receiveDateFrom, receiveDateTo, status);
+    return ResponseEntity.ok(caseService.list(filter, pageable));
   }
 
   /** 查詢案件詳細 */

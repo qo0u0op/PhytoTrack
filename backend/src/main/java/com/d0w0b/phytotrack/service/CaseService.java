@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.d0w0b.phytotrack.dto.CaseDtos.CaseCreateRequest;
+import com.d0w0b.phytotrack.dto.CaseDtos.CaseFilter;
 import com.d0w0b.phytotrack.dto.CaseDtos.CaseResponse;
 import com.d0w0b.phytotrack.dto.CaseDtos.CaseSummaryResponse;
 import com.d0w0b.phytotrack.dto.CaseDtos.CaseUpdateRequest;
@@ -28,6 +29,7 @@ import com.d0w0b.phytotrack.models.PestCategory;
 import com.d0w0b.phytotrack.models.Sender;
 import com.d0w0b.phytotrack.models.SenderType;
 import com.d0w0b.phytotrack.repository.CaseRepository;
+import com.d0w0b.phytotrack.repository.CaseSpecifications;
 import com.d0w0b.phytotrack.repository.CropRepository;
 import com.d0w0b.phytotrack.repository.DamageRepository;
 import com.d0w0b.phytotrack.repository.DeliveryRepository;
@@ -97,10 +99,13 @@ public class CaseService {
     this.identifierRepository = identifierRepository;
   }
 
-  /** 分頁查詢案件清單（摘要） */
+  /** 分頁查詢案件清單（摘要）；無任何條件時行為與現有列表一致 */
   @Transactional(readOnly = true)
-  public Page<CaseSummaryResponse> list(Pageable pageable) {
-    return caseRepository.findAll(pageable).map(this::toSummary);
+  public Page<CaseSummaryResponse> list(CaseFilter filter, Pageable pageable) {
+    if (filter.isEmpty()) {
+      return caseRepository.findAll(pageable).map(this::toSummary);
+    }
+    return caseRepository.findAll(CaseSpecifications.build(filter), pageable).map(this::toSummary);
   }
 
   /** 查詢案件詳細（含所有多對多關聯） */
@@ -177,7 +182,7 @@ public class CaseService {
     caseRepository.delete(findByIdOrThrow(id));
   }
 
-  // ------------------------------------------------------------------
+// ------------------------------------------------------------------
   // 私有輔助方法
   // ------------------------------------------------------------------
 

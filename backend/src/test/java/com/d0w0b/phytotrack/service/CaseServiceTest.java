@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.eq;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -15,9 +16,12 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 
 import com.d0w0b.phytotrack.dto.CaseDtos.CaseCreateRequest;
+import com.d0w0b.phytotrack.dto.CaseDtos.CaseFilter;
 import com.d0w0b.phytotrack.dto.CaseDtos.CaseResponse;
 import com.d0w0b.phytotrack.dto.CaseDtos.CaseSummaryResponse;
 import com.d0w0b.phytotrack.dto.CaseDtos.CaseUpdateRequest;
@@ -166,17 +170,48 @@ class CaseServiceTest {
   }
 
   @Test
-  void list_shouldMapToSummary() {
+  void list_withEmptyFilter_shouldMapToSummary() {
     Case c = caseWithRefs();
     c.setCaseId(1L);
     when(caseRepository.findAll(PageRequest.of(0, 10)))
         .thenReturn(new PageImpl<>(List.of(c)));
 
-    Page<CaseSummaryResponse> page = caseService.list(PageRequest.of(0, 10));
+    Page<CaseSummaryResponse> page = caseService.list(CaseFilter.empty(), PageRequest.of(0, 10));
 
     assertThat(page.getContent()).hasSize(1);
     assertThat(page.getContent().get(0).cropName()).isEqualTo("柑橘");
     assertThat(page.getContent().get(0).senderName()).isEqualTo("王小明");
+  }
+
+  @Test
+  void list_withFilter_shouldQueryWithSpecification() {
+    Case c = caseWithRefs();
+    c.setCaseId(1L);
+    PageRequest pageable = PageRequest.of(0, 10);
+    when(caseRepository.findAll(any(Specification.class), eq(pageable)))
+        .thenReturn(new PageImpl<>(List.of(c)));
+
+    CaseFilter filter = new CaseFilter(36L, 1L, "王", null, null, "RESOLVED");
+    Page<CaseSummaryResponse> page = caseService.list(filter, pageable);
+
+    // 非空條件應走 Specification 查詢
+    verify(caseRepository).findAll(any(Specification.class), eq(pageable));
+    assertThat(page.getContent()).hasSize(1);
+  }
+
+  @Test
+  void list_withInvalidStatus_shouldThrowBadRequest() {
+    CaseFilter filter = new CaseFilter(null, null, null, null, null, "DRAFT");
+
+    assertThatThrownBy(() -> caseService.list(filter, PageRequest.of(0, 10)))
+        .isInstanceOf(ApiException.class)
+        .satisfies(e -> {
+          ApiException ex = (ApiException) e;
+          assertThat(ex.getCode()).isEqualTo("INVALID_STATUS");
+          assertThat(ex.getStatus()).isEqualTo(HttpStatus.BAD_REQUEST);
+        });
+    // 非法狀態不應觸發查詢
+    verify(caseRepository, never()).findAll(any(Specification.class), any(Pageable.class));
   }
 
   @Test

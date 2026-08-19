@@ -2,23 +2,23 @@
 
 ## 1. 後端：Repository 篩選能力
 
-- [ ] 1.1 `CaseRepository` 加入 `JpaSpecificationExecutor<Case>`，並以 default method 覆寫 `findAll(Specification, Pageable)` 標註 `@EntityGraph(attributePaths = {"sender", "crop", "service"})`
+- [x] 1.1 `CaseRepository` 加入 `JpaSpecificationExecutor<Case>`；規格查詢的 fetch join（sender/crop/service）於 `CaseSpecifications.build` 內處理（此版 JpaSpecificationExecutor 的 `findAll(Specification, Pageable)` 為 abstract，default method + `@EntityGraph` 覆寫不編譯）
 
 ## 2. 後端：Service 動態組合篩選
 
-- [ ] 2.1 於 `CaseDtos` 新增 `CaseFilter` 記錄（`cropId`、`serviceId`、`senderName`、`receiveDateFrom`、`receiveDateTo`、`status`，皆可空）
-- [ ] 2.2 `CaseService.list` 改為 `list(CaseFilter, Pageable)`：依非空欄位組裝 `Specification`（AND 組合、`senderName` LIKE 部分比對並跳脫 `%`/`_`），維持 `Page` 回傳；無任何條件時行為與現況一致
-- [ ] 2.3 `status` 列舉字串對映整數（`PENDING`→0、`RESOLVED`→1、`CLOSED`→2），非法值拋 `ApiException("INVALID_STATUS", 400)`
+- [x] 2.1 於 `CaseDtos` 新增 `CaseFilter` 記錄（`cropId`、`serviceId`、`senderName`、`receiveDateFrom`、`receiveDateTo`、`status`，皆可空）
+- [x] 2.2 `CaseService.list` 改為 `list(CaseFilter, Pageable)`：依非空欄位組裝 `Specification`（AND 組合、`senderName` LIKE 部分比對並跳脫 `%`/`_`），維持 `Page` 回傳；無任何條件時行為與現況一致
+- [x] 2.3 `status` 列舉字串對映整數（`PENDING`→0、`RESOLVED`→1、`CLOSED`→2），非法值拋 `ApiException("INVALID_STATUS", 400)`
 
 ## 3. 後端：Controller 接收參數
 
-- [ ] 3.1 `CaseController.list` 新增 `@RequestParam(required = false)` 的 `cropId`/`serviceId`/`senderName`/`receiveDateFrom`/`receiveDateTo`/`status`，組 `CaseFilter` 委派 service
+- [x] 3.1 `CaseController.list` 新增 `@RequestParam(required = false)` 的 `cropId`/`serviceId`/`senderName`/`receiveDateFrom`/`receiveDateTo`/`status`，組 `CaseFilter` 委派 service
 
 ## 4. 後端：測試
 
-- [ ] 4.1 `CaseRepositoryTest` 新增規格篩選測試（DataJpaTest）：作物＋狀態 AND、`senderName` 部分比對、日期區間、無條件時全量
-- [ ] 4.2 `CaseServiceTest`：更新 `list` 簽章測試；新增 status 對映、非法 status 拋 400、`Specification` 組合（以 captor 驗證條件）
-- [ ] 4.3 `CaseControllerTest`：更新 `list` stub 簽章；新增帶篩選參數請求驗證委派；非法 `status` 回 400 `INVALID_STATUS`
+- [x] 4.1 `CaseRepositoryTest` 新增規格篩選測試（DataJpaTest）：作物＋狀態 AND、`senderName` 部分比對、日期區間、無條件時全量
+- [x] 4.2 `CaseServiceTest`：更新 `list` 簽章測試；新增 status 對映、非法 status 拋 400、`Specification` 組合（以 captor 驗證條件）
+- [x] 4.3 `CaseControllerTest`：更新 `list` stub 簽章；新增帶篩選參數請求驗證委派；非法 `status` 回 400 `INVALID_STATUS`
 
 ## 5. 前端：API 與型別
 

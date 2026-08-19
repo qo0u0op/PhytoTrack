@@ -19,8 +19,8 @@
 `CaseRepository` 加入 `JpaSpecificationExecutor<Case>`，service 依 `CaseFilter` 非空欄位組裝 `Specification`，再以 `findAll(Specification, Pageable)` 分頁查詢。
 
 - 優於多個具名 `@Query` 變體（笛卡爾積方法數爆炸）、`@Query` + `SpEL` 動態條件（可讀性差、易錯）。
-- N+1 對策：用 **default method 覆寫** `findAll(Specification, Pageable)` 並標註 `@EntityGraph(attributePaths = {"sender", "crop", "service"})`（Spring Data 支援以 default method 為介面方法疊加 `@EntityGraph`），與現有無條件查詢保持一致。
-  - 替代方案（不採納）：JPQL fetch join 動態拼接——可讀性與型別安全皆差。
+- N+1 對策：規格查詢於 `CaseSpecifications.build` 內以 `root.fetch` 預先抓取 `sender`/`crop`/`service`（to-one 無多重 bag 問題），並以 `query.getResultType() != Long` 區隔 count 查詢避免重複 fetch；無條件路徑仍走 `CaseRepository.findAll(Pageable)` 的既有 `@EntityGraph`。
+  - 替代方案（試過不採納）：default method 覆寫 `findAll(Specification, Pageable)` 疊加 `@EntityGraph`——此 Spring Data 版本的 `JpaSpecificationExecutor.findAll` 為 abstract，`JpaSpecificationExecutor.super.findAll(...)` 無法編譯（編譯錯誤），故改採 fetch join。
 
 ### D2. 篩選條件以 `CaseDtos.CaseFilter` 記錄跨邊界
 
@@ -44,7 +44,7 @@ Controller 以 `@RequestParam(required = false)` 接收各篩選參數，組 `Ca
 
 ## Risks / Trade-offs
 
-- [Specification 查詢下 `@EntityGraph` default method 覆寫在 SQLite/Spring Data 4 有相容風險] → 以 repository 測試（DataJpaTest）先行驗證；若失敗則改用 JPQL fetch join 的具名查詢變體。
+- [Specification 查詢下 `root.fetch` 在 SQLite/Spring Data 4 的相容風險] → 以 repository 測試（DataJpaTest）驗證；若失敗則退回不 fetch（接受 N+1）或 JPQL fetch join 具名查詢變體。
 - [`status` 過渡對映與未來 case-lifecycle 列舉可能漂移] → 對照集中在 service 單一私有方法，遷移時只改此處。
 - [LIKE 效能隨資料量劣化] → 既有 `idx_cases_status`、外鍵索引已存在；案件量級下可接受，統計/報表另議。
 
