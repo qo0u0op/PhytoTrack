@@ -1,0 +1,174 @@
+package com.d0w0b.phytotrack.controller;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.http.MediaType;
+import org.springframework.security.core.context.SecurityContextHolderStrategy;
+import org.springframework.security.test.context.TestSecurityContextHolderStrategyAdapter;
+import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.web.context.WebApplicationContext;
+
+import com.d0w0b.phytotrack.config.SecurityConfig;
+import com.d0w0b.phytotrack.dto.CaseDtos.CaseResponse;
+import com.d0w0b.phytotrack.dto.CaseDtos.CaseSummaryResponse;
+import com.d0w0b.phytotrack.security.JwtAuthenticationFilter;
+import com.d0w0b.phytotrack.service.CaseService;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.List;
+
+/**
+ * 案件控制器（CaseController）Web 層測試
+ *
+ * 驗證 RBAC（RBAC）授權規則與 Bean Validation：
+ *   - 列表 / 詳細：登入即可（VIEWER / STAFF / ADMIN）
+ *   - 建立 / 更新：僅 STAFF / ADMIN
+ *   - 刪除：僅 ADMIN
+ */
+@WebMvcTest(CaseController.class)
+@Import({SecurityConfig.class, CaseControllerTest.TestSecurityStrategy.class})
+class CaseControllerTest {
+
+  /** Boot 4 web slice 不會自動註冊 @WithMockUser 所需的策略 bean，此處補上 */
+  @TestConfiguration(proxyBeanMethods = false)
+  static class TestSecurityStrategy {
+
+    @Bean
+    SecurityContextHolderStrategy securityContextHolderStrategy() {
+      return new TestSecurityContextHolderStrategyAdapter();
+    }
+  }
+
+  @Autowired
+  private WebApplicationContext context;
+
+  private MockMvc mockMvc;
+
+  @MockitoBean
+  private CaseService caseService;
+
+  @MockitoBean
+  private JwtAuthenticationFilter jwtAuthenticationFilter;
+
+  @BeforeEach
+  void setUp() throws Exception {
+    // springSecurity()：套用測試版 SecurityContextRepository，讓 @WithMockUser 生效
+    mockMvc = MockMvcBuilders.webAppContextSetup(context).apply(springSecurity()).build();
+    // JWT 解析屬無狀態細節，此處模擬其「直接放行」；授權規則由 @WithMockUser + @PreAuthorize 驗證
+    doAnswer(invocation -> {
+      FilterChain chain = invocation.getArgument(2, FilterChain.class);
+      chain.doFilter(invocation.getArgument(0, HttpServletRequest.class),
+          invocation.getArgument(1, HttpServletResponse.class));
+      return null;
+    }).when(jwtAuthenticationFilter).doFilter(any(), any(), any());
+  }
+
+  private static final String VALID_CASE_JSON = """
+      {
+        "receiveDate": "2026-08-18",
+        "senderName": "張三",
+        "senderPhone": "0912345678",
+        "senderAddress": "測試路 1 號",
+        "senderDistrictId": 1,
+        "senderTypeId": 1,
+        "methodId": 1,
+        "cropId": 1,
+        "serviceId": 1,
+        "deliverId": 1,
+        "damageIds": [],
+        "hintIds": [],
+        "pestCategoryIds": [],
+        "identifierIds": []
+      }
+      """;
+
+  private static CaseResponse sampleResponse() {
+    return new CaseResponse(
+        1L, LocalDate.of(2026, 8, 18), "2 分地", "約 3 成",
+        "葉片出現斑點", null, 0,
+        LocalDateTime.now(), LocalDateTime.now(),
+        "張三", "0912345678", "測試路 1 號",
+        "水稻", "露天", "診斷", "送件",
+        "管理員", List.of(), List.of(), List.of(), List.of());
+  }
+
+  @Test
+  void list_shouldBeProtected() throws Exception {
+    // 未登入：由 SecurityFilterChain 拒絕
+    mockMvc.perform(get("/api/cases"))
+        .andExpect(status().isForbidden());
+  }
+
+  @Test
+  @WithMockUser(roles = "VIEWER")
+  void list_shouldReturnPageForAnyAuthenticatedUser() throws Exception {
+    when(caseService.list(any())).thenReturn(new PageImpl<>(
+        List.of(new CaseSummaryResponse(1L, LocalDate.of(2026, 8, 18), "水稻", "張三", "診斷", 0,
+            LocalDateTime.now()))));
+
+    mockMvc.perform(get("/api/cases"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.content[0].senderName").value("張三"));
+  }
+
+  @Test
+  @WithMockUser(roles = "VIEWER")
+  void create_shouldForbidViewer() throws Exception {
+    // RBAC：VIEWER 建立案件應被 @PreAuthorize 拒絕（403，統一錯誤格式）
+    mockMvc.perform(post("/api/cases")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(VALID_CASE_JSON))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.error.code").value("ACCESS_DENIED"));
+  }
+
+  @Test
+  @WithMockUser(roles = "STAFF")
+  void create_shouldAllowStaff() throws Exception {
+    when(caseService.create(any())).thenReturn(sampleResponse());
+
+    mockMvc.perform(post("/api/cases")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(VALID_CASE_JSON))
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.senderName").value("張三"));
+  }
+
+  @Test
+  @WithMockUser(roles = "STAFF")
+  void create_shouldRejectMissingRequiredFields() throws Exception {
+    // 缺少 receiveDate 與送件人欄位：Bean Validation 回 400 並帶 details
+    mockMvc.perform(post("/api/cases")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {"cropId":1}
+                """))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.error.code").value("VALIDATION_ERROR"))
+        .andExpect(jsonPath("$.error.details.receiveDate").exists())
+        .andExpect(jsonPath("$.requestId").isNotEmpty());
+  }
+}

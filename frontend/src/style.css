@@ -1,0 +1,21 @@
+/* 全站細部樣式：以 Bootstrap 為基底，僅補少量自訂樣式 */
+
+body {
+  /* 避免內容貼齊瀏覽器邊緣 */
+  padding-top: 56px;
+  background-color: #f8f9fa;
+}
+
+.hero-section {
+  background: linear-gradient(135deg, #198754 0%, #157347 60%, #0d6efd 100%);
+  color: #fff;
+}
+
+.hero-section .btn-outline-light:hover {
+  color: #198754;
+}
+
+/* 卡片懸停微效果 */
+.card.shadow-sm:hover {
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+}

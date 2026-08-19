@@ -1,0 +1,100 @@
+package com.d0w0b.phytotrack.dto;
+
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.List;
+
+/**
+ * 案件（Case）相關的資料傳輸物件（DTO）
+ */
+public final class CaseDtos {
+
+  private CaseDtos() {
+  }
+
+  /** 案件建立請求 */
+  public record CaseCreateRequest(
+      @NotNull(message = "收件日期不可為空") LocalDate receiveDate,
+
+      String cropScale,
+      String damageScale,
+      String pestDescription,
+      String hintDescription,
+
+      // 送件人（Sender）欄位
+      @NotBlank(message = "送件人姓名不可為空白") String senderName,
+      @NotBlank(message = "送件人電話不可為空白") String senderPhone,
+      @NotBlank(message = "送件人地址不可為空白") String senderAddress,
+      @NotNull(message = "送件人鄉鎮市區不可為空") Long senderDistrictId,
+      @NotNull(message = "送件人身分別不可為空") Long senderTypeId,
+
+      // 參照資料（Reference Data）的 ID
+      @NotNull(message = "耕種方式不可為空") Long methodId,
+      @NotNull(message = "作物不可為空") Long cropId,
+      @NotNull(message = "服務類別不可為空") Long serviceId,
+      @NotNull(message = "送件方式不可為空") Long deliverId,
+
+      // 多對多關聯（Junction Table）的 ID 集合
+      List<Long> damageIds,
+      List<Long> hintIds,
+      List<Long> pestCategoryIds,
+      List<Long> identifierIds) {
+  }
+
+  /** 案件更新請求（可局部更新） */
+  public record CaseUpdateRequest(
+      LocalDate receiveDate,
+      String cropScale,
+      String damageScale,
+      String pestDescription,
+      String hintDescription,
+      Integer status,
+      Long methodId,
+      Long cropId,
+      Long serviceId,
+      Long deliverId) {
+  }
+
+  /** 案件列表（摘要）回應：不帶多對多關聯，節省查詢量 */
+  public record CaseSummaryResponse(
+      Long caseId,
+      LocalDate receiveDate,
+      String cropName,
+      String senderName,
+      String serviceName,
+      Integer status,
+      LocalDateTime createdAt) {
+  }
+
+  /** 案件詳細回應 */
+  public record CaseResponse(
+      Long caseId,
+      LocalDate receiveDate,
+      String cropScale,
+      String damageScale,
+      String pestDescription,
+      String hintDescription,
+      Integer status,
+      LocalDateTime createdAt,
+      LocalDateTime updatedAt,
+      String senderName,
+      String senderPhone,
+      String senderAddress,
+      String cropName,
+      String methodName,
+      String serviceName,
+      String deliveryName,
+      String createdByName,
+      List<IdName> damages,
+      List<IdName> hints,
+      List<IdName> pestCategories,
+      List<IdName> identifiers) {
+
+    /** 通用的「ID + 名稱」結構，用於多對多關聯 */
+    public record IdName(Long id, String name) {
+    }
+  }
+}
