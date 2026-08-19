@@ -142,5 +142,5 @@ PhytoTrack 是一套用來記錄「農作物病蟲害診斷案件」的電腦系
 #line(length: 100%, stroke: 0.5pt)
 
 #align(center)[
-  #text(size: 8pt, fill: gray)[PhytoTrack 操作手冊 — 版本 1.0]
+  #text(size: 8pt, fill: gray)[PhytoTrack 操作手冊 — 版本 1.1]
 ]

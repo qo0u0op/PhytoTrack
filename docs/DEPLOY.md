@@ -30,7 +30,7 @@ cd backend
 | 設定 | 預設 | 說明 |
 |------|------|------|
 | `app.jwt.secret` | 開發用密鑰 | JWT 簽章密鑰。正式環境務必以 `JWT_SECRET` 環境變數覆蓋 |
-| `app.bootstrap.*` | admin/admin123、staff/staff123 | 首次啟動自動建立的管理者與診斷員帳號 |
+| `app.bootstrap.*` | admin/admin123、staff/staff123、viewer/viewer123 | 首次啟動自動建立的管理者、診斷員與檢視者帳號 |
 | `app.ai.health-url` | `http://localhost:11435/health` | llama-server 存活檢查端點 |
 
 ## 3. llama-server 啟動（AI 診斷）

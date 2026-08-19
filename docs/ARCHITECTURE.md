@@ -65,6 +65,7 @@ HTTP 請求
 
 - 核心實體 **Case**（案件）：`@ManyToOne` 關聯 Sender、Method、Crop、Service、Delivery、User（createdBy）
 - 多對多關聯透過 Junction 表：CaseDamage、CaseHint、CasePestCategory、CaseIdentifier
+- **Sender**（送件人）現況：`name + phone` UNIQUE、欄位皆不可空，隨案件建立；sender-management 能力將引入 `displayName`、弱識別符人工確認去重、VIEWER 個資遮蔽與統計去重鍵（見 ADR-011）
 - 案件列表篩選以 **Spring Data JPA `Specification`** 動態組合（`CaseSpecifications`，AND 組合）；`status` 現以整數儲存，篩選契約接受列舉字串並由 `CaseService` 對映後傳入查詢（過渡做法，待 case-lifecycle 遷移列舉）
 - 時間戳與建立者由 **JPA Auditing** 自動填寫（`@CreatedDate`/`@LastModifiedDate`/`@CreatedBy`），實作 `AuditorAware` 從 SecurityContext 取值（見 ADR-006）
 - SQLite 日期欄位以 `converter/` 的字串轉換器處理，避免 Hibernate 7 SQLiteDialect 的 epoch 毫秒寫入/嚴格格式讀取不一致問題
@@ -124,6 +125,6 @@ types/    openapi-typescript 由 /v3/api-docs 自動生成的 API 型別（與�
 後端設定集中在 `backend/src/main/resources/application.yaml`：
 
 - `app.jwt.secret`：JWT 簽章密鑰，正式環境以環境變數 `JWT_SECRET` 覆蓋
-- `app.bootstrap.*`：首次啟動自動建立的帳號（admin / staff）
+- `app.bootstrap.*`：首次啟動自動建立的帳號（admin / staff / viewer）
 - `spring.ai.openai.*`：llama-server 連線設定
 - `application-postgres.yaml`：PostgreSQL 升級 profile（見 ADR-007）

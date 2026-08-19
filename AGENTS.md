@@ -16,7 +16,7 @@
 
 - 三層（Controller → Service → Repository，`backend/src/main/java/com/d0w0b/phytotrack/`），DTO 隔在 API 邊界，實體不進出 Controller（ADR-003 / ADR-005）
 - `spring.jpa.open-in-view: false`：交易外不得 Lazy 載入，回傳需 DTO 投影或 FETCH JOIN，否則 `LazyInitializationException` / N+1
-- 認證：JWT + BCrypt + RBAC（VIEWER / STAFF / ADMIN），`@PreAuthorize` 集中宣告。非 dev profile 需環境變數 `JWT_SECRET`（`JwtSecretValidator` fail-fast）；dev 預設帳號由 `app.bootstrap.*` 建立（admin/admin123、staff/staff123）
+- 認證：JWT + BCrypt + RBAC（VIEWER / STAFF / ADMIN），`@PreAuthorize` 集中宣告。非 dev profile 需環境變數 `JWT_SECRET`（`JwtSecretValidator` fail-fast）；dev 預設帳號由 `app.bootstrap.*` 建立（admin/admin123、staff/staff123、viewer/viewer123）
 - SQLite 特性：`hibernate-community-dialects` 的 `SQLiteDialect`、Hikari `maximum-pool-size: 1`、`LocalDate`/`LocalDateTime` 需自訂 JPA 轉換器（`converter/`）
 - AI：llama-server / LlamaStash proxy 於 **11435**（避開 Spring Boot 的 8080），Spring AI 以 OpenAI 相容格式串接（`api-key` 為 dummy）；模型名稱需對應 `GET /v1/models`。機台特定值（`AI_BASE_URL`/`AI_MODEL`/`AI_API_KEY`）放 `backend/.env`（gitignored，範本 `backend/.env.example`），`application.yaml` 以 `${VAR:預設值}` 承接
 
@@ -39,17 +39,17 @@
 
 ## OpenSpec 操作
 
-- 主規格 `openspec/specs/`：9 份能力 spec（security-hardening、api-observability、case-search、case-lifecycle、case-statistics、case-report、user-admin、reference-data-admin、ops-backup）；security-hardening 已實作交付、api-observability 僅含已交付項（Actuator/logback 歸 Phase 2）
+- 主規格 `openspec/specs/`：10 份能力 spec（security-hardening、api-observability、case-search、case-lifecycle、case-statistics、case-report、user-admin、reference-data-admin、sender-management、ops-backup）；security-hardening 已實作交付、api-observability 僅含已交付項（Actuator/logback 歸 Phase 2）
 - 工作流：`openspec new change` → proposal → apply（實作＋驗證）→ archive；Phase 1 採**每能力一個獨立 change**（spec 已在主規格，新 change 只需 proposal+tasks，不需 delta spec，於 `.openspec.yaml` 設 `skip_specs: true`）
 - 常用指令：`openspec list` / `status --change <name>` / `validate --specs` / `validate --changes`
-- umbrella change `hardening-and-operational-features` 已 archive 至 `openspec/changes/archive/2026-08-19-.../`（proposal/design/tasks 歷史保留，`.openspec.yaml` 隨目錄移動），目前 active change：`case-search`
-- Phase 1 範圍 = 7 能力：case-search、case-lifecycle、case-statistics、case-report、user-admin、reference-data-admin、ops-backup（security-hardening 已交付、api-observability 剩餘歸 Phase 2）；建議由 `case-search` 暖身
-- 需求總覽：`docs/REQUIREMENTS.md`（9 能力狀態、Phase 1 範圍、能力間依賴與遷移注意）
+- umbrella change `hardening-and-operational-features` 與 `case-search` 已 archive 至 `openspec/changes/archive/2026-08-19-.../`（proposal/design/tasks 歷史保留，`.openspec.yaml` 隨目錄移動）；目前無 active change
+- Phase 1 範圍 = 8 能力：case-lifecycle、case-statistics、case-report、user-admin、reference-data-admin、sender-management、ops-backup（case-search 已交付，security-hardening 已交付、api-observability 剩餘歸 Phase 2）；建議下一能力由 `case-lifecycle` 開始
+- 需求總覽：`docs/REQUIREMENTS.md`（10 能力狀態、Phase 1 範圍、能力間依賴與遷移注意）
 
 ## 文件
 
 - `README.md`：快速啟動的權威來源
-- `docs/adr/ADR-001~010`：架構決策（前後分離、Boot 4、三層、JWT/RBAC、DTO、JPA Auditing、SQLite→PostgreSQL、OpenAPI、llama 代理、統一錯誤處理），實作前先查對應 ADR
+- `docs/adr/ADR-001~011`：架構決策（前後分離、Boot 4、三層、JWT/RBAC、DTO、JPA Auditing、SQLite→PostgreSQL、OpenAPI、llama 代理、統一錯誤處理、送件人管理），實作前先查對應 ADR
 - `docs/ARCHITECTURE.md`、`docs/DEPLOY.md`
-- `docs/REQUIREMENTS.md`：9 能力需求總覽與 Phase 1 範圍（見「OpenSpec 操作」）
+- `docs/REQUIREMENTS.md`：10 能力需求總覽與 Phase 1 範圍（見「OpenSpec 操作」）
 - `openspec/specs`：Phase 1 能力契約基準（見「OpenSpec 操作」）

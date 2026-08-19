@@ -39,7 +39,7 @@ cd backend
 
 - 啟動後 Swagger UI：<http://localhost:8080/swagger-ui.html>
 - `dev` profile 允許使用開發預設 JWT 密鑰；**正式環境請以環境變數 `JWT_SECRET` 提供密鑰**（未提供且非 dev 環境時會啟動失敗，見 ADR-004）
-- 首次啟動自動建立預設帳號：`admin / admin123`（ADMIN）、`staff / staff123`（STAFF），可於 `application.yaml` 的 `app.bootstrap.*` 調整
+- 首次啟動自動建立預設帳號：`admin / admin123`（ADMIN）、`staff / staff123`（STAFF）、`viewer / viewer123`（VIEWER），可於 `application.yaml` 的 `app.bootstrap.*` 調整
 - 機台特定的 AI 設定（base-url / 模型名稱 / api-key）可於 `backend/.env` 覆寫：`cp backend/.env.example backend/.env` 後修改（未設定時使用預設值）
 
 ### 2. AI 模型（選用）
@@ -87,10 +87,14 @@ cd frontend && npm run build
 
 - `docs/adr/`：10 份 ADR（前後分離、Boot 4、三層架構、JWT/RBAC、DTO、JPA Auditing、SQLite→PostgreSQL、OpenAPI、llama 代理、統一錯誤處理）
 - `docs/ARCHITECTURE.md`：整體架構與請求流程
-- `docs/REQUIREMENTS.md`：9 能力需求總覽與 Phase 1 範圍
+- `docs/REQUIREMENTS.md`：10 能力需求總覽與 Phase 1 範圍
 - `docs/DEPLOY.md`：部署與備份指引
 - `docs/manual.typ`：操作手冊（`typst compile` 產生 PDF）
 
 ## 規劃中（見 openspec）
 
-案件生命週期（狀態流轉）、統計 Dashboard、使用者管理完整化、參照資料維護、監控與備份等，詳見 `openspec/specs/`（9 份能力契約）與 `openspec/changes/`。
+案件生命週期（狀態流轉）、統計 Dashboard、使用者管理完整化、送件人管理（displayName、去重合併、VIEWER 個資遮蔽）、參照資料維護、監控與備份等，詳見 `openspec/specs/`（10 份能力契約）與 `openspec/changes/`。
+
+## 同時啟動前後端
+
+以 `mise run dev` 可同時啟動後端（`dev:backend`）與前端（`dev:frontend`），並等待兩者就緒。
