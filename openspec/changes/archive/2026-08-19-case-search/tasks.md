@@ -31,5 +31,5 @@
 
 ## 7. 文件同步與驗證
 
-- [ ] 7.1 同步 `docs/REQUIREMENTS.md`（case-search 標實作）、`README.md`、`docs/ARCHITECTURE.md`、操作手冊 `docs/manual.typ`、`docs/notebook/` 筆記
-- [ ] 7.2 全量驗證：`cd backend && ./mvnw test`、`cd frontend && npm run build && npm test`、`openspec validate --specs` / `--changes`，並以 dev 伺服器實測篩選
+- [x] 7.1 同步 `docs/REQUIREMENTS.md`（case-search 標實作）、`README.md`、`docs/ARCHITECTURE.md`、操作手冊 `docs/manual.typ`、`docs/notebook/` 筆記
+- [x] 7.2 全量驗證：`cd backend && ./mvnw test`、`cd frontend && npm run build && npm test`、`openspec validate --specs` / `--changes`，並以 dev 伺服器實測篩選
