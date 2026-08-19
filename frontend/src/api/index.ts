@@ -18,8 +18,17 @@ export const authApi = {
 
 /** 案件（Case）API */
 export const caseApi = {
-  list: (params: { page?: number; size?: number }) =>
-    http.get('/cases', { params }),
+  /** 分頁查詢案件列表；篩選參數皆可選，同時存在時為 AND 組合 */
+  list: (params: {
+    page?: number
+    size?: number
+    cropId?: number
+    serviceId?: number
+    senderName?: string
+    receiveDateFrom?: string
+    receiveDateTo?: string
+    status?: 'PENDING' | 'RESOLVED' | 'CLOSED'
+  }) => http.get('/cases', { params }),
   detail: (id: number) => http.get(`/cases/${id}`),
   create: (data: CaseCreateRequest) => http.post('/cases', data),
   update: (id: number, data: CaseUpdateRequest) => http.put(`/cases/${id}`, data),
