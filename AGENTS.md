@@ -17,7 +17,7 @@
 - `spring.jpa.open-in-view: false`：交易外不得 Lazy 載入，回傳需 DTO 投影或 FETCH JOIN，否則 `LazyInitializationException` / N+1
 - 認證：JWT + BCrypt + RBAC（VIEWER / STAFF / ADMIN），`@PreAuthorize` 集中宣告。非 dev profile 需環境變數 `JWT_SECRET`（`JwtSecretValidator` fail-fast）；dev 預設帳號由 `app.bootstrap.*` 建立（admin/admin123、staff/staff123）
 - SQLite 特性：`hibernate-community-dialects` 的 `SQLiteDialect`、Hikari `maximum-pool-size: 1`、`LocalDate`/`LocalDateTime` 需自訂 JPA 轉換器（`converter/`）
-- AI：llama-server 於 **11435**（避開 Spring Boot 的 8080），Spring AI 以 OpenAI 相容格式串接（`api-key` 為 dummy）；模型名稱需對應 `GET /v1/models`
+- AI：llama-server / LlamaStash proxy 於 **11435**（避開 Spring Boot 的 8080），Spring AI 以 OpenAI 相容格式串接（`api-key` 為 dummy）；模型名稱需對應 `GET /v1/models`。機台特定值（`AI_BASE_URL`/`AI_MODEL`/`AI_API_KEY`）放 `backend/.env`（gitignored，範本 `backend/.env.example`），`application.yaml` 以 `${VAR:預設值}` 承接
 
 ## 測試（Spring Boot 4 特有的坑）
 

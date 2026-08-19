@@ -2,6 +2,10 @@ spring:
   application:
     # 應用程式名稱（顯示於 Spring 啟動資訊）
     name: PhytoTrack
+  config:
+    # 讀取 backend/.env（dotenv 格式，可缺省）。機台特定設定如 AI_BASE_URL/AI_MODEL/AI_API_KEY
+    # 放在 .env 覆寫，未設定時使用 application.yaml 內的預設值。
+    import: optional:file:.env[.properties]
   datasource:
     # SQLite DataSource（本機檔案型資料庫）
     url: jdbc:sqlite:./diagnoses.db
@@ -33,15 +37,15 @@ spring:
     model:
       chat: openai
     openai:
-      # llama-server 的 base-url（含 /v1 前綴）。
+      # llama-server / LlamaStash proxy 的 base-url（含 /v1 前綴）。
       # 注意：llama-server 預設 port 8080 與 Spring Boot 相衝，本專案以 11435 錯開。
-      base-url: http://localhost:11435/v1
+      base-url: ${AI_BASE_URL:http://localhost:11435}/v1
       # llama.cpp 不驗證 API Key，此處僅為滿足 Spring AI 的必填欄位
-      api-key: llama-local-dummy-key
+      api-key: ${AI_API_KEY:llama-local-dummy-key}
       chat:
         options:
           # 需對應 llama-server 載入的模型名稱（可查 GET /v1/models）
-          model: qwen_qwen2.5-coder-3b-instruct-q8_0
+          model: ${AI_MODEL:qwen_qwen2.5-coder-3b-instruct-q8_0}
           temperature: 0.7
           max-tokens: 512
 
@@ -56,8 +60,8 @@ app:
     # Token 有效期限（毫秒）：預設 1 小時
     expiration-ms: 3600000
   ai:
-    # llama-server 存活檢查端點（不含 /v1 前綴）
-    health-url: http://localhost:11435/health
+    # llama-server / LlamaStash proxy 存活檢查端點（不含 /v1 前綴）
+    health-url: ${AI_BASE_URL:http://localhost:11435}/health
   bootstrap:
     # 首次啟動自動建立的管理者與一般員工帳號（見 DataInitializer）
     admin-username: admin

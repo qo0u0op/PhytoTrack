@@ -40,15 +40,17 @@ cd backend
 - 啟動後 Swagger UI：<http://localhost:8080/swagger-ui.html>
 - `dev` profile 允許使用開發預設 JWT 密鑰；**正式環境請以環境變數 `JWT_SECRET` 提供密鑰**（未提供且非 dev 環境時會啟動失敗，見 ADR-004）
 - 首次啟動自動建立預設帳號：`admin / admin123`（ADMIN）、`staff / staff123`（STAFF），可於 `application.yaml` 的 `app.bootstrap.*` 調整
+- 機台特定的 AI 設定（base-url / 模型名稱 / api-key）可於 `backend/.env` 覆寫：`cp backend/.env.example backend/.env` 後修改（未設定時使用預設值）
 
 ### 2. AI 模型（選用）
 
-AI 診斷功能需要本機 llama.cpp 在線（後端代理於 `app.ai.health-url`，預設 11435）：
+AI 診斷功能需要本機 llama.cpp 在線（後端代理於 `app.ai.health-url`，預設 11435；亦可改用 LlamaStash 的 OpenAI proxy）：
 
 ```bash
-llama-server -m <模型檔>.gguf --port 11435 --api-key dummy
+llama-server -m <模型檔>.gguf --port 11435 --alias <模型名稱> --api-key dummy
 ```
 
+- 模型名稱需對應後端請求的 `model`（可於 `backend/.env` 的 `AI_MODEL` 調整，查 `GET /v1/models`）
 - 可在前端 Dashboard 檢查模型連線狀態，或 `GET /api/ai/health`
 - 模型未啟動時，AI 診斷會回傳錯誤（不影響案件 CRUD）
 

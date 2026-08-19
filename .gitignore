@@ -36,6 +36,9 @@ build/
 *.db
 *.sqlite
 
+### Environment ###
+backend/.env
+
 ### Personal Learning Notes ###
 docs/notebook/
 
