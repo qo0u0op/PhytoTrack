@@ -65,7 +65,7 @@ HTTP 請求
 
 - 核心實體 **Case**（案件）：`@ManyToOne` 關聯 Sender、Method、Crop、Service、Delivery、User（createdBy）
 - 多對多關聯透過 Junction 表：CaseDamage、CaseHint、CasePestCategory、CaseIdentifier
-- 案件列表篩選以 **Spring Data JPA `Specification`** 動態組合（`CaseSpecifications`，AND 組合）；`status` 現以整數儲存，篩選契約接受列舉字串並於對映後查詢（過渡做法，待 case-lifecycle 遷移列舉）
+- 案件列表篩選以 **Spring Data JPA `Specification`** 動態組合（`CaseSpecifications`，AND 組合）；`status` 現以整數儲存，篩選契約接受列舉字串並由 `CaseService` 對映後傳入查詢（過渡做法，待 case-lifecycle 遷移列舉）
 - 時間戳與建立者由 **JPA Auditing** 自動填寫（`@CreatedDate`/`@LastModifiedDate`/`@CreatedBy`），實作 `AuditorAware` 從 SecurityContext 取值（見 ADR-006）
 - SQLite 日期欄位以 `converter/` 的字串轉換器處理，避免 Hibernate 7 SQLiteDialect 的 epoch 毫秒寫入/嚴格格式讀取不一致問題
 
