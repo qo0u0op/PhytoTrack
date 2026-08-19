@@ -1,10 +1,8 @@
 package com.d0w0b.phytotrack.repository;
 
 import org.springframework.data.jpa.domain.Specification;
-import org.springframework.http.HttpStatus;
 
 import com.d0w0b.phytotrack.dto.CaseDtos.CaseFilter;
-import com.d0w0b.phytotrack.exception.ApiException;
 import com.d0w0b.phytotrack.models.Case;
 
 import jakarta.persistence.criteria.Predicate;
@@ -21,15 +19,15 @@ import java.util.List;
  *
  * 於規格查詢中一併 fetch join 列表所需關聯（送件人、作物、服務），
  * 避免 N+1；count 查詢以 resultType 區隔不 fetch。
+ *
+ * 僅負責純 SQL 條件的組裝；業務對映（如狀態字串→整數的驗證）由 Service 層處理。
  */
 public final class CaseSpecifications {
 
   private CaseSpecifications() {
   }
 
-  public static Specification<Case> build(CaseFilter filter) {
-    // 狀態字串立即對映（fail-fast）：非法值在建構時即拋錯，而非等查詢執行
-    Integer statusInt = filter.status() != null ? toStatusInt(filter.status()) : null;
+  public static Specification<Case> build(CaseFilter filter, Integer statusInt) {
     return (root, query, cb) -> {
       if (query.getResultType() != Long.class && query.getResultType() != long.class) {
         root.fetch("sender");
@@ -60,22 +58,6 @@ public final class CaseSpecifications {
         predicates.add(cb.equal(root.get("status"), statusInt));
       }
       return cb.and(predicates.toArray(new Predicate[0]));
-    };
-  }
-
-  /**
-   * 列舉字串對映現有整數狀態。
-   *
-   * 過渡假設（見 case-search proposal）：case-lifecycle 將欄位遷移為列舉後，
-   * 僅需移除本對照，API 契約（列舉字串）不變。
-   */
-  private static int toStatusInt(String status) {
-    return switch (status) {
-      case "PENDING" -> 0;
-      case "RESOLVED" -> 1;
-      case "CLOSED" -> 2;
-      default -> throw new ApiException(
-          "INVALID_STATUS", HttpStatus.BAD_REQUEST, "無效的狀態：" + status);
     };
   }
 }

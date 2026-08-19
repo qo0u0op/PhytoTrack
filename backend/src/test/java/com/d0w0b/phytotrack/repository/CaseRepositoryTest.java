@@ -195,7 +195,7 @@ class CaseRepositoryTest {
     // cropId=1 AND status=PENDING → 僅稻作且待處理
     // 頁面尺寸取大（共享 test DB 可能有整合測試殘留案件），確保斷言與殘留量無關
     Specification<Case> spec = CaseSpecifications.build(
-        new CaseFilter(1L, null, null, null, null, "PENDING"));
+        new CaseFilter(1L, null, null, null, null, "PENDING"), 0);
     Page<Case> page = caseRepository.findAll(spec, PageRequest.of(0, 100));
 
     assertThat(page.getContent())
@@ -219,7 +219,7 @@ class CaseRepositoryTest {
 
     // senderName=張 → 僅送件人姓名含「張」者
     Specification<Case> spec = CaseSpecifications.build(
-        new CaseFilter(null, null, "張", null, null, null));
+        new CaseFilter(null, null, "張", null, null, null), null);
     Page<Case> page = caseRepository.findAll(spec, PageRequest.of(0, 100));
 
     assertThat(page.getContent())
@@ -241,7 +241,8 @@ class CaseRepositoryTest {
     Case after = saveCase(user, rice, diagnosis, "期-王小華", LocalDate.of(2026, 9, 1), 0);
 
     Specification<Case> spec = CaseSpecifications.build(
-        new CaseFilter(null, null, null, LocalDate.of(2026, 8, 1), LocalDate.of(2026, 8, 31), null));
+        new CaseFilter(null, null, null, LocalDate.of(2026, 8, 1), LocalDate.of(2026, 8, 31), null),
+        null);
     Page<Case> page = caseRepository.findAll(spec, PageRequest.of(0, 100));
 
     assertThat(page.getContent())

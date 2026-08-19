@@ -102,10 +102,29 @@ public class CaseService {
   /** 分頁查詢案件清單（摘要）；無任何條件時行為與現有列表一致 */
   @Transactional(readOnly = true)
   public Page<CaseSummaryResponse> list(CaseFilter filter, Pageable pageable) {
+    // 狀態字串先在此對映（fail-fast）：非法值於 Service 層即拋錯，不會進入查詢
+    Integer statusInt = filter.status() != null ? toStatusInt(filter.status()) : null;
     if (filter.isEmpty()) {
       return caseRepository.findAll(pageable).map(this::toSummary);
     }
-    return caseRepository.findAll(CaseSpecifications.build(filter), pageable).map(this::toSummary);
+    return caseRepository.findAll(CaseSpecifications.build(filter, statusInt), pageable)
+        .map(this::toSummary);
+  }
+
+  /**
+   * 列舉字串對映現有整數狀態。
+   *
+   * 過渡假設（見 case-search proposal）：case-lifecycle 將欄位遷移為列舉後，
+   * 僅需移除本對照，API 契約（列舉字串）不變。
+   */
+  private static int toStatusInt(String status) {
+    return switch (status) {
+      case "PENDING" -> 0;
+      case "RESOLVED" -> 1;
+      case "CLOSED" -> 2;
+      default -> throw new ApiException(
+          "INVALID_STATUS", HttpStatus.BAD_REQUEST, "無效的狀態：" + status);
+    };
   }
 
   /** 查詢案件詳細（含所有多對多關聯） */
@@ -182,7 +201,7 @@ public class CaseService {
     caseRepository.delete(findByIdOrThrow(id));
   }
 
-// ------------------------------------------------------------------
+  // ------------------------------------------------------------------
   // 私有輔助方法
   // ------------------------------------------------------------------
 
