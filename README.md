@@ -5,7 +5,7 @@
 ## 功能一覽
 
 - **認證授權**：JWT（無狀態）+ Spring Security + BCrypt，RBAC 三角色（VIEWER / STAFF / ADMIN）
-- **案件管理**：建立、編輯、刪除、分頁列表與詳細查詢，含送件人、作物、被害部位、病蟲害分類、防治建議、診斷簽名人等多對多關聯
+- **案件管理**：建立、編輯、刪除、分頁列表與詳細查詢，含送件人、作物、被害部位、病蟲害分類、防治建議、診斷簽名人等多對多關聯；列表支援依作物、服務類別、送件人（部分比對）、收件日期區間與狀態篩選（AND 組合）
 - **AI 診斷**：以 Spring AI（OpenAI 相容格式）代理本機 llama.cpp，依案件欄位生成診斷建議
 - **參照資料**：作物（含分類）、病蟲害（含分類）、縣市／鄉鎮、耕種方式、服務類別、送件方式、身分別、標的等選單資料
 - **管理者後台**：使用者列表管理
@@ -87,9 +87,10 @@ cd frontend && npm run build
 
 - `docs/adr/`：10 份 ADR（前後分離、Boot 4、三層架構、JWT/RBAC、DTO、JPA Auditing、SQLite→PostgreSQL、OpenAPI、llama 代理、統一錯誤處理）
 - `docs/ARCHITECTURE.md`：整體架構與請求流程
+- `docs/REQUIREMENTS.md`：9 能力需求總覽與 Phase 1 範圍
 - `docs/DEPLOY.md`：部署與備份指引
 - `docs/manual.typ`：操作手冊（`typst compile` 產生 PDF）
 
 ## 規劃中（見 openspec）
 
-案件生命週期（狀態流轉）、統計 Dashboard、案件搜尋、使用者管理完整化、參照資料維護、監控與備份等，詳見 `openspec/specs/`（9 份能力契約）與 `openspec/changes/`。
+案件生命週期（狀態流轉）、統計 Dashboard、使用者管理完整化、參照資料維護、監控與備份等，詳見 `openspec/specs/`（9 份能力契約）與 `openspec/changes/`。

@@ -22,12 +22,12 @@
 
 ## 5. 前端：API 與型別
 
-- [ ] 5.1 `api/index.ts` `caseApi.list` 擴充篩選參數型別；重新生成 `types/api.ts`（openapi-typescript）
+- [x] 5.1 `api/index.ts` `caseApi.list` 擴充篩選參數型別；重新生成 `types/api.ts`（openapi-typescript）
 
 ## 6. 前端：篩選 UI 與狀態顯示
 
-- [ ] 6.1 新增 `utils/caseStatus.ts`（`STATUS_OPTIONS` 與 `statusLabel(int)`）並附 vitest 測試
-- [ ] 6.2 `CasesView.vue` 加入篩選工具列（作物／服務／送件人／收件日期起訖／狀態），篩選與清除按鈕，變更回第一頁重新載入；狀態欄改依 `statusLabel` 顯示
+- [x] 6.1 新增 `utils/caseStatus.ts`（`STATUS_OPTIONS` 與 `statusLabel(int)`）並附 vitest 測試
+- [x] 6.2 `CasesView.vue` 加入篩選工具列（作物／服務／送件人／收件日期起訖／狀態），篩選與清除按鈕，變更回第一頁重新載入；狀態欄改依 `statusLabel` 顯示
 
 ## 7. 文件同步與驗證
 
