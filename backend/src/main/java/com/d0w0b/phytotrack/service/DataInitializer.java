@@ -26,6 +26,8 @@ public class DataInitializer implements CommandLineRunner {
   private final String adminPassword;
   private final String staffUsername;
   private final String staffPassword;
+  private final String viewerUsername;
+  private final String viewerPassword;
 
   public DataInitializer(UserRepository userRepository,
                          IdentifierRepository identifierRepository,
@@ -33,7 +35,9 @@ public class DataInitializer implements CommandLineRunner {
                          @Value("${app.bootstrap.admin-username}") String adminUsername,
                          @Value("${app.bootstrap.admin-password}") String adminPassword,
                          @Value("${app.bootstrap.staff-username}") String staffUsername,
-                         @Value("${app.bootstrap.staff-password}") String staffPassword) {
+                         @Value("${app.bootstrap.staff-password}") String staffPassword,
+                         @Value("${app.bootstrap.viewer-username}") String viewerUsername,
+                         @Value("${app.bootstrap.viewer-password}") String viewerPassword) {
     this.userRepository = userRepository;
     this.identifierRepository = identifierRepository;
     this.passwordEncoder = passwordEncoder;
@@ -41,6 +45,8 @@ public class DataInitializer implements CommandLineRunner {
     this.adminPassword = adminPassword;
     this.staffUsername = staffUsername;
     this.staffPassword = staffPassword;
+    this.viewerUsername = viewerUsername;
+    this.viewerPassword = viewerPassword;
   }
 
   @Override
@@ -48,6 +54,8 @@ public class DataInitializer implements CommandLineRunner {
     // 僅在使用者不存在時建立，避免覆寫或重複
     User admin = getOrCreateUser(adminUsername, "管理員", adminPassword, User.Role.ROLE_ADMIN);
     User staff = getOrCreateUser(staffUsername, "診斷員", staffPassword, User.Role.ROLE_STAFF);
+    // 檢視者帳號：供開發環境驗證 VIEWER 角色的遮蔽行為（如送件人個人資料）
+    getOrCreateUser(viewerUsername, "檢視員", viewerPassword, User.Role.ROLE_VIEWER);
 
     // 診斷簽名人（Identifier）需關聯系統使用者，故無法於 schema.sql 預填，
     // 改在此處建立；僅在完全沒有簽名人時才建立。

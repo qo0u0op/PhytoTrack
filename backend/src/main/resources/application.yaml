@@ -63,8 +63,10 @@ app:
     # llama-server / LlamaStash proxy 存活檢查端點（不含 /v1 前綴）
     health-url: ${AI_BASE_URL:http://localhost:11435}/health
   bootstrap:
-    # 首次啟動自動建立的管理者與一般員工帳號（見 DataInitializer）
+    # 首次啟動自動建立的管理者、員工與檢視者帳號（見 DataInitializer）
     admin-username: admin
     admin-password: admin123
     staff-username: staff
     staff-password: staff123
+    viewer-username: viewer
+    viewer-password: viewer123
