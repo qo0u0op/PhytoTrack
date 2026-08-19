@@ -179,6 +179,17 @@ class CaseControllerTest {
 
   @Test
   @WithMockUser(roles = "VIEWER")
+  void list_withInvalidDate_shouldReturnBadRequest() throws Exception {
+    // 日期參數格式錯誤：型別轉換失敗 → 400 VALIDATION_ERROR（非 500）
+    mockMvc.perform(get("/api/cases").param("receiveDateFrom", "abc"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.error.code").value("VALIDATION_ERROR"))
+        .andExpect(jsonPath("$.error.message").value("參數 receiveDateFrom 格式錯誤：abc"))
+        .andExpect(jsonPath("$.requestId").isNotEmpty());
+  }
+
+  @Test
+  @WithMockUser(roles = "VIEWER")
   void create_shouldForbidViewer() throws Exception {
     // RBAC：VIEWER 建立案件應被 @PreAuthorize 拒絕（403，統一錯誤格式）
     mockMvc.perform(post("/api/cases")

@@ -11,6 +11,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import com.d0w0b.phytotrack.config.RequestIdFilter;
 
@@ -58,6 +59,15 @@ public class GlobalExceptionHandler {
     log.warn("參數驗證失敗 {} {}：{}",
         request.getMethod(), request.getRequestURI(), message);
     return build("VALIDATION_ERROR", message, HttpStatus.BAD_REQUEST, request, details);
+  }
+
+  /** 請求參數型別轉換失敗（如日期格式錯誤、數字非數字） */
+  @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+  public ResponseEntity<ErrorResponse> handleTypeMismatch(
+      MethodArgumentTypeMismatchException ex, HttpServletRequest request) {
+    String message = "參數 " + ex.getName() + " 格式錯誤：" + ex.getValue();
+    log.warn("參數型別錯誤 {} {}：{}", request.getMethod(), request.getRequestURI(), message);
+    return build("VALIDATION_ERROR", message, HttpStatus.BAD_REQUEST, request, null);
   }
 
   /** 登入失敗（帳號或密碼錯誤） */
