@@ -21,10 +21,16 @@ description = "啟動後端 dev server（dev profile，Swagger UI 於 :8080）"
 run = "cd backend && ./mvnw spring-boot:run -Dspring-boot.run.profiles=dev"
 
 [tasks."dev:frontend"]
-description = "啟動前端 dev server（:5173，/api 代理至 8080）"
-run = "cd frontend && npm run dev"
+description = "啟動前端 dev server（:5173，/api 代理至 8080；--host 供 Tailscale／LAN 連線）"
+run = "cd frontend && npm run dev -- --host 0.0.0.0"
 
 [tasks.dev]
 description = "並行啟動前後端 dev server，就緒後維持運行"
-run = ["mise run dev:backend", "mise run dev:frontend"]
-wait_for = ["http://localhost:8080/api/ai/health", "http://localhost:5173"]
+run = '''
+mise run dev:backend &
+mise run dev:frontend &
+for u in http://localhost:8080/api/ai/health http://localhost:5173; do
+  until curl -sf -o /dev/null "$u"; do sleep 1; done
+done
+wait
+'''

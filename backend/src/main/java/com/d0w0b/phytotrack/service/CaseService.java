@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.d0w0b.phytotrack.dto.CaseDtos.CaseCreateRequest;
+import com.d0w0b.phytotrack.dto.CaseDtos.CaseFilter;
 import com.d0w0b.phytotrack.dto.CaseDtos.CaseResponse;
 import com.d0w0b.phytotrack.dto.CaseDtos.CaseSummaryResponse;
 import com.d0w0b.phytotrack.dto.CaseDtos.CaseUpdateRequest;
@@ -28,6 +29,7 @@ import com.d0w0b.phytotrack.models.PestCategory;
 import com.d0w0b.phytotrack.models.Sender;
 import com.d0w0b.phytotrack.models.SenderType;
 import com.d0w0b.phytotrack.repository.CaseRepository;
+import com.d0w0b.phytotrack.repository.CaseSpecifications;
 import com.d0w0b.phytotrack.repository.CropRepository;
 import com.d0w0b.phytotrack.repository.DamageRepository;
 import com.d0w0b.phytotrack.repository.DeliveryRepository;
@@ -97,10 +99,32 @@ public class CaseService {
     this.identifierRepository = identifierRepository;
   }
 
-  /** 分頁查詢案件清單（摘要） */
+  /** 分頁查詢案件清單（摘要）；無任何條件時行為與現有列表一致 */
   @Transactional(readOnly = true)
-  public Page<CaseSummaryResponse> list(Pageable pageable) {
-    return caseRepository.findAll(pageable).map(this::toSummary);
+  public Page<CaseSummaryResponse> list(CaseFilter filter, Pageable pageable) {
+    // 狀態字串先在此對映（fail-fast）：非法值於 Service 層即拋錯，不會進入查詢
+    Integer statusInt = filter.status() != null ? toStatusInt(filter.status()) : null;
+    if (filter.isEmpty()) {
+      return caseRepository.findAll(pageable).map(this::toSummary);
+    }
+    return caseRepository.findAll(CaseSpecifications.build(filter, statusInt), pageable)
+        .map(this::toSummary);
+  }
+
+  /**
+   * 列舉字串對映現有整數狀態。
+   *
+   * 過渡假設（見 case-search proposal）：case-lifecycle 將欄位遷移為列舉後，
+   * 僅需移除本對照，API 契約（列舉字串）不變。
+   */
+  private static int toStatusInt(String status) {
+    return switch (status) {
+      case "PENDING" -> 0;
+      case "RESOLVED" -> 1;
+      case "CLOSED" -> 2;
+      default -> throw new ApiException(
+          "INVALID_STATUS", HttpStatus.BAD_REQUEST, "無效的狀態：" + status);
+    };
   }
 
   /** 查詢案件詳細（含所有多對多關聯） */

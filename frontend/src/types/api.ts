@@ -606,6 +606,12 @@ export interface operations {
     list: {
         parameters: {
             query: {
+                cropId?: number;
+                serviceId?: number;
+                senderName?: string;
+                receiveDateFrom?: string;
+                receiveDateTo?: string;
+                status?: string;
                 pageable: components["schemas"]["Pageable"];
             };
             header?: never;

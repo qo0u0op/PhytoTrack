@@ -9,8 +9,12 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.test.context.ActiveProfiles;
 
+import com.d0w0b.phytotrack.dto.CaseDtos.CaseFilter;
 import com.d0w0b.phytotrack.models.Case;
 import com.d0w0b.phytotrack.models.CaseDamage;
 import com.d0w0b.phytotrack.models.CaseHint;
@@ -174,5 +178,143 @@ class CaseRepositoryTest {
     assertThat(loaded.getCaseHints()).hasSize(1);
     assertThat(loaded.getCasePestCategories()).hasSize(1);
     assertThat(loaded.getCaseIdentifiers()).hasSize(1);
+  }
+
+  @Test
+  void findAll_withFilter_shouldCombineConditionsWithAnd() {
+    User user = saveUser("filter-and-user");
+    Crop rice = cropRepository.findById(1L).orElseThrow();
+    Crop citrus = cropRepository.findById(36L).orElseThrow();
+    Service diagnosis = serviceRepository.findById(1L).orElseThrow();
+    Service consultation = serviceRepository.findById(3L).orElseThrow();
+
+    Case ricePending = saveCase(user, rice, diagnosis, "和甲", LocalDate.of(2026, 8, 1), 0);
+    Case riceResolved = saveCase(user, rice, diagnosis, "和乙", LocalDate.of(2026, 8, 15), 1);
+    Case citrusPending = saveCase(user, citrus, consultation, "和丙", LocalDate.of(2026, 8, 20), 0);
+
+    // cropId=1 AND status=PENDING → 僅稻作且待處理
+    // 頁面尺寸取大（共享 test DB 可能有整合測試殘留案件），確保斷言與殘留量無關
+    Specification<Case> spec = CaseSpecifications.build(
+        new CaseFilter(1L, null, null, null, null, "PENDING"), 0);
+    Page<Case> page = caseRepository.findAll(spec, PageRequest.of(0, 100));
+
+    assertThat(page.getContent())
+        .extracting(Case::getCaseId)
+        .contains(ricePending.getCaseId())
+        .doesNotContain(riceResolved.getCaseId(), citrusPending.getCaseId());
+    assertThat(page.getContent())
+        .allSatisfy(c -> assertThat(c.getStatus()).isEqualTo(0));
+    assertThat(page.getContent())
+        .allSatisfy(c -> assertThat(c.getCrop().getCropId()).isEqualTo(1L));
+  }
+
+  @Test
+  void findAll_withSenderNamePartialMatch_shouldReturnMatchingCases() {
+    User user = saveUser("filter-name-user");
+    Crop rice = cropRepository.findById(1L).orElseThrow();
+    Service diagnosis = serviceRepository.findById(1L).orElseThrow();
+
+    Case zhangsan = saveCase(user, rice, diagnosis, "比對-張小明", LocalDate.of(2026, 8, 1), 0);
+    Case wangxiaohua = saveCase(user, rice, diagnosis, "比對-王小華", LocalDate.of(2026, 8, 15), 0);
+
+    // senderName=張 → 僅送件人姓名含「張」者
+    Specification<Case> spec = CaseSpecifications.build(
+        new CaseFilter(null, null, "張", null, null, null), null);
+    Page<Case> page = caseRepository.findAll(spec, PageRequest.of(0, 100));
+
+    assertThat(page.getContent())
+        .extracting(Case::getCaseId)
+        .contains(zhangsan.getCaseId())
+        .doesNotContain(wangxiaohua.getCaseId());
+    assertThat(page.getContent())
+        .allSatisfy(c -> assertThat(c.getSender().getName()).contains("張"));
+  }
+
+  @Test
+  void findAll_withDateRange_shouldReturnCasesInRange() {
+    User user = saveUser("filter-date-user");
+    Crop rice = cropRepository.findById(1L).orElseThrow();
+    Service diagnosis = serviceRepository.findById(1L).orElseThrow();
+
+    Case inRange = saveCase(user, rice, diagnosis, "期-張小明", LocalDate.of(2026, 8, 15), 0);
+    Case before = saveCase(user, rice, diagnosis, "期-李小華", LocalDate.of(2026, 7, 31), 0);
+    Case after = saveCase(user, rice, diagnosis, "期-王小華", LocalDate.of(2026, 9, 1), 0);
+
+    Specification<Case> spec = CaseSpecifications.build(
+        new CaseFilter(null, null, null, LocalDate.of(2026, 8, 1), LocalDate.of(2026, 8, 31), null),
+        null);
+    Page<Case> page = caseRepository.findAll(spec, PageRequest.of(0, 100));
+
+    assertThat(page.getContent())
+        .extracting(Case::getCaseId)
+        .contains(inRange.getCaseId())
+        .doesNotContain(before.getCaseId(), after.getCaseId());
+    assertThat(page.getContent())
+        .allSatisfy(c -> {
+          assertThat(c.getReceiveDate()).isAfterOrEqualTo(LocalDate.of(2026, 8, 1));
+          assertThat(c.getReceiveDate()).isBeforeOrEqualTo(LocalDate.of(2026, 8, 31));
+        });
+  }
+
+  @Test
+  void findAll_withoutFilter_shouldReturnAll() {
+    User user = saveUser("filter-all-user");
+    Crop rice = cropRepository.findById(1L).orElseThrow();
+    Service diagnosis = serviceRepository.findById(1L).orElseThrow();
+
+    Case first = saveCase(user, rice, diagnosis, "全-張小明", LocalDate.of(2026, 8, 1), 0);
+    Case second = saveCase(user, rice, diagnosis, "全-李小華", LocalDate.of(2026, 8, 15), 1);
+
+    // 空 filter 走 findAll(Pageable)，回傳全部（含本次新增）
+    Page<Case> page = caseRepository.findAll(PageRequest.of(0, 100));
+
+    assertThat(page.getContent())
+        .extracting(Case::getCaseId)
+        .contains(first.getCaseId(), second.getCaseId());
+  }
+
+  // ---------------------------------------------------------------
+  // 測試資料建構輔助
+  // ---------------------------------------------------------------
+
+  private User saveUser(String username) {
+    User user = new User();
+    user.setUsername(username);
+    user.setDisplayName("資料庫測試員");
+    user.setPassword("encoded");
+    user.setRole(User.Role.ROLE_STAFF);
+    user.setActive(true);
+    return userRepository.save(user);
+  }
+
+  private static final java.util.concurrent.atomic.AtomicLong PHONE_SEQ =
+      new java.util.concurrent.atomic.AtomicLong(0);
+
+  private Sender createSender(String name) {
+    District district = districtRepository.findAll().stream().findFirst().orElseThrow();
+    SenderType senderType = senderTypeRepository.findAll().stream().findFirst().orElseThrow();
+    Sender sender = new Sender();
+    sender.setName(name);
+    sender.setPhone("0910-%07d".formatted(PHONE_SEQ.incrementAndGet()));
+    sender.setAddress("測試路 1 號");
+    sender.setDistrict(district);
+    sender.setSenderType(senderType);
+    return senderRepository.save(sender);
+  }
+
+  private Case saveCase(User user, Crop crop, Service service, String senderName,
+                        LocalDate receiveDate, int status) {
+    Case caseEntity = new Case();
+    caseEntity.setReceiveDate(receiveDate);
+    caseEntity.setStatus(status);
+    caseEntity.setSender(createSender(senderName));
+    caseEntity.setMethod(methodRepository.findAll().stream().findFirst().orElseThrow());
+    caseEntity.setCrop(crop);
+    caseEntity.setService(service);
+    caseEntity.setDelivery(deliveryRepository.findAll().stream().findFirst().orElseThrow());
+    caseEntity.setCreatedBy(user);
+    caseEntity.setCreatedAt(LocalDateTime.of(receiveDate, java.time.LocalTime.of(10, 30)));
+    caseEntity.setUpdatedAt(LocalDateTime.of(receiveDate, java.time.LocalTime.of(10, 30)));
+    return caseRepository.saveAndFlush(caseEntity);
   }
 }

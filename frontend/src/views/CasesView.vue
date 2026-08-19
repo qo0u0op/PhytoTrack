@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
 import Swal from 'sweetalert2'
-import { caseApi } from '../api'
+import { caseApi, refApi } from '../api'
 import { useAuthStore } from '../stores/auth'
+import type { components } from '../types/api'
+import { STATUS_OPTIONS, statusBadgeClass, statusLabel } from '../utils/caseStatus'
 import { escapeHtml } from '../utils/escapeHtml'
 
 // 分頁資料型別（對應後端 Page<CaseSummaryResponse>）
@@ -16,6 +18,16 @@ interface CaseSummary {
   createdAt: string
 }
 
+// 篩選條件（對應後端 GET /api/cases 查詢參數）
+interface CaseFilters {
+  cropId?: number
+  serviceId?: number
+  senderName: string
+  receiveDateFrom: string
+  receiveDateTo: string
+  status: string
+}
+
 const auth = useAuthStore()
 
 const cases = ref<CaseSummary[]>([])
@@ -24,10 +36,27 @@ const page = ref(0)
 const size = 10
 const loading = ref(false)
 
+// 篩選工具列狀態與選單資料
+const filters = reactive<CaseFilters>({
+  senderName: '',
+  receiveDateFrom: '',
+  receiveDateTo: '',
+  status: '',
+})
+const cropOptions = ref<{ id?: number; name?: string }[]>([])
+const serviceOptions = ref<{ id?: number; name?: string }[]>([])
+
 async function load() {
   loading.value = true
   try {
-    const { data } = await caseApi.list({ page: page.value, size })
+    const params: Record<string, string | number> = { page: page.value, size }
+    if (filters.cropId) params.cropId = filters.cropId
+    if (filters.serviceId) params.serviceId = filters.serviceId
+    if (filters.senderName.trim()) params.senderName = filters.senderName.trim()
+    if (filters.receiveDateFrom) params.receiveDateFrom = filters.receiveDateFrom
+    if (filters.receiveDateTo) params.receiveDateTo = filters.receiveDateTo
+    if (filters.status) params.status = filters.status
+    const { data } = await caseApi.list(params)
     cases.value = data.content
     total.value = data.totalElements
   } catch {
@@ -37,7 +66,39 @@ async function load() {
   }
 }
 
-onMounted(load)
+// 載入作物（由分類攤平）與服務類別做為下拉選單
+async function loadFilterOptions() {
+  try {
+    const [cropRes, serviceRes] = await Promise.all([refApi.cropCategories(), refApi.services()])
+    cropOptions.value = (cropRes.data as components['schemas']['CropCategoryResponse'][]).flatMap(
+      (cat) => cat.crops ?? [],
+    )
+    serviceOptions.value = serviceRes.data as components['schemas']['IdNameResponse'][]
+  } catch {
+    // 錯誤由攔截器處理
+  }
+}
+
+function applyFilters() {
+  page.value = 0
+  load()
+}
+
+function clearFilters() {
+  filters.cropId = undefined
+  filters.serviceId = undefined
+  filters.senderName = ''
+  filters.receiveDateFrom = ''
+  filters.receiveDateTo = ''
+  filters.status = ''
+  page.value = 0
+  load()
+}
+
+onMounted(() => {
+  load()
+  loadFilterOptions()
+})
 
 // 檢視案件詳細：以 SweetAlert 彈窗呈現
 async function viewDetail(id: number) {
@@ -101,6 +162,57 @@ async function confirmDelete(id: number) {
       <router-link v-if="auth.isStaff" class="btn btn-success" to="/cases/new">建立案件</router-link>
     </div>
 
+    <!-- 篩選工具列：條件同時存在時為 AND 組合 -->
+    <div class="card shadow-sm mb-3">
+      <div class="card-body">
+        <div class="row g-2 align-items-end">
+          <div class="col-md-3">
+            <label class="form-label small text-muted mb-1">作物</label>
+            <select v-model="filters.cropId" class="form-select form-select-sm">
+              <option :value="undefined">全部</option>
+              <option v-for="crop in cropOptions" :key="crop.id" :value="crop.id">
+                {{ crop.name }}
+              </option>
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label small text-muted mb-1">服務類別</label>
+            <select v-model="filters.serviceId" class="form-select form-select-sm">
+              <option :value="undefined">全部</option>
+              <option v-for="service in serviceOptions" :key="service.id" :value="service.id">
+                {{ service.name }}
+              </option>
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label small text-muted mb-1">送件人（部分比對）</label>
+            <input v-model="filters.senderName" type="text" class="form-control form-control-sm" />
+          </div>
+          <div class="col-md-3">
+            <label class="form-label small text-muted mb-1">狀態</label>
+            <select v-model="filters.status" class="form-select form-select-sm">
+              <option value="">全部</option>
+              <option v-for="opt in STATUS_OPTIONS" :key="opt.value" :value="opt.value">
+                {{ opt.label }}
+              </option>
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label small text-muted mb-1">收件日期起</label>
+            <input v-model="filters.receiveDateFrom" type="date" class="form-control form-control-sm" />
+          </div>
+          <div class="col-md-3">
+            <label class="form-label small text-muted mb-1">收件日期迄</label>
+            <input v-model="filters.receiveDateTo" type="date" class="form-control form-control-sm" />
+          </div>
+          <div class="col-md-6 text-md-end">
+            <button class="btn btn-sm btn-primary me-1" @click="applyFilters">篩選</button>
+            <button class="btn btn-sm btn-outline-secondary" @click="clearFilters">清除</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="card shadow-sm">
       <div class="table-responsive">
         <table class="table table-hover align-middle mb-0">
@@ -129,7 +241,7 @@ async function confirmDelete(id: number) {
               <td>{{ c.senderName }}</td>
               <td>{{ c.serviceName }}</td>
               <td>
-                <span class="badge text-bg-secondary">待處理</span>
+                <span class="badge" :class="statusBadgeClass(c.status)">{{ statusLabel(c.status) }}</span>
               </td>
               <td class="text-end">
                 <button class="btn btn-sm btn-outline-success me-1" @click="viewDetail(c.caseId)">

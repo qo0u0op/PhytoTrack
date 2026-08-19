@@ -58,6 +58,27 @@ public final class CaseDtos {
       Long deliverId) {
   }
 
+  /** 案件列表篩選條件（查詢參數，皆可空） */
+  public record CaseFilter(
+      Long cropId,
+      Long serviceId,
+      String senderName,
+      LocalDate receiveDateFrom,
+      LocalDate receiveDateTo,
+      String status) {
+
+    /** 空篩選（等同不分條件） */
+    public static CaseFilter empty() {
+      return new CaseFilter(null, null, null, null, null, null);
+    }
+
+    /** 是否有任一條件 */
+    public boolean isEmpty() {
+      return cropId == null && serviceId == null && senderName == null
+          && receiveDateFrom == null && receiveDateTo == null && status == null;
+    }
+  }
+
   /** 案件列表（摘要）回應：不帶多對多關聯，節省查詢量 */
   public record CaseSummaryResponse(
       Long caseId,

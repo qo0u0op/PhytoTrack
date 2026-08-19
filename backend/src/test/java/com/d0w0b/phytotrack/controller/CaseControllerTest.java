@@ -1,7 +1,9 @@
 package com.d0w0b.phytotrack.controller;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -15,12 +17,14 @@ import jakarta.servlet.http.HttpServletResponse;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.domain.PageImpl;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.context.SecurityContextHolderStrategy;
 import org.springframework.security.test.context.TestSecurityContextHolderStrategyAdapter;
@@ -31,8 +35,10 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
 import com.d0w0b.phytotrack.config.SecurityConfig;
+import com.d0w0b.phytotrack.dto.CaseDtos.CaseFilter;
 import com.d0w0b.phytotrack.dto.CaseDtos.CaseResponse;
 import com.d0w0b.phytotrack.dto.CaseDtos.CaseSummaryResponse;
+import com.d0w0b.phytotrack.exception.ApiException;
 import com.d0w0b.phytotrack.security.JwtAuthenticationFilter;
 import com.d0w0b.phytotrack.service.CaseService;
 
@@ -125,13 +131,61 @@ class CaseControllerTest {
   @Test
   @WithMockUser(roles = "VIEWER")
   void list_shouldReturnPageForAnyAuthenticatedUser() throws Exception {
-    when(caseService.list(any())).thenReturn(new PageImpl<>(
+    when(caseService.list(any(), any())).thenReturn(new PageImpl<>(
         List.of(new CaseSummaryResponse(1L, LocalDate.of(2026, 8, 18), "水稻", "張三", "診斷", 0,
             LocalDateTime.now()))));
 
     mockMvc.perform(get("/api/cases"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.content[0].senderName").value("張三"));
+  }
+
+  @Test
+  @WithMockUser(roles = "VIEWER")
+  void list_shouldPassFilterParameters() throws Exception {
+    when(caseService.list(any(), any())).thenReturn(new PageImpl<>(List.of()));
+
+    mockMvc.perform(get("/api/cases")
+            .param("cropId", "3")
+            .param("serviceId", "2")
+            .param("senderName", "張")
+            .param("receiveDateFrom", "2026-08-01")
+            .param("receiveDateTo", "2026-08-31")
+            .param("status", "RESOLVED"))
+        .andExpect(status().isOk());
+
+    ArgumentCaptor<CaseFilter> captor = ArgumentCaptor.forClass(CaseFilter.class);
+    verify(caseService).list(captor.capture(), any());
+    CaseFilter filter = captor.getValue();
+    assertThat(filter.cropId()).isEqualTo(3L);
+    assertThat(filter.serviceId()).isEqualTo(2L);
+    assertThat(filter.senderName()).isEqualTo("張");
+    assertThat(filter.receiveDateFrom()).isEqualTo(LocalDate.of(2026, 8, 1));
+    assertThat(filter.receiveDateTo()).isEqualTo(LocalDate.of(2026, 8, 31));
+    assertThat(filter.status()).isEqualTo("RESOLVED");
+  }
+
+  @Test
+  @WithMockUser(roles = "VIEWER")
+  void list_withInvalidStatus_shouldReturnBadRequest() throws Exception {
+    when(caseService.list(any(), any())).thenThrow(
+        new ApiException("INVALID_STATUS", HttpStatus.BAD_REQUEST, "無效的狀態：DRAFT"));
+
+    mockMvc.perform(get("/api/cases").param("status", "DRAFT"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.error.code").value("INVALID_STATUS"))
+        .andExpect(jsonPath("$.requestId").isNotEmpty());
+  }
+
+  @Test
+  @WithMockUser(roles = "VIEWER")
+  void list_withInvalidDate_shouldReturnBadRequest() throws Exception {
+    // 日期參數格式錯誤：型別轉換失敗 → 400 VALIDATION_ERROR（非 500）
+    mockMvc.perform(get("/api/cases").param("receiveDateFrom", "abc"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.error.code").value("VALIDATION_ERROR"))
+        .andExpect(jsonPath("$.error.message").value("參數 receiveDateFrom 格式錯誤：abc"))
+        .andExpect(jsonPath("$.requestId").isNotEmpty());
   }
 
   @Test
