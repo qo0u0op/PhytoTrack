@@ -9,7 +9,8 @@
 - 前端建置（含 vue-tsc 型別檢查）：`cd frontend && npm run build`；開發伺服器 `npm run dev`（已將 `/api` 代理至 8080）；前端測試 `npm test`（vitest，happy-dom）
 - 操作手冊：`typst compile docs/manual.typ docs/manual.pdf`（PDF 為產物，`*.pdf` 已 gitignore，勿提交）
 - 本機 shell 慣例以 `rtk` 開頭執行指令（如 `rtk ./mvnw test`），一般指令亦可直接執行
-- 前端 `npm install` 需 `--legacy-peer-deps`（`openapi-typescript@7` 只支援 TS^5，專案用 TS 6）
+- 同時啟動前後端：`mise run dev`（`mise.toml` 另有 `dev:backend` / `dev:frontend` / `d2`）
+- 前端 `npm install` 免 flag：`frontend/.npmrc` 已設 `legacy-peer-deps=true`（`openapi-typescript@7` 只支援 TS^5，專案用 TS 6），勿移除該設定
 
 ## 架構重點
 
@@ -32,7 +33,7 @@
 
 - Conventional Commits：英文標題 + 中文內文（`refactor:`、`test:`、`docs:`、`feat:`、`chore:`）
 - **預設提交新 commit**。僅當 binary 或「面試相關」等不該進 git 的內容誤入版本控制時，才以原地重寫處理（`git reset --soft <基點>` 依原訊息重新 commit，不新增 commit、不 amend、不 push）
-- 分支不主動推送，由使用者決定 PR 時機；`refactor/rewrite-rest-vue3`（Phase 0）review 後提 PR merge，Phase 1 在新分支進行
+- 分支不主動推送，由使用者決定 PR 時機；Phase 0 已合併 `main`，Phase 1 由 `main` 開新分支進行
 - `docs/notebook/`（個人學習筆記）與 `*.pdf` 已 gitignore，不要提交
 - `.opencode/` 為本機設定（gitignored），含 OpenSpec 技能（openspec-propose / apply / archive / update / sync）
 
@@ -41,7 +42,8 @@
 - 主規格 `openspec/specs/`：9 份能力 spec（security-hardening、api-observability、case-search、case-lifecycle、case-statistics、case-report、user-admin、reference-data-admin、ops-backup）已 sync 為 Phase 1 契約基準
 - 工作流：`openspec new change` → proposal → apply（實作＋驗證）→ archive；Phase 1 採**每能力一個獨立 change**（spec 已在主規格，新 change 只需 proposal+tasks，不需 delta spec）
 - 常用指令：`openspec list` / `status --change <name>` / `validate --specs` / `validate --changes`
-- `openspec/changes/hardening-and-operational-features/`：Phase 0 已交付（13/47 打勾），其餘為 Phase 1/2 藍圖
+- umbrella change `hardening-and-operational-features` 已 archive 至 `openspec/changes/archive/2026-08-19-.../`（proposal/design/tasks 歷史保留，`.openspec.yaml` 隨目錄移動），目前無 active change
+- Phase 1 範圍即主規格 9 份能力契約；每能力一個獨立 change，建議由 `case-search` 暖身
 
 ## 文件
 
