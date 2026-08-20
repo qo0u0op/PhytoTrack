@@ -34,8 +34,9 @@
 
 `CaseUpdateRequest` 新增：
 
-- 送件人：`senderName` / `senderPhone` / `senderAddress` / `senderDistrictId` / `senderTypeId`（任一提供即更新案件關聯的既有 Sender 對應欄位；district/type 以 `getRef` 解析）
-- 多對多：`damageIds` / `hintIds` / `pestCategoryIds` / `identifierIds`（組非 null 時整組替換）
+- 送件人：`senderName` / `senderPhone` / `senderAddress` / `senderDistrictId` / `senderTypeId`（任一提供即生效；district/type 以 `getRef` 解析）。身分變更採**去重語意**：以「有提供的 name/phone（未提供沿用現送件人身分）」尋找既有 Sender 並關聯之，找不到才建立——不直接修改可能被多案件共享的既有 Sender row，避免 `UNIQUE(name, phone)` 衝突回 500
+- 多對多：`damageIds` / `hintIds` / `pestCategoryIds` / `identifierIds`（組非 null 時整組替換，差集法；重複 id 以 Set 去重）
+- **CLOSED 限改**：案件 `CLOSED` 時，非 ADMIN 修改任何內容欄位回 403 `CLOSED_CASE_READONLY`（僅狀態同值 no-op 合法，狀態轉移另由規則把關）
 
 既有 `create` 邏輯重構：`addJunctions` 拆為 4 個單組方法，create 與 update 共用。
 
