@@ -47,6 +47,7 @@ import com.d0w0b.phytotrack.repository.ServiceRepository;
 
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -165,6 +166,12 @@ public class CaseService {
   public CaseResponse update(Long id, CaseUpdateRequest request) {
     Case caseEntity = findByIdOrThrow(id);
 
+    // 已結案案件：僅管理者可修改內容欄位（狀態同值為合法 no-op，狀態轉移另由規則把關）
+    if (caseEntity.getStatus() == CaseStatus.CLOSED && !isAdmin() && hasContentUpdate(request)) {
+      throw new ApiException("CLOSED_CASE_READONLY", HttpStatus.FORBIDDEN,
+          "案件已結案，僅管理者可修改內容");
+    }
+
     if (request.receiveDate() != null) {
       caseEntity.setReceiveDate(request.receiveDate());
     }
@@ -231,7 +238,37 @@ public class CaseService {
         .anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()));
   }
 
-  /** 更新送件人欄位：任一送件人欄位提供時，更新案件關聯的既有送件人對應欄位 */
+  /** 請求是否帶有任何「非狀態」欄位（用於 CLOSED 案件的管理者限改判斷） */
+  private boolean hasContentUpdate(CaseUpdateRequest request) {
+    return request.receiveDate() != null
+        || request.cropScale() != null
+        || request.damageScale() != null
+        || request.pestDescription() != null
+        || request.hintDescription() != null
+        || request.methodId() != null
+        || request.cropId() != null
+        || request.serviceId() != null
+        || request.deliverId() != null
+        || request.senderName() != null
+        || request.senderPhone() != null
+        || request.senderAddress() != null
+        || request.senderDistrictId() != null
+        || request.senderTypeId() != null
+        || request.damageIds() != null
+        || request.hintIds() != null
+        || request.pestCategoryIds() != null
+        || request.identifierIds() != null;
+  }
+
+  /**
+   * 更新送件人：任一送件人欄位提供時生效。
+   *
+   * 目標身分以「有提供的 name/phone」為準，未提供則沿用現送件人身分。
+   * 依目標身分尋找既有送件人並關聯之（與 create 的 findOrCreateSender
+   * 相同去重語意）；找不到才建立新送件人。如此不會修改可能被其他案件
+   * 共享的既有 Sender row，也避免將 name/phone 改成與其他送件人重複而
+   * 撞 UNIQUE(name, phone) 回 500。
+   */
   private void applySenderUpdate(Case caseEntity, CaseUpdateRequest request) {
     boolean anyProvided = request.senderName() != null || request.senderPhone() != null
         || request.senderAddress() != null || request.senderDistrictId() != null
@@ -239,13 +276,16 @@ public class CaseService {
     if (!anyProvided) {
       return;
     }
-    Sender sender = caseEntity.getSender();
-    if (request.senderName() != null) {
-      sender.setName(request.senderName());
-    }
-    if (request.senderPhone() != null) {
-      sender.setPhone(request.senderPhone());
-    }
+    Sender current = caseEntity.getSender();
+    String name = request.senderName() != null ? request.senderName() : current.getName();
+    String phone = request.senderPhone() != null ? request.senderPhone() : current.getPhone();
+    Sender sender = senderRepository.findByNameAndPhone(name, phone)
+        .orElseGet(() -> {
+          Sender created = new Sender();
+          created.setName(name);
+          created.setPhone(phone);
+          return senderRepository.save(created);
+        });
     if (request.senderAddress() != null) {
       sender.setAddress(request.senderAddress());
     }
@@ -255,6 +295,7 @@ public class CaseService {
     if (request.senderTypeId() != null) {
       sender.setSenderType(getRef(senderTypeRepository, request.senderTypeId(), "身分別"));
     }
+    caseEntity.setSender(sender);
   }
 
   /**
@@ -315,7 +356,7 @@ public class CaseService {
     J create(Case caseEntity, Long refId);
   }
 
-  /** 差集式整組替換：刪目標外的既有 junction、補目標缺少的 junction */
+  /** 差集式整組替換：刪目標外的既有 junction、補目標缺少的 junction（ids 以 Set 去重，避免重複 id 建立重複 junction） */
   private <J> void replaceJunctionGroup(Case caseEntity, List<J> junctions, List<Long> ids,
       Function<J, Long> idGetter, JunctionFactory<J> factory) {
     Set<Long> target = new HashSet<>(ids);
@@ -324,7 +365,7 @@ public class CaseService {
         .toList();
     toRemove.forEach(junctions::remove);
     Set<Long> have = junctions.stream().map(idGetter).collect(Collectors.toSet());
-    for (Long refId : ids) {
+    for (Long refId : target) {
       if (!have.contains(refId)) {
         junctions.add(factory.create(caseEntity, refId));
       }
@@ -452,6 +493,12 @@ public class CaseService {
             j.getIdentifier().getIdentifierId(), j.getIdentifier().getIdentifier()))
         .collect(Collectors.toList());
 
+    // 送件人鄉鎮/身分別可能未設定（如更新時僅換新身分未帶 district/type）
+    Long senderDistrictId = Optional.ofNullable(caseEntity.getSender().getDistrict())
+        .map(District::getDistrictId).orElse(null);
+    Long senderTypeId = Optional.ofNullable(caseEntity.getSender().getSenderType())
+        .map(SenderType::getSenderTypeId).orElse(null);
+
     return new CaseResponse(
         caseEntity.getCaseId(),
         caseEntity.getReceiveDate(),
@@ -465,8 +512,8 @@ public class CaseService {
         caseEntity.getSender().getName(),
         caseEntity.getSender().getPhone(),
         caseEntity.getSender().getAddress(),
-        caseEntity.getSender().getDistrict().getDistrictId(),
-        caseEntity.getSender().getSenderType().getSenderTypeId(),
+        senderDistrictId,
+        senderTypeId,
         caseEntity.getCrop().getCrop(),
         caseEntity.getMethod().getMethod(),
         caseEntity.getService().getService(),

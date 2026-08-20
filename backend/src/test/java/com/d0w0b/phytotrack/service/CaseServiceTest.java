@@ -334,6 +334,63 @@ class CaseServiceTest {
   }
 
   @Test
+  void update_contentOnClosedByStaffShouldBeForbidden() {
+    authenticateAs("STAFF");
+    Case c = caseWithRefs();
+    c.setCaseId(1L);
+    c.setStatus(CaseStatus.CLOSED);
+    when(caseRepository.findById(1L)).thenReturn(Optional.of(c));
+
+    CaseUpdateRequest request = new CaseUpdateRequest(
+        LocalDate.of(2026, 8, 19), null, null, null, null, null,
+        null, null, null, null,
+        null, null, null, null, null,
+        null, null, null, null);
+
+    assertThatThrownBy(() -> caseService.update(1L, request))
+        .isInstanceOf(ApiException.class)
+        .satisfies(e -> {
+          ApiException ex = (ApiException) e;
+          assertThat(ex.getCode()).isEqualTo("CLOSED_CASE_READONLY");
+          assertThat(ex.getStatus()).isEqualTo(HttpStatus.FORBIDDEN);
+        });
+    assertThat(c.getReceiveDate()).isEqualTo(LocalDate.of(2026, 8, 18));
+  }
+
+  @Test
+  void update_contentOnClosedByAdminShouldSucceed() {
+    authenticateAs("ADMIN");
+    Case c = caseWithRefs();
+    c.setCaseId(1L);
+    c.setStatus(CaseStatus.CLOSED);
+    when(caseRepository.findById(1L)).thenReturn(Optional.of(c));
+
+    CaseUpdateRequest request = new CaseUpdateRequest(
+        LocalDate.of(2026, 8, 19), null, null, null, null, null,
+        null, null, null, null,
+        null, null, null, null, null,
+        null, null, null, null);
+
+    caseService.update(1L, request);
+
+    assertThat(c.getReceiveDate()).isEqualTo(LocalDate.of(2026, 8, 19));
+  }
+
+  @Test
+  void update_statusUnchangedOnClosedByStaffShouldBeAllowed() {
+    authenticateAs("STAFF");
+    Case c = caseWithRefs();
+    c.setCaseId(1L);
+    c.setStatus(CaseStatus.CLOSED);
+    when(caseRepository.findById(1L)).thenReturn(Optional.of(c));
+
+    // 同值 no-op：CLOSED → CLOSED 不屬內容修改，不應被拒
+    CaseResponse response = caseService.update(1L, updateReq("CLOSED"));
+
+    assertThat(response.status()).isEqualTo("CLOSED");
+  }
+
+  @Test
   void update_withoutStatus_shouldNotChange() {
     Case c = caseWithRefs();
     c.setCaseId(1L);
@@ -345,19 +402,69 @@ class CaseServiceTest {
   }
 
   @Test
-  void update_shouldUpdateSenderFields() {
+  void update_sender_shouldCreateNewSenderWhenIdentityChangesToUnknown() {
     Case c = caseWithRefs();
     c.setCaseId(1L);
     when(caseRepository.findById(1L)).thenReturn(Optional.of(c));
+    when(senderRepository.findByNameAndPhone("李四", "0911111111")).thenReturn(Optional.empty());
+    when(senderRepository.save(any(Sender.class))).thenAnswer(i -> i.getArgument(0));
 
     CaseUpdateRequest request = new CaseUpdateRequest(
         null, null, null, null, null, null,
         null, null, null, null,
-        "新名", null, null, null, null,
+        "李四", "0911111111", null, null, null,
         null, null, null, null);
     caseService.update(1L, request);
 
-    assertThat(c.getSender().getName()).isEqualTo("新名");
+    // 新身分：建立新送件人並關聯，原共享送件人不動
+    assertThat(c.getSender().getName()).isEqualTo("李四");
+    assertThat(c.getSender().getPhone()).isEqualTo("0911111111");
+    verify(senderRepository).save(any(Sender.class));
+  }
+
+  @Test
+  void update_sender_shouldReuseExistingSenderWhenIdentityAlreadyExists() {
+    Case c = caseWithRefs();
+    c.setCaseId(1L);
+    when(caseRepository.findById(1L)).thenReturn(Optional.of(c));
+    Sender existing = sender();
+    existing.setName("李四");
+    existing.setPhone("0911111111");
+    when(senderRepository.findByNameAndPhone("李四", "0911111111")).thenReturn(Optional.of(existing));
+
+    CaseUpdateRequest request = new CaseUpdateRequest(
+        null, null, null, null, null, null,
+        null, null, null, null,
+        "李四", "0911111111", null, null, null,
+        null, null, null, null);
+    caseService.update(1L, request);
+
+    // 目標身分已存在：關聯既有送件人，不建立新列、不改原送件人
+    assertThat(c.getSender()).isSameAs(existing);
+    verify(senderRepository, never()).save(any(Sender.class));
+    Sender original = sender();
+    assertThat(original.getName()).isEqualTo("王小明");
+  }
+
+  @Test
+  void update_sender_shouldUpdateAddressOnCurrentSenderWhenIdentityUnchanged() {
+    Case c = caseWithRefs();
+    c.setCaseId(1L);
+    when(caseRepository.findById(1L)).thenReturn(Optional.of(c));
+    Sender current = c.getSender();
+    when(senderRepository.findByNameAndPhone("王小明", "0912345678")).thenReturn(Optional.of(current));
+
+    CaseUpdateRequest request = new CaseUpdateRequest(
+        null, null, null, null, null, null,
+        null, null, null, null,
+        null, null, "臺中市霧峰區新地址", null, null,
+        null, null, null, null);
+    caseService.update(1L, request);
+
+    // 身分未變：沿用原送件人，僅更新地址
+    assertThat(c.getSender()).isSameAs(current);
+    assertThat(c.getSender().getAddress()).isEqualTo("臺中市霧峰區新地址");
+    verify(senderRepository, never()).save(any(Sender.class));
   }
 
   @Test
@@ -382,6 +489,25 @@ class CaseServiceTest {
         List.of(), null, null, null);
     caseService.update(1L, clear);
     assertThat(c.getCaseDamages()).isEmpty();
+  }
+
+  @Test
+  void update_junctions_shouldIgnoreDuplicateIds() {
+    Case c = caseWithRefs();
+    c.setCaseId(1L);
+    when(caseRepository.findById(1L)).thenReturn(Optional.of(c));
+    when(damageRepository.findById(3L)).thenReturn(Optional.of(damage(3L)));
+
+    // 重複 id：差集法以 Set 去重，不得建立重複 junction 撞 UNIQUE(case_id, damage_id)
+    CaseUpdateRequest request = new CaseUpdateRequest(
+        null, null, null, null, null, null,
+        null, null, null, null,
+        null, null, null, null, null,
+        List.of(3L, 3L), null, null, null);
+    caseService.update(1L, request);
+
+    assertThat(c.getCaseDamages()).hasSize(1);
+    assertThat(c.getCaseDamages().get(0).getDamage().getDamageId()).isEqualTo(3L);
   }
 
   @Test
