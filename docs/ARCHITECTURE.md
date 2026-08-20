@@ -63,10 +63,10 @@ HTTP 請求
 
 ### 資料模型重點
 
-- 核心實體 **Case**（案件）：`@ManyToOne` 關聯 Sender、Method、Crop、Service、Delivery、User（createdBy）
+- 核心實體 **Case**（案件）：`@ManyToOne` 關聯 Sender、Method、Crop、Service、Delivery、User（createdBy）；`status` 為 `CaseStatus` 列舉（`PENDING`/`RESOLVED`/`CLOSED`），以 `@Enumerated(EnumType.ORDINAL)` 儲存，既有 `INTEGER 0/1/2` 直接對應（無資料遷移）
 - 多對多關聯透過 Junction 表：CaseDamage、CaseHint、CasePestCategory、CaseIdentifier
 - **Sender**（送件人）現況：`name + phone` UNIQUE、欄位皆不可空，隨案件建立；sender-management 能力將引入 `displayName`、弱識別符人工確認去重、VIEWER 個資遮蔽與統計去重鍵（見 ADR-011）
-- 案件列表篩選以 **Spring Data JPA `Specification`** 動態組合（`CaseSpecifications`，AND 組合）；`status` 現以整數儲存，篩選契約接受列舉字串並由 `CaseService` 對映後傳入查詢（過渡做法，待 case-lifecycle 遷移列舉）
+- 案件列表篩選以 **Spring Data JPA `Specification`** 動態組合（`CaseSpecifications`，AND 組合）；`status` 為列舉字串契約，由 `CaseService` 解析為 `CaseStatus` 後傳入查詢（非法值 fail-fast 400 `INVALID_STATUS`）
 - 時間戳與建立者由 **JPA Auditing** 自動填寫（`@CreatedDate`/`@LastModifiedDate`/`@CreatedBy`），實作 `AuditorAware` 從 SecurityContext 取值（見 ADR-006）
 - SQLite 日期欄位以 `converter/` 的字串轉換器處理，避免 Hibernate 7 SQLiteDialect 的 epoch 毫秒寫入/嚴格格式讀取不一致問題
 
@@ -74,8 +74,10 @@ HTTP 請求
 
 - 登入成功後簽發 JWT（含 userId、role），前端存於 localStorage，之後以 `Authorization: Bearer <token>` 帶入
 - 角色：`ROLE_VIEWER`（檢視者）/ `ROLE_STAFF`（診斷員）/ `ROLE_ADMIN`（管理者）
-- 權限：建立/更新案件與 AI 診斷需 STAFF+；刪除案件與使用者管理僅 ADMIN
+- 權限：建立/更新案件與 AI 診斷需 STAFF+；狀態轉移 `RESOLVED → CLOSED` 僅 ADMIN（`PENDING → RESOLVED` 需 STAFF+）；**已結案案件僅 ADMIN 可修改內容**（STAFF 改內容回 403 `CLOSED_CASE_READONLY`，狀態同值 no-op 合法）；刪除案件與使用者管理僅 ADMIN
+- 送件人更新：update 依「有提供的 name/phone（未提供沿用現送件人身分）」比照 create 的去重語意關聯或建立送件人，不直接修改可能被多案件共享的既有 Sender row（避免撞 `UNIQUE(name, phone)`）
 - 密碼一律 BCrypt 單向雜湊，永不存明文；`/api/auth/register` 僅能建立 VIEWER，防止越權提權
+- 安全錯誤語意：**未認證**（無 token／無效／過期）由 `RestAuthenticationEntryPoint` 回 `401 UNAUTHORIZED`（統一錯誤格式），前端攔截器據此清除本機 token 並導向登入頁；**已登入但角色不足**由全域例外處理回 `403 ACCESS_DENIED`（見 ADR-010）
 
 ### AI 診斷流程
 
@@ -111,7 +113,7 @@ types/    openapi-typescript 由 /v3/api-docs 自動生成的 API 型別（與�
 | GET | /api/cases | 登入 | 分頁案件列表；篩選參數：`cropId`、`serviceId`、`senderName`（LIKE 部分比對）、`receiveDateFrom`、`receiveDateTo`、`status`（`PENDING`/`RESOLVED`/`CLOSED`），多參數為 AND 組合 |
 | GET | /api/cases/{id} | 登入 | 案件詳細 |
 | POST | /api/cases | STAFF+ | 建立案件 |
-| PUT | /api/cases/{id} | STAFF+ | 更新案件 |
+| PUT | /api/cases/{id} | STAFF+ | 更新案件（純量欄位、送件人、多對多關聯整組替換、狀態轉移） |
 | DELETE | /api/cases/{id} | ADMIN | 刪除案件 |
 | GET | /api/ref/* | 登入 | 參照資料（作物、病蟲害、縣市等下拉選單） |
 | POST | /api/ai/analyze | STAFF+ | AI 診斷 |

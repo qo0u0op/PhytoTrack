@@ -20,6 +20,7 @@ import com.d0w0b.phytotrack.models.CaseDamage;
 import com.d0w0b.phytotrack.models.CaseHint;
 import com.d0w0b.phytotrack.models.CaseIdentifier;
 import com.d0w0b.phytotrack.models.CasePestCategory;
+import com.d0w0b.phytotrack.models.CaseStatus;
 import com.d0w0b.phytotrack.models.Crop;
 import com.d0w0b.phytotrack.models.Damage;
 import com.d0w0b.phytotrack.models.Delivery;
@@ -124,7 +125,7 @@ class CaseRepositoryTest {
     caseEntity.setCropScale("2 分地");
     caseEntity.setDamageScale("約 3 成");
     caseEntity.setPestDescription("葉片出現斑點");
-    caseEntity.setStatus(0);
+    caseEntity.setStatus(CaseStatus.PENDING);
     caseEntity.setSender(sender);
     caseEntity.setMethod(method);
     caseEntity.setCrop(crop);
@@ -170,7 +171,7 @@ class CaseRepositoryTest {
     // 稽核時間由 Auditing 自動填寫（LocalDateTime 經轉換器回讀不為空即代表轉換正常）
     assertThat(loaded.getCreatedAt()).isNotNull();
     assertThat(loaded.getUpdatedAt()).isNotNull();
-    assertThat(loaded.getStatus()).isEqualTo(0);
+    assertThat(loaded.getStatus()).isEqualTo(CaseStatus.PENDING);
     assertThat(loaded.getSender().getName()).isEqualTo("測試送件人-20260818");
     assertThat(loaded.getCrop().getCrop()).isEqualTo(crop.getCrop());
     assertThat(loaded.getCreatedBy().getUsername()).isEqualTo("case-repo-test-user");
@@ -188,14 +189,14 @@ class CaseRepositoryTest {
     Service diagnosis = serviceRepository.findById(1L).orElseThrow();
     Service consultation = serviceRepository.findById(3L).orElseThrow();
 
-    Case ricePending = saveCase(user, rice, diagnosis, "和甲", LocalDate.of(2026, 8, 1), 0);
-    Case riceResolved = saveCase(user, rice, diagnosis, "和乙", LocalDate.of(2026, 8, 15), 1);
-    Case citrusPending = saveCase(user, citrus, consultation, "和丙", LocalDate.of(2026, 8, 20), 0);
+    Case ricePending = saveCase(user, rice, diagnosis, "和甲", LocalDate.of(2026, 8, 1), CaseStatus.PENDING);
+    Case riceResolved = saveCase(user, rice, diagnosis, "和乙", LocalDate.of(2026, 8, 15), CaseStatus.RESOLVED);
+    Case citrusPending = saveCase(user, citrus, consultation, "和丙", LocalDate.of(2026, 8, 20), CaseStatus.PENDING);
 
     // cropId=1 AND status=PENDING → 僅稻作且待處理
     // 頁面尺寸取大（共享 test DB 可能有整合測試殘留案件），確保斷言與殘留量無關
     Specification<Case> spec = CaseSpecifications.build(
-        new CaseFilter(1L, null, null, null, null, "PENDING"), 0);
+        new CaseFilter(1L, null, null, null, null, "PENDING"), CaseStatus.PENDING);
     Page<Case> page = caseRepository.findAll(spec, PageRequest.of(0, 100));
 
     assertThat(page.getContent())
@@ -203,7 +204,7 @@ class CaseRepositoryTest {
         .contains(ricePending.getCaseId())
         .doesNotContain(riceResolved.getCaseId(), citrusPending.getCaseId());
     assertThat(page.getContent())
-        .allSatisfy(c -> assertThat(c.getStatus()).isEqualTo(0));
+        .allSatisfy(c -> assertThat(c.getStatus()).isEqualTo(CaseStatus.PENDING));
     assertThat(page.getContent())
         .allSatisfy(c -> assertThat(c.getCrop().getCropId()).isEqualTo(1L));
   }
@@ -214,8 +215,8 @@ class CaseRepositoryTest {
     Crop rice = cropRepository.findById(1L).orElseThrow();
     Service diagnosis = serviceRepository.findById(1L).orElseThrow();
 
-    Case zhangsan = saveCase(user, rice, diagnosis, "比對-張小明", LocalDate.of(2026, 8, 1), 0);
-    Case wangxiaohua = saveCase(user, rice, diagnosis, "比對-王小華", LocalDate.of(2026, 8, 15), 0);
+    Case zhangsan = saveCase(user, rice, diagnosis, "比對-張小明", LocalDate.of(2026, 8, 1), CaseStatus.PENDING);
+    Case wangxiaohua = saveCase(user, rice, diagnosis, "比對-王小華", LocalDate.of(2026, 8, 15), CaseStatus.PENDING);
 
     // senderName=張 → 僅送件人姓名含「張」者
     Specification<Case> spec = CaseSpecifications.build(
@@ -236,9 +237,9 @@ class CaseRepositoryTest {
     Crop rice = cropRepository.findById(1L).orElseThrow();
     Service diagnosis = serviceRepository.findById(1L).orElseThrow();
 
-    Case inRange = saveCase(user, rice, diagnosis, "期-張小明", LocalDate.of(2026, 8, 15), 0);
-    Case before = saveCase(user, rice, diagnosis, "期-李小華", LocalDate.of(2026, 7, 31), 0);
-    Case after = saveCase(user, rice, diagnosis, "期-王小華", LocalDate.of(2026, 9, 1), 0);
+    Case inRange = saveCase(user, rice, diagnosis, "期-張小明", LocalDate.of(2026, 8, 15), CaseStatus.PENDING);
+    Case before = saveCase(user, rice, diagnosis, "期-李小華", LocalDate.of(2026, 7, 31), CaseStatus.PENDING);
+    Case after = saveCase(user, rice, diagnosis, "期-王小華", LocalDate.of(2026, 9, 1), CaseStatus.PENDING);
 
     Specification<Case> spec = CaseSpecifications.build(
         new CaseFilter(null, null, null, LocalDate.of(2026, 8, 1), LocalDate.of(2026, 8, 31), null),
@@ -262,8 +263,8 @@ class CaseRepositoryTest {
     Crop rice = cropRepository.findById(1L).orElseThrow();
     Service diagnosis = serviceRepository.findById(1L).orElseThrow();
 
-    Case first = saveCase(user, rice, diagnosis, "全-張小明", LocalDate.of(2026, 8, 1), 0);
-    Case second = saveCase(user, rice, diagnosis, "全-李小華", LocalDate.of(2026, 8, 15), 1);
+    Case first = saveCase(user, rice, diagnosis, "全-張小明", LocalDate.of(2026, 8, 1), CaseStatus.PENDING);
+    Case second = saveCase(user, rice, diagnosis, "全-李小華", LocalDate.of(2026, 8, 15), CaseStatus.RESOLVED);
 
     // 空 filter 走 findAll(Pageable)，回傳全部（含本次新增）
     Page<Case> page = caseRepository.findAll(PageRequest.of(0, 100));
@@ -303,7 +304,7 @@ class CaseRepositoryTest {
   }
 
   private Case saveCase(User user, Crop crop, Service service, String senderName,
-                        LocalDate receiveDate, int status) {
+                        LocalDate receiveDate, CaseStatus status) {
     Case caseEntity = new Case();
     caseEntity.setReceiveDate(receiveDate);
     caseEntity.setStatus(status);

@@ -319,8 +319,7 @@ export interface components {
             damageScale?: string;
             pestDescription?: string;
             hintDescription?: string;
-            /** Format: int32 */
-            status?: number;
+            status?: string;
             /** Format: int64 */
             methodId?: number;
             /** Format: int64 */
@@ -329,6 +328,17 @@ export interface components {
             serviceId?: number;
             /** Format: int64 */
             deliverId?: number;
+            senderName?: string;
+            senderPhone?: string;
+            senderAddress?: string;
+            /** Format: int64 */
+            senderDistrictId?: number;
+            /** Format: int64 */
+            senderTypeId?: number;
+            damageIds?: number[];
+            hintIds?: number[];
+            pestCategoryIds?: number[];
+            identifierIds?: number[];
         };
         CaseResponse: {
             /** Format: int64 */
@@ -339,8 +349,7 @@ export interface components {
             damageScale?: string;
             pestDescription?: string;
             hintDescription?: string;
-            /** Format: int32 */
-            status?: number;
+            status?: string;
             /** Format: date-time */
             createdAt?: string;
             /** Format: date-time */
@@ -348,6 +357,10 @@ export interface components {
             senderName?: string;
             senderPhone?: string;
             senderAddress?: string;
+            /** Format: int64 */
+            senderDistrictId?: number;
+            /** Format: int64 */
+            senderTypeId?: number;
             cropName?: string;
             methodName?: string;
             serviceName?: string;
@@ -487,8 +500,7 @@ export interface components {
             cropName?: string;
             senderName?: string;
             serviceName?: string;
-            /** Format: int32 */
-            status?: number;
+            status?: string;
             /** Format: date-time */
             createdAt?: string;
         };

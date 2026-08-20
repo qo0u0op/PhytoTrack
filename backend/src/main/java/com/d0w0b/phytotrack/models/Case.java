@@ -35,8 +35,10 @@ public class Case {
   @Column(columnDefinition = "TEXT")
   private String hintDescription;
 
+  /** 案件狀態：以 ORDINAL 存於 INTEGER 欄位（0/1/2），序數即持久化值（見 CaseStatus） */
+  @Enumerated(EnumType.ORDINAL)
   @Column(nullable = false)
-  private int status = 0;
+  private CaseStatus status = CaseStatus.PENDING;
 
   /** 建立時間：由 JPA 稽核（Auditing）自動填寫 */
   @CreatedDate

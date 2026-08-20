@@ -108,8 +108,10 @@ class AuthControllerTest {
 
   @Test
   void me_shouldBeProtectedBySecurityChain() throws Exception {
-    // 未登入存取受保護端點：由 SecurityFilterChain 拒絕（403，無 entry point）
+    // 未登入存取受保護端點：由 SecurityFilterChain 拒絕（401，統一錯誤格式）
     mockMvc.perform(post("/api/auth/me"))
-        .andExpect(status().isForbidden());
+        .andExpect(status().isUnauthorized())
+        .andExpect(jsonPath("$.error.code").value("UNAUTHORIZED"))
+        .andExpect(jsonPath("$.requestId").isNotEmpty());
   }
 }

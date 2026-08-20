@@ -51,11 +51,24 @@ public final class CaseDtos {
       String damageScale,
       String pestDescription,
       String hintDescription,
-      Integer status,
+      String status,
       Long methodId,
       Long cropId,
       Long serviceId,
-      Long deliverId) {
+      Long deliverId,
+
+      // 送件人（Sender）欄位：任一提供即更新案件關聯的送件人
+      String senderName,
+      String senderPhone,
+      String senderAddress,
+      Long senderDistrictId,
+      Long senderTypeId,
+
+      // 多對多關聯：組非 null 時整組替換
+      List<Long> damageIds,
+      List<Long> hintIds,
+      List<Long> pestCategoryIds,
+      List<Long> identifierIds) {
   }
 
   /** 案件列表篩選條件（查詢參數，皆可空） */
@@ -86,7 +99,7 @@ public final class CaseDtos {
       String cropName,
       String senderName,
       String serviceName,
-      Integer status,
+      String status,
       LocalDateTime createdAt) {
   }
 
@@ -98,12 +111,14 @@ public final class CaseDtos {
       String damageScale,
       String pestDescription,
       String hintDescription,
-      Integer status,
+      String status,
       LocalDateTime createdAt,
       LocalDateTime updatedAt,
       String senderName,
       String senderPhone,
       String senderAddress,
+      Long senderDistrictId,
+      Long senderTypeId,
       String cropName,
       String methodName,
       String serviceName,

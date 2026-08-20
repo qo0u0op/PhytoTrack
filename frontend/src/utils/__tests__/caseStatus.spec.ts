@@ -7,21 +7,21 @@ describe('caseStatus', () => {
     expect(STATUS_OPTIONS.map((o) => o.label)).toEqual(['待處理', '已處理', '已結案'])
   })
 
-  it('statusLabel 應對映整數狀態', () => {
-    expect(statusLabel(0)).toBe('待處理')
-    expect(statusLabel(1)).toBe('已處理')
-    expect(statusLabel(2)).toBe('已結案')
+  it('statusLabel 應對映字串狀態', () => {
+    expect(statusLabel('PENDING')).toBe('待處理')
+    expect(statusLabel('RESOLVED')).toBe('已處理')
+    expect(statusLabel('CLOSED')).toBe('已結案')
   })
 
   it('statusLabel 對未知狀態應回傳待處理（相容既有資料）', () => {
-    expect(statusLabel(-1)).toBe('待處理')
-    expect(statusLabel(9)).toBe('待處理')
+    expect(statusLabel('')).toBe('待處理')
+    expect(statusLabel('UNKNOWN')).toBe('待處理')
   })
 
-  it('statusBadgeClass 應對映整數狀態樣式', () => {
-    expect(statusBadgeClass(0)).toBe('text-bg-secondary')
-    expect(statusBadgeClass(1)).toBe('text-bg-success')
-    expect(statusBadgeClass(2)).toBe('text-bg-dark')
-    expect(statusBadgeClass(9)).toBe('text-bg-secondary')
+  it('statusBadgeClass 應對映字串狀態樣式', () => {
+    expect(statusBadgeClass('PENDING')).toBe('text-bg-secondary')
+    expect(statusBadgeClass('RESOLVED')).toBe('text-bg-success')
+    expect(statusBadgeClass('CLOSED')).toBe('text-bg-dark')
+    expect(statusBadgeClass('UNKNOWN')).toBe('text-bg-secondary')
   })
 })
