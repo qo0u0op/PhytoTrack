@@ -87,10 +87,13 @@ const selectedCropCategory = computed(() => {
   return crop?.category ?? ''
 })
 
-// 狀態選項：CLOSED 僅 ADMIN 可選（對應後端 RESOLVED→CLOSED 轉移規則）
-const statusOptions = computed(() =>
-  auth.isAdmin ? STATUS_OPTIONS : STATUS_OPTIONS.filter((o) => o.value !== 'CLOSED'),
-)
+// 狀態選項：已結案不可再轉移（僅維持原狀）；其餘角色依權限——CLOSED 僅 ADMIN 可選
+const statusOptions = computed(() => {
+  if (form.status === 'CLOSED') {
+    return STATUS_OPTIONS.filter((o) => o.value === 'CLOSED')
+  }
+  return auth.isAdmin ? STATUS_OPTIONS : STATUS_OPTIONS.filter((o) => o.value !== 'CLOSED')
+})
 
 async function loadRefs() {
   // 平行載入所有下拉選單資料
@@ -131,12 +134,12 @@ async function loadRefs() {
 async function loadCase(id: number) {
   const { data } = await caseApi.detail(id)
   const d = data as components['schemas']['CaseResponse']
-  // 已結案案件不可編輯：提示後返回列表（防直接輸入網址進編輯頁）
-  if (d.status === 'CLOSED') {
+  // 已結案案件僅管理者可編輯：STAFF 提示後返回列表（防直接輸入網址進編輯頁）
+  if (d.status === 'CLOSED' && !auth.isAdmin) {
     Swal.fire({
       icon: 'warning',
       title: '案件已結案',
-      text: '已結案案件不可編輯',
+      text: '已結案案件僅管理者可編輯',
     }).then(() => router.push('/cases'))
     return
   }
@@ -355,7 +358,13 @@ async function runAi() {
               </option>
             </select>
             <div class="form-text small text-muted">
-              {{ auth.isAdmin ? '待處理→已處理→已結案' : '待處理→已處理' }}
+              {{
+                form.status === 'CLOSED'
+                  ? '已結案狀態不可變更'
+                  : auth.isAdmin
+                    ? '待處理→已處理→已結案'
+                    : '待處理→已處理'
+              }}
             </div>
           </div>
           <div class="col-md-4">

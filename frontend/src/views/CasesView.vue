@@ -249,7 +249,7 @@ async function confirmDelete(id: number) {
                 </button>
                 <template v-if="auth.isStaff">
                   <router-link
-                    v-if="c.status !== 'CLOSED'"
+                    v-if="c.status !== 'CLOSED' || auth.isAdmin"
                     class="btn btn-sm btn-outline-primary me-1"
                     :to="`/cases/${c.caseId}/edit`"
                   >
@@ -260,7 +260,7 @@ async function confirmDelete(id: number) {
                     type="button"
                     class="btn btn-sm btn-outline-primary me-1"
                     disabled
-                    title="案件已結案，不可編輯"
+                    title="案件已結案，僅管理者可編輯"
                   >
                     編輯
                   </button>
