@@ -4,6 +4,7 @@ import org.springframework.data.jpa.domain.Specification;
 
 import com.d0w0b.phytotrack.dto.CaseDtos.CaseFilter;
 import com.d0w0b.phytotrack.models.Case;
+import com.d0w0b.phytotrack.models.CaseStatus;
 
 import jakarta.persistence.criteria.Predicate;
 
@@ -27,7 +28,7 @@ public final class CaseSpecifications {
   private CaseSpecifications() {
   }
 
-  public static Specification<Case> build(CaseFilter filter, Integer statusInt) {
+  public static Specification<Case> build(CaseFilter filter, CaseStatus status) {
     return (root, query, cb) -> {
       if (query.getResultType() != Long.class && query.getResultType() != long.class) {
         root.fetch("sender");
@@ -54,8 +55,8 @@ public final class CaseSpecifications {
       if (filter.receiveDateTo() != null) {
         predicates.add(cb.lessThanOrEqualTo(root.get("receiveDate"), filter.receiveDateTo()));
       }
-      if (statusInt != null) {
-        predicates.add(cb.equal(root.get("status"), statusInt));
+      if (status != null) {
+        predicates.add(cb.equal(root.get("status"), status));
       }
       return cb.and(predicates.toArray(new Predicate[0]));
     };

@@ -4,6 +4,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,6 +20,7 @@ import com.d0w0b.phytotrack.models.CaseDamage;
 import com.d0w0b.phytotrack.models.CaseHint;
 import com.d0w0b.phytotrack.models.CaseIdentifier;
 import com.d0w0b.phytotrack.models.CasePestCategory;
+import com.d0w0b.phytotrack.models.CaseStatus;
 import com.d0w0b.phytotrack.models.Crop;
 import com.d0w0b.phytotrack.models.Damage;
 import com.d0w0b.phytotrack.models.Delivery;
@@ -102,29 +105,23 @@ public class CaseService {
   /** 分頁查詢案件清單（摘要）；無任何條件時行為與現有列表一致 */
   @Transactional(readOnly = true)
   public Page<CaseSummaryResponse> list(CaseFilter filter, Pageable pageable) {
-    // 狀態字串先在此對映（fail-fast）：非法值於 Service 層即拋錯，不會進入查詢
-    Integer statusInt = filter.status() != null ? toStatusInt(filter.status()) : null;
+    // 狀態字串先在此解析（fail-fast）：非法值於 Service 層即拋錯，不會進入查詢
+    CaseStatus status = filter.status() != null ? parseStatus(filter.status()) : null;
     if (filter.isEmpty()) {
       return caseRepository.findAll(pageable).map(this::toSummary);
     }
-    return caseRepository.findAll(CaseSpecifications.build(filter, statusInt), pageable)
+    return caseRepository.findAll(CaseSpecifications.build(filter, status), pageable)
         .map(this::toSummary);
   }
 
-  /**
-   * 列舉字串對映現有整數狀態。
-   *
-   * 過渡假設（見 case-search proposal）：case-lifecycle 將欄位遷移為列舉後，
-   * 僅需移除本對照，API 契約（列舉字串）不變。
-   */
-  private static int toStatusInt(String status) {
-    return switch (status) {
-      case "PENDING" -> 0;
-      case "RESOLVED" -> 1;
-      case "CLOSED" -> 2;
-      default -> throw new ApiException(
+  /** 列舉字串解析為 CaseStatus（fail-fast）；非法值拋 400 INVALID_STATUS */
+  private static CaseStatus parseStatus(String status) {
+    try {
+      return CaseStatus.valueOf(status);
+    } catch (IllegalArgumentException e) {
+      throw new ApiException(
           "INVALID_STATUS", HttpStatus.BAD_REQUEST, "無效的狀態：" + status);
-    };
+    }
   }
 
   /** 查詢案件詳細（含所有多對多關聯） */
@@ -142,6 +139,8 @@ public class CaseService {
     caseEntity.setDamageScale(request.damageScale());
     caseEntity.setPestDescription(request.pestDescription());
     caseEntity.setHintDescription(request.hintDescription());
+    // 新案件一律從待處理（PENDING）開始
+    caseEntity.setStatus(CaseStatus.PENDING);
 
     caseEntity.setSender(findOrCreateSender(request));
     caseEntity.setMethod(getRef(methodRepository, request.methodId(), "耕種方式"));
@@ -149,14 +148,16 @@ public class CaseService {
     caseEntity.setService(getRef(serviceRepository, request.serviceId(), "服務類別"));
     caseEntity.setDelivery(getRef(deliveryRepository, request.deliverId(), "送件方式"));
 
-    addJunctions(caseEntity, request.damageIds(), request.hintIds(),
-        request.pestCategoryIds(), request.identifierIds());
+    addDamages(caseEntity, request.damageIds());
+    addHints(caseEntity, request.hintIds());
+    addPestCategories(caseEntity, request.pestCategoryIds());
+    addIdentifiers(caseEntity, request.identifierIds());
 
     caseRepository.save(caseEntity);
     return toDetail(caseEntity);
   }
 
-  /** 更新案件（僅更新有提供的欄位） */
+  /** 更新案件（僅更新有提供的欄位）；狀態變更需符合轉移規則（見 CaseStatus） */
   @Transactional
   public CaseResponse update(Long id, CaseUpdateRequest request) {
     Case caseEntity = findByIdOrThrow(id);
@@ -177,7 +178,7 @@ public class CaseService {
       caseEntity.setHintDescription(request.hintDescription());
     }
     if (request.status() != null) {
-      caseEntity.setStatus(request.status());
+      applyStatusTransition(caseEntity, parseStatus(request.status()));
     }
     if (request.methodId() != null) {
       caseEntity.setMethod(getRef(methodRepository, request.methodId(), "耕種方式"));
@@ -191,8 +192,86 @@ public class CaseService {
     if (request.deliverId() != null) {
       caseEntity.setDelivery(getRef(deliveryRepository, request.deliverId(), "送件方式"));
     }
+    applySenderUpdate(caseEntity, request);
+    replaceJunctions(caseEntity, request);
 
     return toDetail(caseEntity);
+  }
+
+  /** 依轉移規則更新狀態；非法轉移拋 400 且狀態不變 */
+  private void applyStatusTransition(Case caseEntity, CaseStatus target) {
+    CaseStatus current = caseEntity.getStatus();
+    if (target == current) {
+      return;
+    }
+    if (current == CaseStatus.PENDING && target == CaseStatus.RESOLVED) {
+      // STAFF/ADMIN：update 端點已限制角色
+      caseEntity.setStatus(target);
+      return;
+    }
+    if (current == CaseStatus.RESOLVED && target == CaseStatus.CLOSED) {
+      if (!isAdmin()) {
+        throw new ApiException("STATUS_TRANSITION_FORBIDDEN", HttpStatus.FORBIDDEN,
+            "僅管理者可將案件標記為已結案");
+      }
+      caseEntity.setStatus(target);
+      return;
+    }
+    throw new ApiException("INVALID_STATUS_TRANSITION", HttpStatus.BAD_REQUEST,
+        "非法的狀態轉移：" + current + " → " + target);
+  }
+
+  /** 目前登入者是否為 ADMIN（用於 RESOLVED → CLOSED 的轉移授權） */
+  private boolean isAdmin() {
+    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+    return auth != null && auth.getAuthorities().stream()
+        .anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()));
+  }
+
+  /** 更新送件人欄位：任一送件人欄位提供時，更新案件關聯的既有送件人對應欄位 */
+  private void applySenderUpdate(Case caseEntity, CaseUpdateRequest request) {
+    boolean anyProvided = request.senderName() != null || request.senderPhone() != null
+        || request.senderAddress() != null || request.senderDistrictId() != null
+        || request.senderTypeId() != null;
+    if (!anyProvided) {
+      return;
+    }
+    Sender sender = caseEntity.getSender();
+    if (request.senderName() != null) {
+      sender.setName(request.senderName());
+    }
+    if (request.senderPhone() != null) {
+      sender.setPhone(request.senderPhone());
+    }
+    if (request.senderAddress() != null) {
+      sender.setAddress(request.senderAddress());
+    }
+    if (request.senderDistrictId() != null) {
+      sender.setDistrict(getRef(districtRepository, request.senderDistrictId(), "鄉鎮市區"));
+    }
+    if (request.senderTypeId() != null) {
+      sender.setSenderType(getRef(senderTypeRepository, request.senderTypeId(), "身分別"));
+    }
+  }
+
+  /** 整組替換多對多關聯：組非 null 時清空該組 junction 再重建 */
+  private void replaceJunctions(Case caseEntity, CaseUpdateRequest request) {
+    if (request.damageIds() != null) {
+      caseEntity.getCaseDamages().clear();
+      addDamages(caseEntity, request.damageIds());
+    }
+    if (request.hintIds() != null) {
+      caseEntity.getCaseHints().clear();
+      addHints(caseEntity, request.hintIds());
+    }
+    if (request.pestCategoryIds() != null) {
+      caseEntity.getCasePestCategories().clear();
+      addPestCategories(caseEntity, request.pestCategoryIds());
+    }
+    if (request.identifierIds() != null) {
+      caseEntity.getCaseIdentifiers().clear();
+      addIdentifiers(caseEntity, request.identifierIds());
+    }
   }
 
   /** 刪除案件（多對多關聯以 Cascade 一併刪除） */
@@ -219,47 +298,59 @@ public class CaseService {
         });
   }
 
-  /** 建立案件的多對多關聯（Junction Record） */
-  private void addJunctions(Case caseEntity,
-                            List<Long> damageIds,
-                            List<Long> hintIds,
-                            List<Long> pestCategoryIds,
-                            List<Long> identifierIds) {
-    if (damageIds != null) {
-      for (Long damageId : damageIds) {
-        Damage damage = getRef(damageRepository, damageId, "被害部位");
-        CaseDamage junction = new CaseDamage();
-        junction.setCaseEntity(caseEntity);
-        junction.setDamage(damage);
-        caseEntity.getCaseDamages().add(junction);
-      }
+  /** 建立案件的多對多關聯（Junction Record）：被害部位 */
+  private void addDamages(Case caseEntity, List<Long> damageIds) {
+    if (damageIds == null) {
+      return;
     }
-    if (hintIds != null) {
-      for (Long hintId : hintIds) {
-        Hint hint = getRef(hintRepository, hintId, "防治建議");
-        CaseHint junction = new CaseHint();
-        junction.setCaseEntity(caseEntity);
-        junction.setHint(hint);
-        caseEntity.getCaseHints().add(junction);
-      }
+    for (Long damageId : damageIds) {
+      Damage damage = getRef(damageRepository, damageId, "被害部位");
+      CaseDamage junction = new CaseDamage();
+      junction.setCaseEntity(caseEntity);
+      junction.setDamage(damage);
+      caseEntity.getCaseDamages().add(junction);
     }
-    if (pestCategoryIds != null) {
-      for (Long pestCategoryId : pestCategoryIds) {
-        PestCategory category = getRef(pestCategoryRepository, pestCategoryId, "病蟲害分類");
-        CasePestCategory junction = new CasePestCategory();
-        junction.setCaseEntity(caseEntity);
-        junction.setPestCategory(category);
-        caseEntity.getCasePestCategories().add(junction);
-      }
+  }
+
+  /** 建立案件的多對多關聯（Junction Record）：防治建議 */
+  private void addHints(Case caseEntity, List<Long> hintIds) {
+    if (hintIds == null) {
+      return;
     }
-    if (identifierIds != null) {
-      for (Long identifierId : identifierIds) {
-        Identifier identifier = getRef(identifierRepository, identifierId, "診斷簽名人");
-        CaseIdentifier junction = new CaseIdentifier();
-        junction.setCaseEntity(caseEntity);
-        junction.setIdentifier(identifier);
-        caseEntity.getCaseIdentifiers().add(junction);
-      }
+    for (Long hintId : hintIds) {
+      Hint hint = getRef(hintRepository, hintId, "防治建議");
+      CaseHint junction = new CaseHint();
+      junction.setCaseEntity(caseEntity);
+      junction.setHint(hint);
+      caseEntity.getCaseHints().add(junction);
+    }
+  }
+
+  /** 建立案件的多對多關聯（Junction Record）：病蟲害分類 */
+  private void addPestCategories(Case caseEntity, List<Long> pestCategoryIds) {
+    if (pestCategoryIds == null) {
+      return;
+    }
+    for (Long pestCategoryId : pestCategoryIds) {
+      PestCategory category = getRef(pestCategoryRepository, pestCategoryId, "病蟲害分類");
+      CasePestCategory junction = new CasePestCategory();
+      junction.setCaseEntity(caseEntity);
+      junction.setPestCategory(category);
+      caseEntity.getCasePestCategories().add(junction);
+    }
+  }
+
+  /** 建立案件的多對多關聯（Junction Record）：診斷簽名人 */
+  private void addIdentifiers(Case caseEntity, List<Long> identifierIds) {
+    if (identifierIds == null) {
+      return;
+    }
+    for (Long identifierId : identifierIds) {
+      Identifier identifier = getRef(identifierRepository, identifierId, "診斷簽名人");
+      CaseIdentifier junction = new CaseIdentifier();
+      junction.setCaseEntity(caseEntity);
+      junction.setIdentifier(identifier);
+      caseEntity.getCaseIdentifiers().add(junction);
     }
   }
 
@@ -283,7 +374,7 @@ public class CaseService {
         caseEntity.getCrop().getCrop(),
         caseEntity.getSender().getName(),
         caseEntity.getService().getService(),
-        caseEntity.getStatus(),
+        caseEntity.getStatus().name(),
         caseEntity.getCreatedAt());
   }
 
@@ -311,12 +402,14 @@ public class CaseService {
         caseEntity.getDamageScale(),
         caseEntity.getPestDescription(),
         caseEntity.getHintDescription(),
-        caseEntity.getStatus(),
+        caseEntity.getStatus().name(),
         caseEntity.getCreatedAt(),
         caseEntity.getUpdatedAt(),
         caseEntity.getSender().getName(),
         caseEntity.getSender().getPhone(),
         caseEntity.getSender().getAddress(),
+        caseEntity.getSender().getDistrict().getDistrictId(),
+        caseEntity.getSender().getSenderType().getSenderTypeId(),
         caseEntity.getCrop().getCrop(),
         caseEntity.getMethod().getMethod(),
         caseEntity.getService().getService(),

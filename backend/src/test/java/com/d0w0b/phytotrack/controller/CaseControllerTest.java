@@ -114,9 +114,9 @@ class CaseControllerTest {
   private static CaseResponse sampleResponse() {
     return new CaseResponse(
         1L, LocalDate.of(2026, 8, 18), "2 分地", "約 3 成",
-        "葉片出現斑點", null, 0,
+        "葉片出現斑點", null, "PENDING",
         LocalDateTime.now(), LocalDateTime.now(),
-        "張三", "0912345678", "測試路 1 號",
+        "張三", "0912345678", "測試路 1 號", 1L, 1L,
         "水稻", "露天", "診斷", "送件",
         "管理員", List.of(), List.of(), List.of(), List.of());
   }
@@ -132,8 +132,8 @@ class CaseControllerTest {
   @WithMockUser(roles = "VIEWER")
   void list_shouldReturnPageForAnyAuthenticatedUser() throws Exception {
     when(caseService.list(any(), any())).thenReturn(new PageImpl<>(
-        List.of(new CaseSummaryResponse(1L, LocalDate.of(2026, 8, 18), "水稻", "張三", "診斷", 0,
-            LocalDateTime.now()))));
+        List.of(new CaseSummaryResponse(1L, LocalDate.of(2026, 8, 18), "水稻", "張三", "診斷",
+            "PENDING", LocalDateTime.now()))));
 
     mockMvc.perform(get("/api/cases"))
         .andExpect(status().isOk())

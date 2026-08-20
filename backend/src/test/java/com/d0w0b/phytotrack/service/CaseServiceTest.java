@@ -8,6 +8,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.mockito.ArgumentMatchers.eq;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -19,6 +20,9 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import com.d0w0b.phytotrack.dto.CaseDtos.CaseCreateRequest;
 import com.d0w0b.phytotrack.dto.CaseDtos.CaseFilter;
@@ -27,6 +31,7 @@ import com.d0w0b.phytotrack.dto.CaseDtos.CaseSummaryResponse;
 import com.d0w0b.phytotrack.dto.CaseDtos.CaseUpdateRequest;
 import com.d0w0b.phytotrack.exception.ApiException;
 import com.d0w0b.phytotrack.models.Case;
+import com.d0w0b.phytotrack.models.CaseStatus;
 import com.d0w0b.phytotrack.models.Crop;
 import com.d0w0b.phytotrack.models.Damage;
 import com.d0w0b.phytotrack.models.Delivery;
@@ -83,6 +88,27 @@ class CaseServiceTest {
         districtRepository, methodRepository, cropRepository, serviceRepository,
         deliveryRepository, damageRepository, hintRepository, pestCategoryRepository,
         identifierRepository);
+  }
+
+  @AfterEach
+  void tearDown() {
+    SecurityContextHolder.clearContext();
+  }
+
+  /** 以指定角色登入 SecurityContext（用於轉移規則的 ADMIN 判斷） */
+  private void authenticateAs(String role) {
+    SecurityContextHolder.getContext().setAuthentication(
+        new UsernamePasswordAuthenticationToken("test", "pass",
+            List.of(new SimpleGrantedAuthority("ROLE_" + role))));
+  }
+
+  /** 組更新請求：狀態與更新契約欄位可選 */
+  private CaseUpdateRequest updateReq(String status) {
+    return new CaseUpdateRequest(
+        null, null, null, null, null, status,
+        null, null, null, null,
+        null, null, null, null, null,
+        null, null, null, null);
   }
 
   private CaseCreateRequest validRequest() {
@@ -222,12 +248,140 @@ class CaseServiceTest {
     when(caseRepository.findById(1L)).thenReturn(Optional.of(c));
 
     CaseResponse response = caseService.update(1L,
-        new CaseUpdateRequest(LocalDate.of(2026, 8, 20), "新面積", null, null, null, 1,
+        new CaseUpdateRequest(LocalDate.of(2026, 8, 20), "新面積", null, null, null, "RESOLVED",
+            null, null, null, null, null, null, null, null, null,
             null, null, null, null));
 
     assertThat(response.cropScale()).isEqualTo("新面積");
     // 未提供的欄位應保持原值
     assertThat(response.damageScale()).isEqualTo("約3成");
+  }
+
+  @Test
+  void update_shouldTransitionPendingToResolved() {
+    Case c = caseWithRefs();
+    c.setCaseId(1L);
+    when(caseRepository.findById(1L)).thenReturn(Optional.of(c));
+
+    CaseResponse response = caseService.update(1L, updateReq("RESOLVED"));
+
+    assertThat(response.status()).isEqualTo("RESOLVED");
+  }
+
+  @Test
+  void update_shouldRejectSkippingStatus() {
+    Case c = caseWithRefs();
+    c.setCaseId(1L);
+    when(caseRepository.findById(1L)).thenReturn(Optional.of(c));
+
+    assertThatThrownBy(() -> caseService.update(1L, updateReq("CLOSED")))
+        .isInstanceOf(ApiException.class)
+        .satisfies(e -> {
+          ApiException ex = (ApiException) e;
+          assertThat(ex.getCode()).isEqualTo("INVALID_STATUS_TRANSITION");
+          assertThat(ex.getStatus()).isEqualTo(HttpStatus.BAD_REQUEST);
+        });
+    // 非法轉移狀態不變
+    assertThat(c.getStatus()).isEqualTo(CaseStatus.PENDING);
+  }
+
+  @Test
+  void update_shouldRejectStatusRegression() {
+    Case c = caseWithRefs();
+    c.setCaseId(1L);
+    c.setStatus(CaseStatus.RESOLVED);
+    when(caseRepository.findById(1L)).thenReturn(Optional.of(c));
+
+    assertThatThrownBy(() -> caseService.update(1L, updateReq("PENDING")))
+        .isInstanceOf(ApiException.class)
+        .satisfies(e -> {
+          ApiException ex = (ApiException) e;
+          assertThat(ex.getCode()).isEqualTo("INVALID_STATUS_TRANSITION");
+          assertThat(ex.getStatus()).isEqualTo(HttpStatus.BAD_REQUEST);
+        });
+    assertThat(c.getStatus()).isEqualTo(CaseStatus.RESOLVED);
+  }
+
+  @Test
+  void update_closingByStaffShouldBeForbidden() {
+    authenticateAs("STAFF");
+    Case c = caseWithRefs();
+    c.setCaseId(1L);
+    c.setStatus(CaseStatus.RESOLVED);
+    when(caseRepository.findById(1L)).thenReturn(Optional.of(c));
+
+    assertThatThrownBy(() -> caseService.update(1L, updateReq("CLOSED")))
+        .isInstanceOf(ApiException.class)
+        .satisfies(e -> {
+          ApiException ex = (ApiException) e;
+          assertThat(ex.getCode()).isEqualTo("STATUS_TRANSITION_FORBIDDEN");
+          assertThat(ex.getStatus()).isEqualTo(HttpStatus.FORBIDDEN);
+        });
+    assertThat(c.getStatus()).isEqualTo(CaseStatus.RESOLVED);
+  }
+
+  @Test
+  void update_closingByAdminShouldSucceed() {
+    authenticateAs("ADMIN");
+    Case c = caseWithRefs();
+    c.setCaseId(1L);
+    c.setStatus(CaseStatus.RESOLVED);
+    when(caseRepository.findById(1L)).thenReturn(Optional.of(c));
+
+    CaseResponse response = caseService.update(1L, updateReq("CLOSED"));
+
+    assertThat(response.status()).isEqualTo("CLOSED");
+  }
+
+  @Test
+  void update_withoutStatus_shouldNotChange() {
+    Case c = caseWithRefs();
+    c.setCaseId(1L);
+    when(caseRepository.findById(1L)).thenReturn(Optional.of(c));
+
+    CaseResponse response = caseService.update(1L, updateReq(null));
+
+    assertThat(response.status()).isEqualTo("PENDING");
+  }
+
+  @Test
+  void update_shouldUpdateSenderFields() {
+    Case c = caseWithRefs();
+    c.setCaseId(1L);
+    when(caseRepository.findById(1L)).thenReturn(Optional.of(c));
+
+    CaseUpdateRequest request = new CaseUpdateRequest(
+        null, null, null, null, null, null,
+        null, null, null, null,
+        "新名", null, null, null, null,
+        null, null, null, null);
+    caseService.update(1L, request);
+
+    assertThat(c.getSender().getName()).isEqualTo("新名");
+  }
+
+  @Test
+  void update_shouldReplaceJunctions() {
+    Case c = caseWithRefs();
+    c.setCaseId(1L);
+    when(caseRepository.findById(1L)).thenReturn(Optional.of(c));
+    when(damageRepository.findById(3L)).thenReturn(Optional.of(damage(3L)));
+
+    CaseUpdateRequest add = new CaseUpdateRequest(
+        null, null, null, null, null, null,
+        null, null, null, null,
+        null, null, null, null, null,
+        List.of(3L), null, null, null);
+    caseService.update(1L, add);
+    assertThat(c.getCaseDamages()).hasSize(1);
+
+    CaseUpdateRequest clear = new CaseUpdateRequest(
+        null, null, null, null, null, null,
+        null, null, null, null,
+        null, null, null, null, null,
+        List.of(), null, null, null);
+    caseService.update(1L, clear);
+    assertThat(c.getCaseDamages()).isEmpty();
   }
 
   @Test
@@ -255,6 +409,8 @@ class CaseServiceTest {
     Sender s = new Sender();
     s.setName("王小明");
     s.setPhone("0912345678");
+    s.setDistrict(district(1L));
+    s.setSenderType(senderType(1L, "農民"));
     return s;
   }
 
@@ -333,7 +489,7 @@ class CaseServiceTest {
     c.setReceiveDate(LocalDate.of(2026, 8, 18));
     c.setCropScale("2分地");
     c.setDamageScale("約3成");
-    c.setStatus(0);
+    c.setStatus(CaseStatus.PENDING);
     c.setSender(sender());
     c.setMethod(method(1L));
     c.setCrop(crop(36L));
