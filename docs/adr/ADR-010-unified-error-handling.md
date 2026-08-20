@@ -33,6 +33,7 @@
 ```
 
 - `details` 於驗證失敗時收集各欄位錯誤；無補充資訊時為空物件
+- **安全相關錯誤亦納入統一格式**：未認證（無 token／無效／過期 token）由 `SecurityConfig` 的 `RestAuthenticationEntryPoint` 回 `401 UNAUTHORIZED`（「請先登入」）；已登入但角色不足由 advice 回 `403 ACCESS_DENIED`——前端攔截器只認 401 清除本機登入狀態並導向登入頁，403 則彈出權限不足提示，兩者語意不混淆
 - 業務例外（4xx）與系統例外（5xx）分開處理，皆記錄 log（含 requestId）；資料庫錯誤在 Repository/advice 封裝，不把 SQL 細節洩漏給前端
 
 **原因**:

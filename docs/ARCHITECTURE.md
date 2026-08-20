@@ -76,6 +76,7 @@ HTTP 請求
 - 角色：`ROLE_VIEWER`（檢視者）/ `ROLE_STAFF`（診斷員）/ `ROLE_ADMIN`（管理者）
 - 權限：建立/更新案件與 AI 診斷需 STAFF+；狀態轉移 `RESOLVED → CLOSED` 僅 ADMIN（`PENDING → RESOLVED` 需 STAFF+）；刪除案件與使用者管理僅 ADMIN
 - 密碼一律 BCrypt 單向雜湊，永不存明文；`/api/auth/register` 僅能建立 VIEWER，防止越權提權
+- 安全錯誤語意：**未認證**（無 token／無效／過期）由 `RestAuthenticationEntryPoint` 回 `401 UNAUTHORIZED`（統一錯誤格式），前端攔截器據此清除本機 token 並導向登入頁；**已登入但角色不足**由全域例外處理回 `403 ACCESS_DENIED`（見 ADR-010）
 
 ### AI 診斷流程
 

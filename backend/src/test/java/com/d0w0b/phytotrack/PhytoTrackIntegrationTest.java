@@ -146,9 +146,17 @@ class PhytoTrackIntegrationTest {
         .andExpect(jsonPath("$.error.code").value("ACCESS_DENIED"))
         .andExpect(jsonPath("$.requestId").isNotEmpty());
 
-    // 10. 未登入存取受保護端點被拒絕
+    // 10. 未登入存取受保護端點 → 401（統一錯誤格式）
     mockMvc.perform(get("/api/cases"))
-        .andExpect(status().isForbidden());
+        .andExpect(status().isUnauthorized())
+        .andExpect(jsonPath("$.error.code").value("UNAUTHORIZED"))
+        .andExpect(jsonPath("$.requestId").isNotEmpty());
+
+    // 11. 無效 token 存取受保護端點 → 亦視為未認證（401，前端可據此清除殘留 token）
+    mockMvc.perform(get("/api/cases")
+            .header(HttpHeaders.AUTHORIZATION, "Bearer invalid.token.here"))
+        .andExpect(status().isUnauthorized())
+        .andExpect(jsonPath("$.error.code").value("UNAUTHORIZED"));
   }
 
   private String login(String username, String password) throws Exception {

@@ -123,9 +123,11 @@ class CaseControllerTest {
 
   @Test
   void list_shouldBeProtected() throws Exception {
-    // 未登入：由 SecurityFilterChain 拒絕
+    // 未登入：由 SecurityFilterChain 拒絕（401，統一錯誤格式）
     mockMvc.perform(get("/api/cases"))
-        .andExpect(status().isForbidden());
+        .andExpect(status().isUnauthorized())
+        .andExpect(jsonPath("$.error.code").value("UNAUTHORIZED"))
+        .andExpect(jsonPath("$.requestId").isNotEmpty());
   }
 
   @Test

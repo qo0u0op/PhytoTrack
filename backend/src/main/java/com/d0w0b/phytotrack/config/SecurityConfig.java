@@ -16,6 +16,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 import com.d0w0b.phytotrack.security.JwtAuthenticationFilter;
+import com.d0w0b.phytotrack.security.RestAuthenticationEntryPoint;
 
 /**
  * Spring Security 設定
@@ -50,6 +51,8 @@ public class SecurityConfig {
         .cors(Customizer.withDefaults())
         // 無狀態：每次請求獨立，不建立 HTTP Session
         .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+        // 未認證（無 token / 無效 / 過期）→ 401 統一錯誤格式；已認證角色不足 → 403
+        .exceptionHandling(e -> e.authenticationEntryPoint(new RestAuthenticationEntryPoint()))
         .authorizeHttpRequests(auth -> auth
             // 公開：註冊與登入
             .requestMatchers("/api/auth/register", "/api/auth/login").permitAll()
