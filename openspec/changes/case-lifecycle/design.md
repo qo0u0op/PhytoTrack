@@ -35,9 +35,20 @@
 `CaseUpdateRequest` 新增：
 
 - 送件人：`senderName` / `senderPhone` / `senderAddress` / `senderDistrictId` / `senderTypeId`（任一提供即更新案件關聯的既有 Sender 對應欄位；district/type 以 `getRef` 解析）
-- 多對多：`damageIds` / `hintIds` / `pestCategoryIds` / `identifierIds`（組非 null 時整組替換：先清空該組 junction 再重建）
+- 多對多：`damageIds` / `hintIds` / `pestCategoryIds` / `identifierIds`（組非 null 時整組替換）
 
 既有 `create` 邏輯重構：`addJunctions` 拆為 4 個單組方法，create 與 update 共用。
+
+### 多對多整組替換的實作陷阱（回歸修正）
+
+初版以 `clear()` + 重建實作，在真實 SQLite 上更新案件會撞
+`case_damages.case_id + damage_id` UNIQUE（Hibernate flush 時 **INSERT 先於
+DELETE**，clear 後對同鍵重新 insert 撞約束）。修正為**差集語意**：
+
+- 只刪除「不在目標集合」的既有 junction、只新增「目標集合缺少」的 junction
+- 刪除與新增**沒有交集**，不會撞 UNIQUE；最終集合仍等於以 `ids` 整組替換
+- 以泛型 `replaceJunctionGroup`（`JunctionFactory` + `Function<J, Long>` 取 ref id）統一 4 組
+- 回歸測試：`PhytoTrackIntegrationTest` 補「送相同集合（不重建）」與「真正替換」兩情境；單元測試（Mockito）抓不到此類 flush 順序問題，需整合層驗證
 
 ## 5. 前端
 
