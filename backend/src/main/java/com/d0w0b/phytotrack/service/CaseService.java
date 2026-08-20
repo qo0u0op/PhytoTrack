@@ -45,7 +45,10 @@ import com.d0w0b.phytotrack.repository.SenderRepository;
 import com.d0w0b.phytotrack.repository.SenderTypeRepository;
 import com.d0w0b.phytotrack.repository.ServiceRepository;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
@@ -254,23 +257,77 @@ public class CaseService {
     }
   }
 
-  /** 整組替換多對多關聯：組非 null 時清空該組 junction 再重建 */
+  /**
+   * 整組替換多對多關聯。
+   *
+   * 採「差集」語意而非 clear + 重建：只刪除不在目標集合的既有 junction、
+   * 只新增目標集合缺少的 junction。原因是 Hibernate flush 時 INSERT 會先於
+   * DELETE 執行，若 clear 後對相同 (case_id, ref_id) 重新 insert 會撞
+   * SQLite UNIQUE 約束。差集法使「刪除」與「新增」沒有交集，最終結果仍等於
+   * 以 ids 整組替換。
+   */
   private void replaceJunctions(Case caseEntity, CaseUpdateRequest request) {
     if (request.damageIds() != null) {
-      caseEntity.getCaseDamages().clear();
-      addDamages(caseEntity, request.damageIds());
+      replaceJunctionGroup(caseEntity, caseEntity.getCaseDamages(), request.damageIds(),
+          j -> j.getDamage().getDamageId(),
+          (c, id) -> {
+            CaseDamage junction = new CaseDamage();
+            junction.setCaseEntity(c);
+            junction.setDamage(getRef(damageRepository, id, "被害部位"));
+            return junction;
+          });
     }
     if (request.hintIds() != null) {
-      caseEntity.getCaseHints().clear();
-      addHints(caseEntity, request.hintIds());
+      replaceJunctionGroup(caseEntity, caseEntity.getCaseHints(), request.hintIds(),
+          j -> j.getHint().getHintId(),
+          (c, id) -> {
+            CaseHint junction = new CaseHint();
+            junction.setCaseEntity(c);
+            junction.setHint(getRef(hintRepository, id, "防治建議"));
+            return junction;
+          });
     }
     if (request.pestCategoryIds() != null) {
-      caseEntity.getCasePestCategories().clear();
-      addPestCategories(caseEntity, request.pestCategoryIds());
+      replaceJunctionGroup(caseEntity, caseEntity.getCasePestCategories(),
+          request.pestCategoryIds(), j -> j.getPestCategory().getPestCategoryId(),
+          (c, id) -> {
+            CasePestCategory junction = new CasePestCategory();
+            junction.setCaseEntity(c);
+            junction.setPestCategory(getRef(pestCategoryRepository, id, "病蟲害分類"));
+            return junction;
+          });
     }
     if (request.identifierIds() != null) {
-      caseEntity.getCaseIdentifiers().clear();
-      addIdentifiers(caseEntity, request.identifierIds());
+      replaceJunctionGroup(caseEntity, caseEntity.getCaseIdentifiers(),
+          request.identifierIds(), j -> j.getIdentifier().getIdentifierId(),
+          (c, id) -> {
+            CaseIdentifier junction = new CaseIdentifier();
+            junction.setCaseEntity(c);
+            junction.setIdentifier(getRef(identifierRepository, id, "診斷簽名人"));
+            return junction;
+          });
+    }
+  }
+
+  /** 建立 Junction 的工廠（泛型化四組多對多） */
+  @FunctionalInterface
+  private interface JunctionFactory<J> {
+    J create(Case caseEntity, Long refId);
+  }
+
+  /** 差集式整組替換：刪目標外的既有 junction、補目標缺少的 junction */
+  private <J> void replaceJunctionGroup(Case caseEntity, List<J> junctions, List<Long> ids,
+      Function<J, Long> idGetter, JunctionFactory<J> factory) {
+    Set<Long> target = new HashSet<>(ids);
+    List<J> toRemove = junctions.stream()
+        .filter(j -> !target.contains(idGetter.apply(j)))
+        .toList();
+    toRemove.forEach(junctions::remove);
+    Set<Long> have = junctions.stream().map(idGetter).collect(Collectors.toSet());
+    for (Long refId : ids) {
+      if (!have.contains(refId)) {
+        junctions.add(factory.create(caseEntity, refId));
+      }
     }
   }
 

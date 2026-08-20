@@ -3,6 +3,7 @@ package com.d0w0b.phytotrack;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -54,6 +55,7 @@ class PhytoTrackIntegrationTest {
     long serviceId = firstId("/api/ref/services", adminToken);
     long deliverId = firstId("/api/ref/deliveries", adminToken);
     long damageId = firstId("/api/ref/damages", adminToken);
+    long secondDamageId = nthId("/api/ref/damages", adminToken, 1);
     long hintId = firstId("/api/ref/hints", adminToken);
     long pestCategoryId = firstPestCategoryId("/api/ref/pest-types", adminToken);
 
@@ -78,22 +80,53 @@ class PhytoTrackIntegrationTest {
     String caseJson = objectMapper.writeValueAsString(caseBody);
 
     // 3. 建立案件（admin 具 STAFF+ 權限）
-    mockMvc.perform(post("/api/cases")
+    MvcResult created = mockMvc.perform(post("/api/cases")
             .header(HttpHeaders.AUTHORIZATION, bearer(adminToken))
             .contentType(MediaType.APPLICATION_JSON)
             .content(caseJson))
         .andExpect(status().isCreated())
         .andExpect(jsonPath("$.senderName").value("張三"))
-        .andExpect(jsonPath("$.receiveDate").value("2026-08-18"));
+        .andExpect(jsonPath("$.receiveDate").value("2026-08-18"))
+        .andReturn();
+    long caseId = objectMapper.readTree(
+        created.getResponse().getContentAsString(StandardCharsets.UTF_8)).path("caseId").asLong();
 
-    // 4. 列表查詢（登入即可）
+    // 4. 更新案件：多對多送「與既有相同」的集合時不得重建同鍵 junction（回歸
+    //    case_damages UNIQUE 衝突：差集替換使新增與刪除無交集）
+    Map<String, Object> sameJunctionBody = new LinkedHashMap<>();
+    sameJunctionBody.put("damageIds", List.of(damageId));
+    sameJunctionBody.put("hintIds", List.of(hintId));
+    sameJunctionBody.put("pestCategoryIds", List.of(pestCategoryId));
+    sameJunctionBody.put("identifierIds", List.of());
+    mockMvc.perform(put("/api/cases/{id}", caseId)
+            .header(HttpHeaders.AUTHORIZATION, bearer(adminToken))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(sameJunctionBody)))
+        .andExpect(status().isOk());
+
+    // 5. 更新案件：真正的整組替換（移除 d1、新增 d2，且 status PENDING→RESOLVED）
+    Map<String, Object> replaceJunctionBody = new LinkedHashMap<>();
+    replaceJunctionBody.put("status", "RESOLVED");
+    replaceJunctionBody.put("damageIds", List.of(secondDamageId));
+    replaceJunctionBody.put("hintIds", List.of(hintId));
+    replaceJunctionBody.put("pestCategoryIds", List.of(pestCategoryId));
+    replaceJunctionBody.put("identifierIds", List.of());
+    mockMvc.perform(put("/api/cases/{id}", caseId)
+            .header(HttpHeaders.AUTHORIZATION, bearer(adminToken))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(replaceJunctionBody)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.status").value("RESOLVED"))
+        .andExpect(jsonPath("$.damages[0].id").value(secondDamageId));
+
+    // 7. 列表查詢（登入即可）
     mockMvc.perform(get("/api/cases")
             .header(HttpHeaders.AUTHORIZATION, bearer(adminToken)))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.content").isArray())
         .andExpect(jsonPath("$.totalElements").isNumber());
 
-    // 5. 註冊一般檢視員（VIEWER）並登入
+    // 8. 註冊一般檢視員（VIEWER）並登入
     String viewerUsername = "viewer_it_" + System.nanoTime();
     mockMvc.perform(post("/api/auth/register")
             .contentType(MediaType.APPLICATION_JSON)
@@ -104,7 +137,7 @@ class PhytoTrackIntegrationTest {
         .andExpect(jsonPath("$.role").value("ROLE_VIEWER"));
     String viewerToken = login(viewerUsername, "password123");
 
-    // 6. RBAC：VIEWER 建立案件被拒絕（403，統一錯誤格式）
+    // 9. RBAC：VIEWER 建立案件被拒絕（403，統一錯誤格式）
     mockMvc.perform(post("/api/cases")
             .header(HttpHeaders.AUTHORIZATION, bearer(viewerToken))
             .contentType(MediaType.APPLICATION_JSON)
@@ -113,7 +146,7 @@ class PhytoTrackIntegrationTest {
         .andExpect(jsonPath("$.error.code").value("ACCESS_DENIED"))
         .andExpect(jsonPath("$.requestId").isNotEmpty());
 
-    // 7. 未登入存取受保護端點被拒絕
+    // 10. 未登入存取受保護端點被拒絕
     mockMvc.perform(get("/api/cases"))
         .andExpect(status().isForbidden());
   }
@@ -143,9 +176,14 @@ class PhytoTrackIntegrationTest {
   }
 
   private long firstId(String url, String token) throws Exception {
+    return nthId(url, token, 0);
+  }
+
+  private long nthId(String url, String token, int index) throws Exception {
     JsonNode array = getJson(url, token);
-    assertThat(array.isArray() && array.size() > 0).as("參照資料 %s 應有種子資料", url).isTrue();
-    return array.get(0).path("id").asLong();
+    assertThat(array.isArray() && array.size() > index).as(
+        "參照資料 %s 應有第 %d 筆種子資料", url, index + 1).isTrue();
+    return array.get(index).path("id").asLong();
   }
 
   private long firstNestedId(String url, String token, String childField) throws Exception {
