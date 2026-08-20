@@ -14,6 +14,10 @@ import com.d0w0b.phytotrack.dto.CaseDtos.CaseFilter;
 import com.d0w0b.phytotrack.dto.CaseDtos.CaseResponse;
 import com.d0w0b.phytotrack.dto.CaseDtos.CaseSummaryResponse;
 import com.d0w0b.phytotrack.dto.CaseDtos.CaseUpdateRequest;
+import com.d0w0b.phytotrack.dto.StatisticsDtos.CaseStatisticsResponse;
+import com.d0w0b.phytotrack.dto.StatisticsDtos.CountName;
+import com.d0w0b.phytotrack.dto.StatisticsDtos.MonthCount;
+import com.d0w0b.phytotrack.dto.StatisticsDtos.StatusCount;
 import com.d0w0b.phytotrack.exception.ApiException;
 import com.d0w0b.phytotrack.models.Case;
 import com.d0w0b.phytotrack.models.CaseDamage;
@@ -45,8 +49,13 @@ import com.d0w0b.phytotrack.repository.SenderRepository;
 import com.d0w0b.phytotrack.repository.SenderTypeRepository;
 import com.d0w0b.phytotrack.repository.ServiceRepository;
 
+import java.time.LocalDate;
+import java.time.YearMonth;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
@@ -376,6 +385,62 @@ public class CaseService {
   @Transactional
   public void delete(Long id) {
     caseRepository.delete(findByIdOrThrow(id));
+  }
+
+  /**
+   * 案件統計總覽（見 spec case-statistics）。
+   *
+   * 以「收件日期（receiveDate）」為月份基礎（與 case-search 篩選一致）：
+   * 本月新增＝收件日 ≥ 本月初；趨勢近 6 月逐月計數。top 作物／病蟲害與
+   * 趨勢以 findAll()（EntityGraph 預抓關聯）Java 聚合，本機資料量小故採
+   * 單一查詢；空資料庫時各項為 0 或空清單。
+   */
+  @Transactional(readOnly = true)
+  public CaseStatisticsResponse statistics() {
+    long total = caseRepository.count();
+    long monthNew = caseRepository.countByReceiveDateGreaterThanEqual(
+        LocalDate.now().withDayOfMonth(1));
+    long pending = caseRepository.countByStatus(CaseStatus.PENDING);
+
+    List<Case> all = caseRepository.findAll();
+    List<CountName> topCrops = topN(all.stream()
+        .collect(Collectors.groupingBy(c -> c.getCrop().getCrop(), Collectors.counting())));
+    List<CountName> topPestCategories = topN(all.stream()
+        .flatMap(c -> c.getCasePestCategories().stream())
+        .collect(Collectors.groupingBy(
+            j -> j.getPestCategory().getPestCategory(), Collectors.counting())));
+    List<StatusCount> statusRatio = Arrays.stream(CaseStatus.values())
+        .map(status -> new StatusCount(status.name(),
+            all.stream().filter(c -> c.getStatus() == status).count()))
+        .toList();
+    List<MonthCount> monthlyTrend = monthlyTrend(all);
+
+    return new CaseStatisticsResponse(total, monthNew, pending,
+        topCrops, topPestCategories, statusRatio, monthlyTrend);
+  }
+
+  /** topN：依計數遞減排序（同數值再依名稱穩定排序）取前 5 */
+  private List<CountName> topN(Map<String, Long> counts) {
+    return counts.entrySet().stream()
+        .sorted(Map.Entry.<String, Long>comparingByValue().reversed()
+            .thenComparing(Map.Entry.comparingByKey()))
+        .limit(5)
+        .map(e -> new CountName(e.getKey(), e.getValue()))
+        .toList();
+  }
+
+  /** 近 6 月（含本月）逐月案件數趨勢，依收件日期分組 */
+  private List<MonthCount> monthlyTrend(List<Case> all) {
+    YearMonth current = YearMonth.now();
+    List<MonthCount> result = new ArrayList<>();
+    for (int i = 5; i >= 0; i--) {
+      YearMonth month = current.minusMonths(i);
+      long count = all.stream()
+          .filter(c -> YearMonth.from(c.getReceiveDate()).equals(month))
+          .count();
+      result.add(new MonthCount(month.toString(), count));
+    }
+    return result;
   }
 
   // ------------------------------------------------------------------

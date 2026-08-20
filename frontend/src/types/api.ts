@@ -276,6 +276,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/cases/statistics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["statistics"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/ai/health": {
         parameters: {
             query?: never;
@@ -537,6 +553,33 @@ export interface components {
             empty?: boolean;
             unsorted?: boolean;
             sorted?: boolean;
+        };
+        CaseStatisticsResponse: {
+            /** Format: int64 */
+            totalCases?: number;
+            /** Format: int64 */
+            monthNewCases?: number;
+            /** Format: int64 */
+            pendingCases?: number;
+            topCrops?: components["schemas"]["CountName"][];
+            topPestCategories?: components["schemas"]["CountName"][];
+            statusRatio?: components["schemas"]["StatusCount"][];
+            monthlyTrend?: components["schemas"]["MonthCount"][];
+        };
+        CountName: {
+            name?: string;
+            /** Format: int64 */
+            count?: number;
+        };
+        MonthCount: {
+            month?: string;
+            /** Format: int64 */
+            count?: number;
+        };
+        StatusCount: {
+            status?: string;
+            /** Format: int64 */
+            count?: number;
         };
     };
     responses: never;
@@ -973,6 +1016,26 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["CityResponse"][];
+                };
+            };
+        };
+    };
+    statistics: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CaseStatisticsResponse"];
                 };
             };
         };
