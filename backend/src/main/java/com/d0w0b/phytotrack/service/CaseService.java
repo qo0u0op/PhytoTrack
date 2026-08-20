@@ -2,6 +2,7 @@ package com.d0w0b.phytotrack.service;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
@@ -443,6 +444,71 @@ public class CaseService {
     return result;
   }
 
+  /**
+   * CSV 匯出（見 spec case-report）：依篩選查詢全部案件（不分頁，收件日期升序）
+   * 組 CSV，輸出含 UTF-8 BOM 供 Excel 開啟中文。篩選語意與列表（case-search）一致。
+   */
+  @Transactional(readOnly = true)
+  public String exportCsv(CaseFilter filter) {
+    CaseStatus status = filter.status() != null ? parseStatus(filter.status()) : null;
+    List<Case> cases = caseRepository.findAll(
+        CaseSpecifications.build(filter, status), Sort.by("receiveDate"));
+    return toCsv(cases);
+  }
+
+  /** 組 CSV 內容：首列為欄位名，含 UTF-8 BOM */
+  private String toCsv(List<Case> cases) {
+    StringBuilder sb = new StringBuilder("\uFEFF");
+    sb.append(join(
+        "案件編號", "收件日期", "狀態", "送件人", "電話", "縣市鄉鎮", "地址", "身分別",
+        "作物", "種植面積", "被害面積", "被害部位", "病蟲害", "病害描述", "防治建議",
+        "簽名人", "耕種方式", "服務", "交付", "建立時間", "更新時間"));
+    for (Case c : cases) {
+      sb.append('\n').append(join(
+          String.valueOf(c.getCaseId()),
+          String.valueOf(c.getReceiveDate()),
+          c.getStatus().name(),
+          c.getSender().getName(),
+          c.getSender().getPhone(),
+          String.valueOf(c.getSender().getDistrict().getDistrict()),
+          c.getSender().getAddress(),
+          c.getSender().getSenderType().getSenderType(),
+          c.getCrop().getCrop(),
+          c.getCropScale(),
+          c.getDamageScale(),
+          names(c.getCaseDamages(), d -> d.getDamage().getDamage()),
+          names(c.getCasePestCategories(), j -> j.getPestCategory().getPestCategory()),
+          c.getPestDescription(),
+          c.getHintDescription(),
+          names(c.getCaseIdentifiers(), j -> j.getIdentifier().getIdentifier()),
+          c.getMethod() != null ? c.getMethod().getMethod() : null,
+          c.getService() != null ? c.getService().getService() : null,
+          c.getDelivery() != null ? c.getDelivery().getDeliver() : null,
+          String.valueOf(c.getCreatedAt()),
+          String.valueOf(c.getUpdatedAt())));
+    }
+    return sb.toString();
+  }
+
+  /** 多對多關聯名稱組串（以「、」連結） */
+  private static <T> String names(List<T> items, Function<T, String> nameOf) {
+    return items.stream().map(nameOf).collect(Collectors.joining("、"));
+  }
+
+  /** 單列：各欄位轉義後以逗號連結 */
+  private static String join(String... fields) {
+    return Arrays.stream(fields).map(CaseService::csvEscape).collect(Collectors.joining(","));
+  }
+
+  /** CSV 欄位轉義：含逗號／引號／換行時以引號包覆，內部引號重複 */
+  private static String csvEscape(String value) {
+    String v = value == null ? "" : value;
+    if (v.contains(",") || v.contains("\"") || v.contains("\n") || v.contains("\r")) {
+      return "\"" + v.replace("\"", "\"\"") + "\"";
+    }
+    return v;
+  }
+
   // ------------------------------------------------------------------
   // 私有輔助方法
   // ------------------------------------------------------------------
@@ -561,6 +627,8 @@ public class CaseService {
     // 送件人鄉鎮/身分別可能未設定（如更新時僅換新身分未帶 district/type）
     Long senderDistrictId = Optional.ofNullable(caseEntity.getSender().getDistrict())
         .map(District::getDistrictId).orElse(null);
+    String senderDistrictName = Optional.ofNullable(caseEntity.getSender().getDistrict())
+        .map(District::getDistrict).orElse(null);
     Long senderTypeId = Optional.ofNullable(caseEntity.getSender().getSenderType())
         .map(SenderType::getSenderTypeId).orElse(null);
 
@@ -578,6 +646,7 @@ public class CaseService {
         caseEntity.getSender().getPhone(),
         caseEntity.getSender().getAddress(),
         senderDistrictId,
+        senderDistrictName,
         senderTypeId,
         caseEntity.getCrop().getCrop(),
         caseEntity.getMethod().getMethod(),

@@ -35,6 +35,8 @@ export const caseApi = {
   remove: (id: number) => http.delete(`/cases/${id}`),
   /** 案件統計總覽（登入即可）：總數、本月新增、待處理、topN、狀態比例、近 6 月趨勢 */
   statistics: () => http.get('/cases/statistics'),
+  /** 匯出案件 CSV（登入即可）：以 blob 下載，含 UTF-8 BOM */
+  exportCsv: () => http.get('/cases/export', { responseType: 'blob' }),
 }
 
 /** 參照資料（Reference Data）API：診斷表單的下拉選單 */

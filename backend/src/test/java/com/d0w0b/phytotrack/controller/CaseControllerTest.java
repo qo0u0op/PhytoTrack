@@ -1,6 +1,7 @@
 package com.d0w0b.phytotrack.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.startsWith;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.verify;
@@ -8,6 +9,8 @@ import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -24,6 +27,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.domain.PageImpl;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.context.SecurityContextHolderStrategy;
@@ -120,7 +124,7 @@ class CaseControllerTest {
         1L, LocalDate.of(2026, 8, 18), "2 分地", "約 3 成",
         "葉片出現斑點", null, "PENDING",
         LocalDateTime.now(), LocalDateTime.now(),
-        "張三", "0912345678", "測試路 1 號", 1L, 1L,
+        "張三", "0912345678", "測試路 1 號", 1L, "霧峰區", 1L,
         "水稻", "露天", "診斷", "送件",
         "管理員", List.of(), List.of(), List.of(), List.of());
   }
@@ -153,6 +157,28 @@ class CaseControllerTest {
         .andExpect(status().isUnauthorized())
         .andExpect(jsonPath("$.error.code").value("UNAUTHORIZED"))
         .andExpect(jsonPath("$.requestId").isNotEmpty());
+  }
+
+  @Test
+  void export_shouldBeProtected() throws Exception {
+    // 未登入：由 SecurityFilterChain 拒絕（401，統一錯誤格式）
+    mockMvc.perform(get("/api/cases/export"))
+        .andExpect(status().isUnauthorized())
+        .andExpect(jsonPath("$.error.code").value("UNAUTHORIZED"))
+        .andExpect(jsonPath("$.requestId").isNotEmpty());
+  }
+
+  @Test
+  @WithMockUser(roles = "VIEWER")
+  void export_shouldReturnCsvWithDownloadHeaders() throws Exception {
+    when(caseService.exportCsv(any())).thenReturn("\uFEFF案件編號\n1,2026-08-18");
+
+    mockMvc.perform(get("/api/cases/export"))
+        .andExpect(status().isOk())
+        .andExpect(header().string(HttpHeaders.CONTENT_TYPE, "text/csv;charset=UTF-8"))
+        .andExpect(header().string(HttpHeaders.CONTENT_DISPOSITION,
+            startsWith("attachment; filename=\"case-export-")))
+        .andExpect(content().string(startsWith("\uFEFF案件編號")));
   }
 
   @Test

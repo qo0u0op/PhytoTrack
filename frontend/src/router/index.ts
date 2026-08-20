@@ -37,6 +37,12 @@ const router = createRouter({
       meta: { requiresAuth: true, staffOnly: true },
     },
     {
+      path: '/cases/:id',
+      name: 'case-detail',
+      component: () => import('../views/CaseDetailView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
       path: '/cases/:id/edit',
       name: 'case-edit',
       component: () => import('../views/CaseFormView.vue'),

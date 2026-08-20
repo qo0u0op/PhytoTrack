@@ -118,6 +118,7 @@ public final class CaseDtos {
       String senderPhone,
       String senderAddress,
       Long senderDistrictId,
+      String senderDistrictName,
       Long senderTypeId,
       String cropName,
       String methodName,

@@ -15,7 +15,7 @@ export const STATUS_OPTIONS: { value: CaseStatusValue; label: string }[] = [
 ]
 
 /** 依字串狀態回傳顯示標籤；未知值回傳「待處理」以相容既有資料 */
-export function statusLabel(status: string): string {
+export function statusLabel(status?: string): string {
   switch (status) {
     case 'RESOLVED':
       return '已處理'
@@ -27,7 +27,7 @@ export function statusLabel(status: string): string {
 }
 
 /** 依字串狀態回傳 Bootstrap badge 樣式；未知值回傳待處理樣式 */
-export function statusBadgeClass(status: string): string {
+export function statusBadgeClass(status?: string): string {
   switch (status) {
     case 'RESOLVED':
       return 'text-bg-success'

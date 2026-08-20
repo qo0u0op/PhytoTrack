@@ -292,6 +292,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/cases/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["export"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/ai/health": {
         parameters: {
             query?: never;
@@ -375,6 +391,7 @@ export interface components {
             senderAddress?: string;
             /** Format: int64 */
             senderDistrictId?: number;
+            senderDistrictName?: string;
             /** Format: int64 */
             senderTypeId?: number;
             cropName?: string;
@@ -1036,6 +1053,33 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["CaseStatisticsResponse"];
+                };
+            };
+        };
+    };
+    export: {
+        parameters: {
+            query?: {
+                cropId?: number;
+                serviceId?: number;
+                senderName?: string;
+                receiveDateFrom?: string;
+                receiveDateTo?: string;
+                status?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/csv": string;
                 };
             };
         };
