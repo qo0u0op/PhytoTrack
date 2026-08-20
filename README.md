@@ -93,7 +93,7 @@ cd frontend && npm run build
 
 ## 規劃中（見 openspec）
 
-案件生命週期（狀態流轉）、統計 Dashboard、使用者管理完整化、送件人管理（displayName、去重合併、VIEWER 個資遮蔽）、參照資料維護、監控與備份等，詳見 `openspec/specs/`（10 份能力契約）與 `openspec/changes/`。
+統計 Dashboard、使用者管理完整化、送件人管理（displayName、去重合併、VIEWER 個資遮蔽）、參照資料維護、監控與備份等，詳見 `openspec/specs/`（10 份能力契約）與 `openspec/changes/`。案件生命週期（狀態流轉：PENDING→RESOLVED→CLOSED）與更新契約補全已交付。
 
 ## 同時啟動前後端
 
