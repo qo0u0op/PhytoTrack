@@ -38,6 +38,10 @@ import com.d0w0b.phytotrack.config.SecurityConfig;
 import com.d0w0b.phytotrack.dto.CaseDtos.CaseFilter;
 import com.d0w0b.phytotrack.dto.CaseDtos.CaseResponse;
 import com.d0w0b.phytotrack.dto.CaseDtos.CaseSummaryResponse;
+import com.d0w0b.phytotrack.dto.StatisticsDtos.CaseStatisticsResponse;
+import com.d0w0b.phytotrack.dto.StatisticsDtos.CountName;
+import com.d0w0b.phytotrack.dto.StatisticsDtos.MonthCount;
+import com.d0w0b.phytotrack.dto.StatisticsDtos.StatusCount;
 import com.d0w0b.phytotrack.exception.ApiException;
 import com.d0w0b.phytotrack.security.JwtAuthenticationFilter;
 import com.d0w0b.phytotrack.service.CaseService;
@@ -140,6 +144,37 @@ class CaseControllerTest {
     mockMvc.perform(get("/api/cases"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.content[0].senderName").value("張三"));
+  }
+
+  @Test
+  void statistics_shouldBeProtected() throws Exception {
+    // 未登入：由 SecurityFilterChain 拒絕（401，統一錯誤格式）
+    mockMvc.perform(get("/api/cases/statistics"))
+        .andExpect(status().isUnauthorized())
+        .andExpect(jsonPath("$.error.code").value("UNAUTHORIZED"))
+        .andExpect(jsonPath("$.requestId").isNotEmpty());
+  }
+
+  @Test
+  @WithMockUser(roles = "VIEWER")
+  void statistics_shouldReturnAggregates() throws Exception {
+    when(caseService.statistics()).thenReturn(new CaseStatisticsResponse(
+        3L, 2L, 1L,
+        List.of(new CountName("柑橘", 2L), new CountName("水稻", 1L)),
+        List.of(new CountName("真菌", 3L)),
+        List.of(new StatusCount("PENDING", 1L), new StatusCount("RESOLVED", 2L),
+            new StatusCount("CLOSED", 0L)),
+        List.of(new MonthCount("2026-03", 0L), new MonthCount("2026-08", 3L))));
+
+    mockMvc.perform(get("/api/cases/statistics"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.totalCases").value(3))
+        .andExpect(jsonPath("$.monthNewCases").value(2))
+        .andExpect(jsonPath("$.pendingCases").value(1))
+        .andExpect(jsonPath("$.topCrops[0].name").value("柑橘"))
+        .andExpect(jsonPath("$.topPestCategories[0].count").value(3))
+        .andExpect(jsonPath("$.statusRatio[2].count").value(0))
+        .andExpect(jsonPath("$.monthlyTrend[1].month").value("2026-08"));
   }
 
   @Test

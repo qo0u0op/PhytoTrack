@@ -42,8 +42,8 @@
 - 主規格 `openspec/specs/`：10 份能力 spec（security-hardening、api-observability、case-search、case-lifecycle、case-statistics、case-report、user-admin、reference-data-admin、sender-management、ops-backup）；security-hardening 已實作交付、api-observability 僅含已交付項（Actuator/logback 歸 Phase 2）
 - 工作流：`openspec new change` → proposal → apply（實作＋驗證）→ archive；Phase 1 採**每能力一個獨立 change**（spec 已在主規格，新 change 只需 proposal+tasks，不需 delta spec，於 `.openspec.yaml` 設 `skip_specs: true`）
 - 常用指令：`openspec list` / `status --change <name>` / `validate --specs` / `validate --changes`
-- umbrella change `hardening-and-operational-features` 與 `case-search` 已 archive 至 `openspec/changes/archive/2026-08-19-.../`（proposal/design/tasks 歷史保留，`.openspec.yaml` 隨目錄移動）；active change：`case-lifecycle`（實作中，未 archive）
-- Phase 1 範圍 = 8 能力：case-search（已交付）、case-lifecycle（已交付）、case-statistics、case-report、user-admin、reference-data-admin、sender-management、ops-backup（security-hardening 已交付、api-observability 剩餘歸 Phase 2）；建議下一能力由 `case-statistics` 開始
+- umbrella change `hardening-and-operational-features` 與 `case-search` 已 archive 至 `openspec/changes/archive/2026-08-19-.../`（proposal/design/tasks 歷史保留，`.openspec.yaml` 隨目錄移動）；`case-lifecycle` 已 archive 至 `openspec/changes/archive/2026-08-20-case-lifecycle/`；active change：`case-statistics`（實作中，未 archive）
+- Phase 1 範圍 = 8 能力：case-search（已交付）、case-lifecycle（已交付）、case-statistics（已交付）、case-report、user-admin、reference-data-admin、sender-management、ops-backup（security-hardening 已交付、api-observability 剩餘歸 Phase 2）；建議下一能力由 `case-report` 開始
 - 需求總覽：`docs/REQUIREMENTS.md`（10 能力狀態、Phase 1 範圍、能力間依賴與遷移注意）
 
 ## 文件

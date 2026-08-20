@@ -126,6 +126,18 @@ class PhytoTrackIntegrationTest {
         .andExpect(jsonPath("$.content").isArray())
         .andExpect(jsonPath("$.totalElements").isNumber());
 
+    // 7.5 統計總覽（登入即可）：結構完整；空資料庫情境由 CaseServiceTest 以 mock 涵蓋
+    mockMvc.perform(get("/api/cases/statistics")
+            .header(HttpHeaders.AUTHORIZATION, bearer(adminToken)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.totalCases").isNumber())
+        .andExpect(jsonPath("$.monthNewCases").isNumber())
+        .andExpect(jsonPath("$.pendingCases").isNumber())
+        .andExpect(jsonPath("$.topCrops").isArray())
+        .andExpect(jsonPath("$.topPestCategories").isArray())
+        .andExpect(jsonPath("$.statusRatio.length()").value(3))
+        .andExpect(jsonPath("$.monthlyTrend.length()").value(6));
+
     // 8. 註冊一般檢視員（VIEWER）並登入
     String viewerUsername = "viewer_it_" + System.nanoTime();
     mockMvc.perform(post("/api/auth/register")

@@ -29,8 +29,13 @@ import com.d0w0b.phytotrack.dto.CaseDtos.CaseFilter;
 import com.d0w0b.phytotrack.dto.CaseDtos.CaseResponse;
 import com.d0w0b.phytotrack.dto.CaseDtos.CaseSummaryResponse;
 import com.d0w0b.phytotrack.dto.CaseDtos.CaseUpdateRequest;
+import com.d0w0b.phytotrack.dto.StatisticsDtos.CaseStatisticsResponse;
+import com.d0w0b.phytotrack.dto.StatisticsDtos.CountName;
+import com.d0w0b.phytotrack.dto.StatisticsDtos.MonthCount;
+import com.d0w0b.phytotrack.dto.StatisticsDtos.StatusCount;
 import com.d0w0b.phytotrack.exception.ApiException;
 import com.d0w0b.phytotrack.models.Case;
+import com.d0w0b.phytotrack.models.CasePestCategory;
 import com.d0w0b.phytotrack.models.CaseStatus;
 import com.d0w0b.phytotrack.models.Crop;
 import com.d0w0b.phytotrack.models.Damage;
@@ -58,6 +63,7 @@ import com.d0w0b.phytotrack.repository.SenderTypeRepository;
 import com.d0w0b.phytotrack.repository.ServiceRepository;
 
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.List;
 import java.util.Optional;
 
@@ -521,6 +527,98 @@ class CaseServiceTest {
   }
 
   // ---------------------------------------------------------------
+  // 統計（statistics）
+  // ---------------------------------------------------------------
+
+  @Test
+  void statistics_shouldAggregateCounts() {
+    Crop citrus = crop(36L);
+    citrus.setCrop("柑橘");
+    Crop rice = crop(37L);
+    rice.setCrop("水稻");
+    PestCategory fungus = pestCategory(1L);
+    fungus.setPestCategory("真菌");
+    PestCategory bacterium = pestCategory(2L);
+    bacterium.setPestCategory("細菌");
+
+    LocalDate thisMonth = LocalDate.now().withDayOfMonth(10);
+    LocalDate lastMonth = LocalDate.now().minusMonths(1).withDayOfMonth(15);
+
+    Case c1 = caseWithRefs();
+    c1.setCrop(citrus);
+    c1.setStatus(CaseStatus.RESOLVED);
+    c1.setReceiveDate(thisMonth);
+    c1.setCasePestCategories(new java.util.ArrayList<>(List.of(junction(fungus))));
+
+    Case c2 = caseWithRefs();
+    c2.setCrop(citrus);
+    c2.setStatus(CaseStatus.RESOLVED);
+    c2.setReceiveDate(lastMonth);
+    c2.setCasePestCategories(new java.util.ArrayList<>(List.of(junction(fungus), junction(bacterium))));
+
+    Case c3 = caseWithRefs();
+    c3.setCrop(rice);
+    c3.setStatus(CaseStatus.PENDING);
+    c3.setReceiveDate(LocalDate.now().withDayOfMonth(5));
+    c3.setCasePestCategories(new java.util.ArrayList<>(List.of(junction(fungus))));
+
+    when(caseRepository.count()).thenReturn(3L);
+    when(caseRepository.countByStatus(any())).thenReturn(1L);
+    when(caseRepository.countByReceiveDateGreaterThanEqual(any())).thenReturn(2L);
+    when(caseRepository.findAll()).thenReturn(List.of(c1, c2, c3));
+
+    CaseStatisticsResponse stats = caseService.statistics();
+
+    assertThat(stats.totalCases()).isEqualTo(3L);
+    assertThat(stats.monthNewCases()).isEqualTo(2L);
+    assertThat(stats.pendingCases()).isEqualTo(1L);
+
+    assertThat(stats.topCrops()).extracting(CountName::name).containsExactly("柑橘", "水稻");
+    assertThat(stats.topCrops()).extracting(CountName::count).containsExactly(2L, 1L);
+
+    assertThat(stats.topPestCategories())
+        .extracting(CountName::name).containsExactly("真菌", "細菌");
+    assertThat(stats.topPestCategories()).extracting(CountName::count).containsExactly(3L, 1L);
+
+    // 狀態比例依 CaseStatus 順序且缺的補 0
+    assertThat(stats.statusRatio()).extracting(StatusCount::status)
+        .containsExactly("PENDING", "RESOLVED", "CLOSED");
+    assertThat(stats.statusRatio()).extracting(StatusCount::count)
+        .containsExactly(1L, 2L, 0L);
+
+    // 近 6 月（含本月），本月 2 案、上個月 1 案
+    assertThat(stats.monthlyTrend()).hasSize(6);
+    assertThat(stats.monthlyTrend()).extracting(MonthCount::month)
+        .contains(YearMonth.now().toString(), YearMonth.now().minusMonths(1).toString());
+    assertThat(stats.monthlyTrend().stream()
+        .filter(mc -> mc.month().equals(YearMonth.now().toString()))
+        .findFirst().orElseThrow().count()).isEqualTo(2L);
+    assertThat(stats.monthlyTrend().stream()
+        .filter(mc -> mc.month().equals(YearMonth.now().minusMonths(1).toString()))
+        .findFirst().orElseThrow().count()).isEqualTo(1L);
+  }
+
+  @Test
+  void statistics_shouldReturnZerosWhenEmpty() {
+    when(caseRepository.count()).thenReturn(0L);
+    when(caseRepository.countByStatus(any())).thenReturn(0L);
+    when(caseRepository.countByReceiveDateGreaterThanEqual(any())).thenReturn(0L);
+    when(caseRepository.findAll()).thenReturn(List.of());
+
+    CaseStatisticsResponse stats = caseService.statistics();
+
+    assertThat(stats.totalCases()).isZero();
+    assertThat(stats.monthNewCases()).isZero();
+    assertThat(stats.pendingCases()).isZero();
+    assertThat(stats.topCrops()).isEmpty();
+    assertThat(stats.topPestCategories()).isEmpty();
+    assertThat(stats.statusRatio()).hasSize(3);
+    assertThat(stats.statusRatio()).allMatch(sc -> sc.count() == 0);
+    assertThat(stats.monthlyTrend()).hasSize(6);
+    assertThat(stats.monthlyTrend()).allMatch(mc -> mc.count() == 0);
+  }
+
+  // ---------------------------------------------------------------
   // 測試資料建構輔助
   // ---------------------------------------------------------------
 
@@ -601,6 +699,12 @@ class CaseServiceTest {
     p.setPestCategoryId(id);
     p.setPestCategory("真菌");
     return p;
+  }
+
+  private CasePestCategory junction(PestCategory pc) {
+    CasePestCategory j = new CasePestCategory();
+    j.setPestCategory(pc);
+    return j;
   }
 
   private Identifier identifier(Long id) {

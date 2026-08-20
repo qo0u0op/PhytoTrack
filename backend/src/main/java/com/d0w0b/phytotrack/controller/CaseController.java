@@ -23,6 +23,7 @@ import com.d0w0b.phytotrack.dto.CaseDtos.CaseFilter;
 import com.d0w0b.phytotrack.dto.CaseDtos.CaseResponse;
 import com.d0w0b.phytotrack.dto.CaseDtos.CaseSummaryResponse;
 import com.d0w0b.phytotrack.dto.CaseDtos.CaseUpdateRequest;
+import com.d0w0b.phytotrack.dto.StatisticsDtos.CaseStatisticsResponse;
 import com.d0w0b.phytotrack.service.CaseService;
 
 import java.time.LocalDate;
@@ -65,6 +66,13 @@ public class CaseController {
     CaseFilter filter = new CaseFilter(cropId, serviceId, senderName,
         receiveDateFrom, receiveDateTo, status);
     return ResponseEntity.ok(caseService.list(filter, pageable));
+  }
+
+  /** 案件統計總覽（登入即可，見 spec case-statistics） */
+  @GetMapping("/statistics")
+  @PreAuthorize("isAuthenticated()")
+  public ResponseEntity<CaseStatisticsResponse> statistics() {
+    return ResponseEntity.ok(caseService.statistics());
   }
 
   /** 查詢案件詳細 */
