@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import Swal from 'sweetalert2'
 import { caseApi, refApi } from '../api'
 import { useAuthStore } from '../stores/auth'
 import type { components } from '../types/api'
 import { STATUS_OPTIONS, statusBadgeClass, statusLabel } from '../utils/caseStatus'
+import { escapeHtml } from '../utils/escapeHtml'
 
 // 分頁資料型別（對應後端 Page<CaseSummaryResponse>）
 interface CaseSummary {
@@ -28,6 +30,7 @@ interface CaseFilters {
 }
 
 const auth = useAuthStore()
+const router = useRouter()
 
 const cases = ref<CaseSummary[]>([])
 const total = ref(0)
@@ -99,7 +102,67 @@ onMounted(() => {
   loadFilterOptions()
 })
 
-// 檢視案件詳細：導向獨立明細頁（列印診斷單、CSV 匯出於該頁）
+// 預覽案件詳細：彈窗快速瀏覽，可進一步跳轉明細頁（列印診斷單）
+async function viewDetail(id: number) {
+  const { data } = await caseApi.detail(id)
+  // 彈窗內容以 HTML 插入，所有動態內文必須轉義（防 XSS）
+  const esc = (v?: string | null) => escapeHtml(v ?? '')
+  const join = (items?: { id?: number; name?: string }[]) =>
+    items?.map((i) => esc(i.name)).join('、') ?? '無'
+
+  const result = await Swal.fire({
+    title: `案件 #${data.caseId} 預覽`,
+    width: 640,
+    html: `
+      <div class="text-start small">
+        <p><strong>收件日期：</strong>${esc(data.receiveDate)}</p>
+        <p><strong>作物：</strong>${esc(data.cropName)}</p>
+        <p><strong>送件人：</strong>${esc(data.senderName)}（${esc(data.senderPhone)}）</p>
+        <p><strong>地址：</strong>${esc(data.senderAddress ?? '無')}</p>
+        <p><strong>耕種方式：</strong>${esc(data.methodName)}</p>
+        <p><strong>被害部位：</strong>${join(data.damages)}</p>
+        <p><strong>病蟲害分類：</strong>${join(data.pestCategories)}</p>
+        <p><strong>防治建議：</strong>${join(data.hints)}</p>
+        <p><strong>診斷簽名人：</strong>${join(data.identifiers)}</p>
+        <hr />
+        <p><strong>病害情形：</strong>${esc(data.pestDescription ?? '無')}</p>
+        <p><strong>防治措施：</strong>${esc(data.hintDescription ?? '無')}</p>
+        <p class="text-muted">建立者：${esc(data.createdByName)}／建立時間：${esc(data.createdAt)}</p>
+      </div>
+    `,
+    showCancelButton: true,
+    confirmButtonText: '檢視',
+    cancelButtonText: '關閉',
+  })
+  if (result.isConfirmed) {
+    router.push(`/cases/${id}`)
+  }
+}
+
+// 匯出 CSV：依目前篩選條件下載（blob 避免觸發瀏覽器跳頁）
+async function exportCsv() {
+  try {
+    const params: Record<string, string | number> = {}
+    if (filters.cropId) params.cropId = filters.cropId
+    if (filters.serviceId) params.serviceId = filters.serviceId
+    if (filters.senderName.trim()) params.senderName = filters.senderName.trim()
+    if (filters.receiveDateFrom) params.receiveDateFrom = filters.receiveDateFrom
+    if (filters.receiveDateTo) params.receiveDateTo = filters.receiveDateTo
+    if (filters.status) params.status = filters.status
+    const res = await caseApi.exportCsv(params)
+    const url = URL.createObjectURL(res.data as Blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `case-export-${new Date().toISOString().slice(0, 10)}.csv`
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(url)
+  } catch {
+    // 錯誤由攔截器處理
+  }
+}
+
 async function confirmDelete(id: number) {
   const result = await Swal.fire({
     icon: 'warning',
@@ -127,7 +190,10 @@ async function confirmDelete(id: number) {
   <div class="container py-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
       <h4>案件管理</h4>
-      <router-link v-if="auth.isStaff" class="btn btn-success" to="/cases/new">建立案件</router-link>
+      <div>
+        <button class="btn btn-outline-success me-1" @click="exportCsv">匯出 CSV</button>
+        <router-link v-if="auth.isStaff" class="btn btn-success" to="/cases/new">建立案件</router-link>
+      </div>
     </div>
 
     <!-- 篩選工具列：條件同時存在時為 AND 組合 -->
@@ -212,9 +278,9 @@ async function confirmDelete(id: number) {
                 <span class="badge" :class="statusBadgeClass(c.status)">{{ statusLabel(c.status) }}</span>
               </td>
               <td class="text-end">
-                <router-link class="btn btn-sm btn-outline-success me-1" :to="`/cases/${c.caseId}`">
-                  檢視
-                </router-link>
+                <button class="btn btn-sm btn-outline-success me-1" @click="viewDetail(c.caseId)">
+                  預覽
+                </button>
                 <template v-if="auth.isStaff">
                   <router-link
                     v-if="c.status !== 'CLOSED' || auth.isAdmin"

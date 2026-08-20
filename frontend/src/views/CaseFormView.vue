@@ -350,6 +350,12 @@ async function runAi() {
               <option v-for="s in services" :key="s.id" :value="s.id">{{ s.name }}</option>
             </select>
           </div>
+          <div class="col-md-4">
+            <label class="form-label">交付方式</label>
+            <select v-model.number="form.deliverId" class="form-select" required>
+              <option v-for="d in deliveries" :key="d.id" :value="d.id">{{ d.name }}</option>
+            </select>
+          </div>
           <div v-if="editId" class="col-md-4">
             <label class="form-label">狀態</label>
             <select v-model="form.status" class="form-select">

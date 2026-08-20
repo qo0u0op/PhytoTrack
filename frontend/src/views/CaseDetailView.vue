@@ -67,23 +67,6 @@ async function runAi() {
     analyzing.value = false
   }
 }
-
-// 匯出 CSV：以 blob 下載（axios 已自動附 JWT；blob 避免觸發瀏覽器跳頁）
-async function downloadCsv() {
-  try {
-    const res = await caseApi.exportCsv()
-    const url = URL.createObjectURL(res.data as Blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `case-export-${new Date().toISOString().slice(0, 10)}.csv`
-    document.body.appendChild(a)
-    a.click()
-    a.remove()
-    URL.revokeObjectURL(url)
-  } catch {
-    // 錯誤由攔截器處理
-  }
-}
 </script>
 
 <template>
@@ -100,8 +83,13 @@ async function downloadCsv() {
         <h4 class="mb-0">案件 #{{ detail.caseId }}</h4>
         <div>
           <button class="btn btn-outline-secondary me-1" @click="printDetail">列印</button>
-          <button class="btn btn-outline-success me-1" @click="downloadCsv">匯出 CSV</button>
-          <router-link class="btn btn-outline-primary" :to="`/cases/${id}/edit`">編輯</router-link>
+          <router-link
+            v-if="auth.isStaff && (detail.status !== 'CLOSED' || auth.isAdmin)"
+            class="btn btn-outline-primary"
+            :to="`/cases/${id}/edit`"
+          >
+            編輯
+          </router-link>
         </div>
       </div>
 
