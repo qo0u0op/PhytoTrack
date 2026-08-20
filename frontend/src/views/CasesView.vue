@@ -247,13 +247,24 @@ async function confirmDelete(id: number) {
                 <button class="btn btn-sm btn-outline-success me-1" @click="viewDetail(c.caseId)">
                   檢視
                 </button>
-                <router-link
-                  v-if="auth.isStaff"
-                  class="btn btn-sm btn-outline-primary me-1"
-                  :to="`/cases/${c.caseId}/edit`"
-                >
-                  編輯
-                </router-link>
+                <template v-if="auth.isStaff">
+                  <router-link
+                    v-if="c.status !== 'CLOSED'"
+                    class="btn btn-sm btn-outline-primary me-1"
+                    :to="`/cases/${c.caseId}/edit`"
+                  >
+                    編輯
+                  </router-link>
+                  <button
+                    v-else
+                    type="button"
+                    class="btn btn-sm btn-outline-primary me-1"
+                    disabled
+                    title="案件已結案，不可編輯"
+                  >
+                    編輯
+                  </button>
+                </template>
                 <button
                   v-if="auth.isAdmin"
                   class="btn btn-sm btn-outline-danger"

@@ -131,6 +131,15 @@ async function loadRefs() {
 async function loadCase(id: number) {
   const { data } = await caseApi.detail(id)
   const d = data as components['schemas']['CaseResponse']
+  // 已結案案件不可編輯：提示後返回列表（防直接輸入網址進編輯頁）
+  if (d.status === 'CLOSED') {
+    Swal.fire({
+      icon: 'warning',
+      title: '案件已結案',
+      text: '已結案案件不可編輯',
+    }).then(() => router.push('/cases'))
+    return
+  }
   form.receiveDate = d.receiveDate ?? ''
   form.cropScale = d.cropScale ?? ''
   form.damageScale = d.damageScale ?? ''
