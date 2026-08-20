@@ -14,7 +14,7 @@ interface CaseSummary {
   cropName: string
   senderName: string
   serviceName: string
-  status: number
+  status: string
   createdAt: string
 }
 

@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import Swal from 'sweetalert2'
 import { aiApi, caseApi, refApi } from '../api'
 import { useAuthStore } from '../stores/auth'
+import { STATUS_OPTIONS } from '../utils/caseStatus'
 import { escapeHtml } from '../utils/escapeHtml'
 import type { components } from '../types/api'
 
@@ -46,6 +47,7 @@ const form = reactive({
   damageScale: '',
   pestDescription: '',
   hintDescription: '',
+  status: '' as string,
   senderName: '',
   senderPhone: '',
   senderAddress: '',
@@ -84,6 +86,11 @@ const selectedCropCategory = computed(() => {
     .find((c) => c.id === form.cropId)
   return crop?.category ?? ''
 })
+
+// 狀態選項：CLOSED 僅 ADMIN 可選（對應後端 RESOLVED→CLOSED 轉移規則）
+const statusOptions = computed(() =>
+  auth.isAdmin ? STATUS_OPTIONS : STATUS_OPTIONS.filter((o) => o.value !== 'CLOSED'),
+)
 
 async function loadRefs() {
   // 平行載入所有下拉選單資料
@@ -129,9 +136,12 @@ async function loadCase(id: number) {
   form.damageScale = d.damageScale ?? ''
   form.pestDescription = d.pestDescription ?? ''
   form.hintDescription = d.hintDescription ?? ''
+  form.status = d.status ?? ''
   form.senderName = d.senderName ?? ''
   form.senderPhone = d.senderPhone ?? ''
   form.senderAddress = d.senderAddress ?? ''
+  form.senderDistrictId = d.senderDistrictId ?? 0
+  form.senderTypeId = d.senderTypeId ?? 0
   form.damageIds = d.damages?.map((x) => x.id).filter((x): x is number => x != null) ?? []
   form.hintIds = d.hints?.map((x) => x.id).filter((x): x is number => x != null) ?? []
   form.pestCategoryIds = d.pestCategories?.map((x) => x.id).filter((x): x is number => x != null) ?? []
@@ -174,10 +184,20 @@ async function submit() {
         damageScale: form.damageScale || undefined,
         pestDescription: form.pestDescription || undefined,
         hintDescription: form.hintDescription || undefined,
+        status: form.status || undefined,
+        senderName: form.senderName || undefined,
+        senderPhone: form.senderPhone || undefined,
+        senderAddress: form.senderAddress || undefined,
+        senderDistrictId: form.senderDistrictId || undefined,
+        senderTypeId: form.senderTypeId || undefined,
         methodId: form.methodId,
         cropId: form.cropId,
         serviceId: form.serviceId,
         deliverId: form.deliverId,
+        damageIds: form.damageIds,
+        hintIds: form.hintIds,
+        pestCategoryIds: form.pestCategoryIds,
+        identifierIds: form.identifierIds,
       })
     } else {
       await caseApi.create({
@@ -317,6 +337,17 @@ async function runAi() {
             <select v-model.number="form.serviceId" class="form-select" required>
               <option v-for="s in services" :key="s.id" :value="s.id">{{ s.name }}</option>
             </select>
+          </div>
+          <div v-if="editId" class="col-md-4">
+            <label class="form-label">狀態</label>
+            <select v-model="form.status" class="form-select">
+              <option v-for="opt in statusOptions" :key="opt.value" :value="opt.value">
+                {{ opt.label }}
+              </option>
+            </select>
+            <div class="form-text small text-muted">
+              {{ auth.isAdmin ? '待處理→已處理→已結案' : '待處理→已處理' }}
+            </div>
           </div>
           <div class="col-md-4">
             <label class="form-label">收件日期</label>
