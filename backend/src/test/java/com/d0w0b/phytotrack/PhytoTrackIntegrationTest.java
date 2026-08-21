@@ -2,6 +2,7 @@ package com.d0w0b.phytotrack;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.startsWith;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -333,6 +334,131 @@ class PhytoTrackIntegrationTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$[?(@.username=='%s')].role".formatted(uname)).value("ROLE_STAFF"))
         .andExpect(jsonPath("$[?(@.username=='%s')].active".formatted(uname)).value(true));
+  }
+
+  @Test
+  void referenceDataAdmin_createAndDeleteProtection() throws Exception {
+    String adminToken = login("admin", "admin123");
+
+    // 1. 新增作物分類與作物，驗證可於表單選用（透過參照資料讀取）
+    String catName = "整合分類_" + System.nanoTime();
+    MvcResult catRes = mockMvc.perform(post("/api/admin/ref/crop-categories")
+            .header(HttpHeaders.AUTHORIZATION, bearer(adminToken))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {"name":"%s"}
+                """.formatted(catName)))
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.name").value(catName))
+        .andReturn();
+    long catId = objectMapper.readTree(catRes.getResponse().getContentAsString(StandardCharsets.UTF_8)).path("id").asLong();
+
+    String cropName = "整合作物_" + System.nanoTime();
+    MvcResult cropRes = mockMvc.perform(post("/api/admin/ref/crops")
+            .header(HttpHeaders.AUTHORIZATION, bearer(adminToken))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {"name":"%s","cropCategoryId":%d}
+                """.formatted(cropName, catId)))
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.name").value(cropName))
+        .andReturn();
+    long cropId = objectMapper.readTree(cropRes.getResponse().getContentAsString(StandardCharsets.UTF_8)).path("id").asLong();
+
+    // 驗證作物出現在參照資料中
+    mockMvc.perform(get("/api/ref/crop-categories")
+            .header(HttpHeaders.AUTHORIZATION, bearer(adminToken)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$[?(@.name=='%s')].crops[?(@.name=='%s')].name".formatted(catName, cropName)).exists());
+
+    // 2. 新增被害部位（未被引用）並驗證刪除成功
+    String damageName = "整合被害_" + System.nanoTime();
+    MvcResult damageRes = mockMvc.perform(post("/api/admin/ref/damages")
+            .header(HttpHeaders.AUTHORIZATION, bearer(adminToken))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {"name":"%s"}
+                """.formatted(damageName)))
+        .andExpect(status().isCreated())
+        .andReturn();
+    long damageIdUnused = objectMapper.readTree(damageRes.getResponse().getContentAsString(StandardCharsets.UTF_8)).path("id").asLong();
+
+    mockMvc.perform(delete("/api/admin/ref/damages/{id}", damageIdUnused)
+            .header(HttpHeaders.AUTHORIZATION, bearer(adminToken)))
+        .andExpect(status().isNoContent());
+
+    // 確認已刪除
+    mockMvc.perform(get("/api/ref/damages")
+            .header(HttpHeaders.AUTHORIZATION, bearer(adminToken)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$[?(@.id==%d)]".formatted(damageIdUnused)).doesNotExist());
+
+    // 3. 建立會被引用的被害部位，建案後刪除應 409
+    String referencedDamage = "被引用被害_" + System.nanoTime();
+    MvcResult refDamageRes = mockMvc.perform(post("/api/admin/ref/damages")
+            .header(HttpHeaders.AUTHORIZATION, bearer(adminToken))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {"name":"%s"}
+                """.formatted(referencedDamage)))
+        .andExpect(status().isCreated())
+        .andReturn();
+    long damageIdUsed = objectMapper.readTree(refDamageRes.getResponse().getContentAsString(StandardCharsets.UTF_8)).path("id").asLong();
+
+    // 建立案件引用該被害部位
+    long districtId = firstNestedId("/api/ref/cities", adminToken, "districts");
+    long senderTypeId = firstId("/api/ref/sender-types", adminToken);
+    long methodId = firstId("/api/ref/methods", adminToken);
+    long serviceId = firstId("/api/ref/services", adminToken);
+    long deliverId = firstId("/api/ref/deliveries", adminToken);
+    long hintId = firstId("/api/ref/hints", adminToken);
+    long pestCategoryId = firstPestCategoryId("/api/ref/pest-types", adminToken);
+
+    Map<String, Object> caseBody = new LinkedHashMap<>();
+    caseBody.put("receiveDate", "2026-08-18");
+    caseBody.put("senderName", "參照整合");
+    caseBody.put("senderPhone", "0912333" + (System.nanoTime() % 10000));
+    caseBody.put("senderAddress", "測試路 1 號");
+    caseBody.put("senderDistrictId", districtId);
+    caseBody.put("senderTypeId", senderTypeId);
+    caseBody.put("methodId", methodId);
+    caseBody.put("cropId", cropId);
+    caseBody.put("serviceId", serviceId);
+    caseBody.put("deliverId", deliverId);
+    caseBody.put("damageIds", List.of(damageIdUsed));
+    caseBody.put("hintIds", List.of(hintId));
+    caseBody.put("pestCategoryIds", List.of(pestCategoryId));
+    caseBody.put("identifierIds", List.of());
+
+    mockMvc.perform(post("/api/cases")
+            .header(HttpHeaders.AUTHORIZATION, bearer(adminToken))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(caseBody)))
+        .andExpect(status().isCreated());
+
+    // 嘗試刪除被引用的被害部位 -> 409
+    mockMvc.perform(delete("/api/admin/ref/damages/{id}", damageIdUsed)
+            .header(HttpHeaders.AUTHORIZATION, bearer(adminToken)))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.error.code").value("REFERENCE_IN_USE"));
+
+    // 4. 驗證非 ADMIN 無法寫入
+    String viewerUsername = "viewer_ref_" + System.nanoTime();
+    mockMvc.perform(post("/api/auth/register")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {"username":"%s","displayName":"參照檢視員","password":"password123"}
+                """.formatted(viewerUsername)))
+        .andExpect(status().isCreated());
+    String viewerToken = login(viewerUsername, "password123");
+
+    mockMvc.perform(post("/api/admin/ref/damages")
+            .header(HttpHeaders.AUTHORIZATION, bearer(viewerToken))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {"name":"viewer嘗試"}
+                """))
+        .andExpect(status().isForbidden());
   }
 
   private String login(String username, String password) throws Exception {

@@ -46,4 +46,15 @@ public interface CaseRepository
 
   /** 依收件日期 ≥ 指定日計數（統計：本月新增） */
   long countByReceiveDateGreaterThanEqual(LocalDate date);
+
+  // 參照資料刪除保護：檢查是否被案件引用
+  boolean existsByCropCropId(Long cropId);
+  boolean existsByCropCropCategoryCropCategoryId(Long cropCategoryId);
+  boolean existsByMethodMethodId(Long methodId);
+  boolean existsByServiceServiceId(Long serviceId);
+  boolean existsByDeliveryDeliverId(Long deliveryId);
+  boolean existsByCaseDamagesDamageDamageId(Long damageId);
+  boolean existsByCaseHintsHintHintId(Long hintId);
+  boolean existsByCasePestCategoriesPestCategoryPestCategoryId(Long pestCategoryId);
+  boolean existsByCaseIdentifiersIdentifierIdentifierId(Long identifierId);
 }

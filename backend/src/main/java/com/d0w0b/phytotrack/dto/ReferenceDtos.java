@@ -1,5 +1,9 @@
 package com.d0w0b.phytotrack.dto;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
+
 import java.util.List;
 
 /**
@@ -33,5 +37,69 @@ public final class ReferenceDtos {
 
   /** 通用「ID + 名稱」回應（被害部位、防治建議、耕種方式、送件方式、服務類別、身分別等） */
   public record IdNameResponse(Long id, String name) {
+  }
+
+  /** 通用名稱寫入請求（用於 damages/hints/methods/deliveries/services/identifiers/sender-types） */
+  public record IdNameCreateRequest(
+      @NotBlank(message = "名稱不可為空白")
+      @Size(max = 100, message = "名稱不可超過 100 字元")
+      String name) {
+  }
+
+  public record IdNameUpdateRequest(
+      @NotBlank(message = "名稱不可為空白")
+      @Size(max = 100, message = "名稱不可超過 100 字元")
+      String name) {
+  }
+
+  /** 作物寫入請求 */
+  public record CropCreateRequest(
+      @NotBlank(message = "作物名稱不可為空白")
+      @Size(max = 100, message = "作物名稱不可超過 100 字元")
+      String name,
+      @NotNull(message = "作物分類不可為空")
+      Long cropCategoryId) {
+  }
+
+  public record CropUpdateRequest(
+      @NotBlank(message = "作物名稱不可為空白")
+      @Size(max = 100, message = "作物名稱不可超過 100 字元")
+      String name,
+      @NotNull(message = "作物分類不可為空")
+      Long cropCategoryId) {
+  }
+
+  /** 作物分類寫入請求 */
+  public record CropCategoryCreateRequest(
+      @NotBlank(message = "分類名稱不可為空白")
+      @Size(max = 100, message = "分類名稱不可超過 100 字元")
+      String name) {
+  }
+
+  public record CropCategoryUpdateRequest(
+      @NotBlank(message = "分類名稱不可為空白")
+      @Size(max = 100, message = "分類名稱不可超過 100 字元")
+      String name) {
+  }
+
+  /** 病蟲害小分類寫入請求 */
+  public record PestCategoryCreateRequest(
+      @NotBlank(message = "代碼不可為空白")
+      String code,
+      @NotBlank(message = "名稱不可為空白")
+      String name,
+      @NotNull(message = "害物類型不可為空")
+      Long pestTypeId,
+      int sortOrder) {
+  }
+
+  public record PestCategoryUpdateRequest(
+      @NotBlank(message = "代碼不可為空白")
+      String code,
+      @NotBlank(message = "名稱不可為空白")
+      String name,
+      @NotNull(message = "害物類型不可為空")
+      Long pestTypeId,
+      int sortOrder) {
   }
 }

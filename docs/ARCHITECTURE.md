@@ -95,7 +95,7 @@ HTTP 請求
 api/      axios 實例（baseURL /api）+ 型別化 API 函式；攔截器自動附 JWT、統一錯誤彈窗
 stores/   Pinia 狀態（登入 token / user，持久化於 localStorage）
 router/   路由表 + 全域守衛（登入、角色權限）
-views/    頁面：Home（hero 首頁）、Login、Register、Dashboard、Cases（列表＋篩選工具列）、CaseDetail（明細＋列印診斷單＋即時 AI 診斷）、CaseForm（診斷表單）、Users（管理員）
+views/    頁面：Home（hero 首頁）、Login、Register、Dashboard、Cases（列表＋篩選工具列）、CaseDetail（明細＋列印診斷單＋即時 AI 診斷）、CaseForm（診斷表單）、Users（管理員）、ReferenceDataAdmin（ADMIN 參照資料管理，頁籤式 CRUD）
 types/    openapi-typescript 由 /v3/api-docs 自動生成的 API 型別（與後端契約同步）
 ```
 
@@ -119,6 +119,36 @@ types/    openapi-typescript 由 /v3/api-docs 自動生成的 API 型別（與�
 | PUT | /api/cases/{id} | STAFF+ | 更新案件（純量欄位、送件人、多對多關聯整組替換、狀態轉移） |
 | DELETE | /api/cases/{id} | ADMIN | 刪除案件 |
 | GET | /api/ref/* | 登入 | 參照資料（作物、病蟲害、縣市等下拉選單） |
+| POST | /api/admin/ref/damages | ADMIN | 新增被害部位 |
+| PUT | /api/admin/ref/damages/{id} | ADMIN | 修改被害部位 |
+| DELETE | /api/admin/ref/damages/{id} | ADMIN | 刪除被害部位（被引用時 409） |
+| POST | /api/admin/ref/hints | ADMIN | 新增防治建議 |
+| PUT | /api/admin/ref/hints/{id} | ADMIN | 修改防治建議 |
+| DELETE | /api/admin/ref/hints/{id} | ADMIN | 刪除防治建議（被引用時 409） |
+| POST | /api/admin/ref/methods | ADMIN | 新增耕種方式 |
+| PUT | /api/admin/ref/methods/{id} | ADMIN | 修改耕種方式 |
+| DELETE | /api/admin/ref/methods/{id} | ADMIN | 刪除耕種方式（被引用時 409） |
+| POST | /api/admin/ref/deliveries | ADMIN | 新增送件方式 |
+| PUT | /api/admin/ref/deliveries/{id} | ADMIN | 修改送件方式 |
+| DELETE | /api/admin/ref/deliveries/{id} | ADMIN | 刪除送件方式（被引用時 409） |
+| POST | /api/admin/ref/services | ADMIN | 新增服務類別 |
+| PUT | /api/admin/ref/services/{id} | ADMIN | 修改服務類別 |
+| DELETE | /api/admin/ref/services/{id} | ADMIN | 刪除服務類別（被引用時 409） |
+| POST | /api/admin/ref/identifiers | ADMIN | 新增簽名人 |
+| PUT | /api/admin/ref/identifiers/{id} | ADMIN | 修改簽名人 |
+| DELETE | /api/admin/ref/identifiers/{id} | ADMIN | 刪除簽名人（被引用時 409） |
+| POST | /api/admin/ref/sender-types | ADMIN | 新增身分別 |
+| PUT | /api/admin/ref/sender-types/{id} | ADMIN | 修改身分別 |
+| DELETE | /api/admin/ref/sender-types/{id} | ADMIN | 刪除身分別（被引用時 409） |
+| POST | /api/admin/ref/crops | ADMIN | 新增作物（需 cropCategoryId） |
+| PUT | /api/admin/ref/crops/{id} | ADMIN | 修改作物 |
+| DELETE | /api/admin/ref/crops/{id} | ADMIN | 刪除作物（被引用時 409） |
+| POST | /api/admin/ref/crop-categories | ADMIN | 新增作物分類 |
+| PUT | /api/admin/ref/crop-categories/{id} | ADMIN | 修改作物分類 |
+| DELETE | /api/admin/ref/crop-categories/{id} | ADMIN | 刪除作物分類（下有作物或被引用時 409） |
+| POST | /api/admin/ref/pest-categories | ADMIN | 新增病蟲害小分類 |
+| PUT | /api/admin/ref/pest-categories/{id} | ADMIN | 修改病蟲害小分類 |
+| DELETE | /api/admin/ref/pest-categories/{id} | ADMIN | 刪除病蟲害小分類（被引用時 409） |
 | POST | /api/ai/analyze | STAFF+ | AI 診斷 |
 | GET | /api/ai/health | 公開 | llama-server 健康檢查 |
 | GET | /api/admin/users | ADMIN | 使用者清單（含 active） |

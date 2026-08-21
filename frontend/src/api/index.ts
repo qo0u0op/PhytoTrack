@@ -75,3 +75,51 @@ export const userApi = {
   resetPassword: (id: number, newPassword: string) =>
     http.post(`/admin/users/${id}/reset-password`, { newPassword }),
 }
+
+/** 參照資料管理 API（限管理者） */
+export const refAdminApi = {
+  // damages
+  createDamage: (data: { name: string }) => http.post('/admin/ref/damages', data),
+  updateDamage: (id: number, data: { name: string }) => http.put(`/admin/ref/damages/${id}`, data),
+  deleteDamage: (id: number) => http.delete(`/admin/ref/damages/${id}`),
+  // hints
+  createHint: (data: { name: string }) => http.post('/admin/ref/hints', data),
+  updateHint: (id: number, data: { name: string }) => http.put(`/admin/ref/hints/${id}`, data),
+  deleteHint: (id: number) => http.delete(`/admin/ref/hints/${id}`),
+  // methods
+  createMethod: (data: { name: string }) => http.post('/admin/ref/methods', data),
+  updateMethod: (id: number, data: { name: string }) => http.put(`/admin/ref/methods/${id}`, data),
+  deleteMethod: (id: number) => http.delete(`/admin/ref/methods/${id}`),
+  // deliveries
+  createDelivery: (data: { name: string }) => http.post('/admin/ref/deliveries', data),
+  updateDelivery: (id: number, data: { name: string }) => http.put(`/admin/ref/deliveries/${id}`, data),
+  deleteDelivery: (id: number) => http.delete(`/admin/ref/deliveries/${id}`),
+  // services
+  createService: (data: { name: string }) => http.post('/admin/ref/services', data),
+  updateService: (id: number, data: { name: string }) => http.put(`/admin/ref/services/${id}`, data),
+  deleteService: (id: number) => http.delete(`/admin/ref/services/${id}`),
+  // identifiers
+  createIdentifier: (data: { name: string }) => http.post('/admin/ref/identifiers', data),
+  updateIdentifier: (id: number, data: { name: string }) => http.put(`/admin/ref/identifiers/${id}`, data),
+  deleteIdentifier: (id: number) => http.delete(`/admin/ref/identifiers/${id}`),
+  // sender-types
+  createSenderType: (data: { name: string }) => http.post('/admin/ref/sender-types', data),
+  updateSenderType: (id: number, data: { name: string }) => http.put(`/admin/ref/sender-types/${id}`, data),
+  deleteSenderType: (id: number) => http.delete(`/admin/ref/sender-types/${id}`),
+  // crops
+  createCrop: (data: { name: string; cropCategoryId: number }) => http.post('/admin/ref/crops', data),
+  updateCrop: (id: number, data: { name: string; cropCategoryId: number }) =>
+    http.put(`/admin/ref/crops/${id}`, data),
+  deleteCrop: (id: number) => http.delete(`/admin/ref/crops/${id}`),
+  // crop-categories
+  createCropCategory: (data: { name: string }) => http.post('/admin/ref/crop-categories', data),
+  updateCropCategory: (id: number, data: { name: string }) =>
+    http.put(`/admin/ref/crop-categories/${id}`, data),
+  deleteCropCategory: (id: number) => http.delete(`/admin/ref/crop-categories/${id}`),
+  // pest-categories
+  createPestCategory: (data: { code: string; name: string; pestTypeId: number; sortOrder: number }) =>
+    http.post('/admin/ref/pest-categories', data),
+  updatePestCategory: (id: number, data: { code: string; name: string; pestTypeId: number; sortOrder: number }) =>
+    http.put(`/admin/ref/pest-categories/${id}`, data),
+  deletePestCategory: (id: number) => http.delete(`/admin/ref/pest-categories/${id}`),
+}

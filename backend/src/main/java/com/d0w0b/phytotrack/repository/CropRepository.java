@@ -14,4 +14,6 @@ public interface CropRepository extends JpaRepository<Crop, Long> {
   /** 依分類抓取作物，並預先抓取分類關聯 */
   @EntityGraph(attributePaths = "cropCategory")
   java.util.List<Crop> findByCropCategory(CropCategory category);
+
+  boolean existsByCropCategoryCropCategoryId(Long cropCategoryId);
 }
