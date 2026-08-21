@@ -104,7 +104,13 @@ onMounted(() => {
 
 // 預覽案件詳細：彈窗快速瀏覽，可進一步跳轉明細頁（列印診斷單）
 async function viewDetail(id: number) {
-  const { data } = await caseApi.detail(id)
+  let data: components['schemas']['CaseResponse']
+  try {
+    const res = await caseApi.detail(id)
+    data = res.data
+  } catch {
+    return // 錯誤由攔截器處理（如案件不存在）
+  }
   // 彈窗內容以 HTML 插入，所有動態內文必須轉義（防 XSS）
   const esc = (v?: string | null) => escapeHtml(v ?? '')
   const join = (items?: { id?: number; name?: string }[]) =>
@@ -317,7 +323,7 @@ async function confirmDelete(id: number) {
     <nav v-if="total > size" class="mt-3">
       <ul class="pagination justify-content-center">
         <li class="page-item" :class="{ disabled: page === 0 }">
-          <button class="page-link" @click="page--; load()">上一頁</button>
+          <button class="page-link" :disabled="page === 0" @click="page--; load()">上一頁</button>
         </li>
         <li class="page-item disabled">
           <span class="page-link">
@@ -325,7 +331,13 @@ async function confirmDelete(id: number) {
           </span>
         </li>
         <li class="page-item" :class="{ disabled: (page + 1) * size >= total }">
-          <button class="page-link" @click="page++; load()">下一頁</button>
+          <button
+            class="page-link"
+            :disabled="(page + 1) * size >= total"
+            @click="page++; load()"
+          >
+            下一頁
+          </button>
         </li>
       </ul>
     </nav>

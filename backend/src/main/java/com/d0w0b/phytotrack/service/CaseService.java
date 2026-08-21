@@ -470,9 +470,9 @@ public class CaseService {
           c.getStatus().name(),
           c.getSender().getName(),
           c.getSender().getPhone(),
-          String.valueOf(c.getSender().getDistrict().getDistrict()),
+          districtNameOf(c),
           c.getSender().getAddress(),
-          c.getSender().getSenderType().getSenderType(),
+          senderTypeNameOf(c),
           c.getCrop().getCrop(),
           c.getCropScale(),
           c.getDamageScale(),
@@ -627,8 +627,7 @@ public class CaseService {
     // 送件人鄉鎮/身分別可能未設定（如更新時僅換新身分未帶 district/type）
     Long senderDistrictId = Optional.ofNullable(caseEntity.getSender().getDistrict())
         .map(District::getDistrictId).orElse(null);
-    String senderDistrictName = Optional.ofNullable(caseEntity.getSender().getDistrict())
-        .map(District::getDistrict).orElse(null);
+    String senderDistrictName = districtNameOf(caseEntity);
     Long senderTypeId = Optional.ofNullable(caseEntity.getSender().getSenderType())
         .map(SenderType::getSenderTypeId).orElse(null);
 
@@ -657,5 +656,17 @@ public class CaseService {
         hints,
         pestCategories,
         identifiers);
+  }
+
+  /** 送件人鄉鎮市區名稱（null-safe：歷史資料或更新流程可能未帶 district） */
+  private static String districtNameOf(Case c) {
+    return Optional.ofNullable(c.getSender().getDistrict())
+        .map(District::getDistrict).orElse(null);
+  }
+
+  /** 送件人身分別名稱（null-safe：同上） */
+  private static String senderTypeNameOf(Case c) {
+    return Optional.ofNullable(c.getSender().getSenderType())
+        .map(SenderType::getSenderType).orElse(null);
   }
 }
