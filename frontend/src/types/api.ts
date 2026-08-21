@@ -791,7 +791,7 @@ export interface components {
             /** Format: int64 */
             pestTypeId: number;
             /** Format: int32 */
-            sortOrder?: number;
+            sortOrder: number;
         };
         CropUpdateRequest: {
             name: string;
@@ -880,7 +880,7 @@ export interface components {
             /** Format: int64 */
             pestTypeId: number;
             /** Format: int32 */
-            sortOrder?: number;
+            sortOrder: number;
         };
         CropCreateRequest: {
             name: string;

@@ -179,7 +179,7 @@ public class ReferenceDataService {
   @Transactional
   public IdNameResponse createDamage(String name) {
     Damage e = new Damage();
-    e.setDamage(name);
+    e.setDamage(name.trim());
     damageRepository.save(e);
     return new IdNameResponse(e.getDamageId(), e.getDamage());
   }
@@ -188,7 +188,7 @@ public class ReferenceDataService {
   public IdNameResponse updateDamage(Long id, String name) {
     Damage e = damageRepository.findById(id)
         .orElseThrow(() -> new ApiException("REFERENCE_NOT_FOUND", HttpStatus.NOT_FOUND, "被害部位不存在"));
-    e.setDamage(name);
+    e.setDamage(name.trim());
     return new IdNameResponse(e.getDamageId(), e.getDamage());
   }
 
@@ -205,7 +205,7 @@ public class ReferenceDataService {
   @Transactional
   public IdNameResponse createHint(String name) {
     Hint e = new Hint();
-    e.setHint(name);
+    e.setHint(name.trim());
     hintRepository.save(e);
     return new IdNameResponse(e.getHintId(), e.getHint());
   }
@@ -214,7 +214,7 @@ public class ReferenceDataService {
   public IdNameResponse updateHint(Long id, String name) {
     Hint e = hintRepository.findById(id)
         .orElseThrow(() -> new ApiException("REFERENCE_NOT_FOUND", HttpStatus.NOT_FOUND, "防治建議不存在"));
-    e.setHint(name);
+    e.setHint(name.trim());
     return new IdNameResponse(e.getHintId(), e.getHint());
   }
 
@@ -231,7 +231,7 @@ public class ReferenceDataService {
   @Transactional
   public IdNameResponse createMethod(String name) {
     Method e = new Method();
-    e.setMethod(name);
+    e.setMethod(name.trim());
     methodRepository.save(e);
     return new IdNameResponse(e.getMethodId(), e.getMethod());
   }
@@ -240,7 +240,7 @@ public class ReferenceDataService {
   public IdNameResponse updateMethod(Long id, String name) {
     Method e = methodRepository.findById(id)
         .orElseThrow(() -> new ApiException("REFERENCE_NOT_FOUND", HttpStatus.NOT_FOUND, "耕種方式不存在"));
-    e.setMethod(name);
+    e.setMethod(name.trim());
     return new IdNameResponse(e.getMethodId(), e.getMethod());
   }
 
@@ -257,7 +257,7 @@ public class ReferenceDataService {
   @Transactional
   public IdNameResponse createDelivery(String name) {
     Delivery e = new Delivery();
-    e.setDeliver(name);
+    e.setDeliver(name.trim());
     deliveryRepository.save(e);
     return new IdNameResponse(e.getDeliverId(), e.getDeliver());
   }
@@ -266,7 +266,7 @@ public class ReferenceDataService {
   public IdNameResponse updateDelivery(Long id, String name) {
     Delivery e = deliveryRepository.findById(id)
         .orElseThrow(() -> new ApiException("REFERENCE_NOT_FOUND", HttpStatus.NOT_FOUND, "送件方式不存在"));
-    e.setDeliver(name);
+    e.setDeliver(name.trim());
     return new IdNameResponse(e.getDeliverId(), e.getDeliver());
   }
 
@@ -283,7 +283,7 @@ public class ReferenceDataService {
   @Transactional
   public IdNameResponse createService(String name) {
     com.d0w0b.phytotrack.models.Service e = new com.d0w0b.phytotrack.models.Service();
-    e.setService(name);
+    e.setService(name.trim());
     serviceRepository.save(e);
     return new IdNameResponse(e.getServiceId(), e.getService());
   }
@@ -292,7 +292,7 @@ public class ReferenceDataService {
   public IdNameResponse updateService(Long id, String name) {
     com.d0w0b.phytotrack.models.Service e = serviceRepository.findById(id)
         .orElseThrow(() -> new ApiException("REFERENCE_NOT_FOUND", HttpStatus.NOT_FOUND, "服務類別不存在"));
-    e.setService(name);
+    e.setService(name.trim());
     return new IdNameResponse(e.getServiceId(), e.getService());
   }
 
@@ -309,7 +309,7 @@ public class ReferenceDataService {
   @Transactional
   public IdNameResponse createIdentifier(String name) {
     Identifier e = new Identifier();
-    e.setIdentifier(name);
+    e.setIdentifier(name.trim());
     identifierRepository.save(e);
     return new IdNameResponse(e.getIdentifierId(), e.getIdentifier());
   }
@@ -318,7 +318,7 @@ public class ReferenceDataService {
   public IdNameResponse updateIdentifier(Long id, String name) {
     Identifier e = identifierRepository.findById(id)
         .orElseThrow(() -> new ApiException("REFERENCE_NOT_FOUND", HttpStatus.NOT_FOUND, "簽名人不存在"));
-    e.setIdentifier(name);
+    e.setIdentifier(name.trim());
     return new IdNameResponse(e.getIdentifierId(), e.getIdentifier());
   }
 
@@ -335,7 +335,7 @@ public class ReferenceDataService {
   @Transactional
   public IdNameResponse createSenderType(String name) {
     SenderType e = new SenderType();
-    e.setSenderType(name);
+    e.setSenderType(name.trim());
     senderTypeRepository.save(e);
     return new IdNameResponse(e.getSenderTypeId(), e.getSenderType());
   }
@@ -344,7 +344,7 @@ public class ReferenceDataService {
   public IdNameResponse updateSenderType(Long id, String name) {
     SenderType e = senderTypeRepository.findById(id)
         .orElseThrow(() -> new ApiException("REFERENCE_NOT_FOUND", HttpStatus.NOT_FOUND, "身分別不存在"));
-    e.setSenderType(name);
+    e.setSenderType(name.trim());
     return new IdNameResponse(e.getSenderTypeId(), e.getSenderType());
   }
 
@@ -365,7 +365,7 @@ public class ReferenceDataService {
     CropCategory category = cropCategoryRepository.findById(cropCategoryId)
         .orElseThrow(() -> new ApiException("REFERENCE_NOT_FOUND", HttpStatus.NOT_FOUND, "作物分類不存在"));
     Crop e = new Crop();
-    e.setCrop(name);
+    e.setCrop(name.trim());
     e.setCropCategory(category);
     cropRepository.save(e);
     return new IdNameResponse(e.getCropId(), e.getCrop());
@@ -377,7 +377,7 @@ public class ReferenceDataService {
         .orElseThrow(() -> new ApiException("REFERENCE_NOT_FOUND", HttpStatus.NOT_FOUND, "作物不存在"));
     CropCategory category = cropCategoryRepository.findById(cropCategoryId)
         .orElseThrow(() -> new ApiException("REFERENCE_NOT_FOUND", HttpStatus.NOT_FOUND, "作物分類不存在"));
-    e.setCrop(name);
+    e.setCrop(name.trim());
     e.setCropCategory(category);
     return new IdNameResponse(e.getCropId(), e.getCrop());
   }
@@ -395,7 +395,7 @@ public class ReferenceDataService {
   @Transactional
   public IdNameResponse createCropCategory(String name) {
     CropCategory e = new CropCategory();
-    e.setCropCategory(name);
+    e.setCropCategory(name.trim());
     cropCategoryRepository.save(e);
     return new IdNameResponse(e.getCropCategoryId(), e.getCropCategory());
   }
@@ -404,7 +404,7 @@ public class ReferenceDataService {
   public IdNameResponse updateCropCategory(Long id, String name) {
     CropCategory e = cropCategoryRepository.findById(id)
         .orElseThrow(() -> new ApiException("REFERENCE_NOT_FOUND", HttpStatus.NOT_FOUND, "作物分類不存在"));
-    e.setCropCategory(name);
+    e.setCropCategory(name.trim());
     return new IdNameResponse(e.getCropCategoryId(), e.getCropCategory());
   }
 
@@ -423,12 +423,12 @@ public class ReferenceDataService {
   }
 
   @Transactional
-  public IdNameResponse createPestCategory(String code, String name, Long pestTypeId, int sortOrder) {
+  public IdNameResponse createPestCategory(String code, String name, Long pestTypeId, Integer sortOrder) {
     PestType pestType = pestTypeRepository.findById(pestTypeId)
         .orElseThrow(() -> new ApiException("REFERENCE_NOT_FOUND", HttpStatus.NOT_FOUND, "害物類型不存在"));
     PestCategory e = new PestCategory();
-    e.setPestCategoryCode(code);
-    e.setPestCategory(name);
+    e.setPestCategoryCode(code.trim());
+    e.setPestCategory(name.trim());
     e.setPestType(pestType);
     e.setSortOrder(sortOrder);
     pestCategoryRepository.save(e);
@@ -436,13 +436,13 @@ public class ReferenceDataService {
   }
 
   @Transactional
-  public IdNameResponse updatePestCategory(Long id, String code, String name, Long pestTypeId, int sortOrder) {
+  public IdNameResponse updatePestCategory(Long id, String code, String name, Long pestTypeId, Integer sortOrder) {
     PestCategory e = pestCategoryRepository.findById(id)
         .orElseThrow(() -> new ApiException("REFERENCE_NOT_FOUND", HttpStatus.NOT_FOUND, "病蟲害分類不存在"));
     PestType pestType = pestTypeRepository.findById(pestTypeId)
         .orElseThrow(() -> new ApiException("REFERENCE_NOT_FOUND", HttpStatus.NOT_FOUND, "害物類型不存在"));
-    e.setPestCategoryCode(code);
-    e.setPestCategory(name);
+    e.setPestCategoryCode(code.trim());
+    e.setPestCategory(name.trim());
     e.setPestType(pestType);
     e.setSortOrder(sortOrder);
     return new IdNameResponse(e.getPestCategoryId(), e.getPestCategory());

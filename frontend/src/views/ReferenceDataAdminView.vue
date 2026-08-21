@@ -16,6 +16,10 @@ type TabKey =
   | 'cropCategories'
   | 'pestCategories'
 
+function escapeHtml(s: string) {
+  return s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!))
+}
+
 const currentTab = ref<TabKey>('damages')
 const loading = ref(true)
 
@@ -134,7 +138,7 @@ async function handleCreate() {
       html: `
         <input id="swal-crop-name" class="swal2-input" placeholder="作物名稱" />
         <select id="swal-crop-cat" class="swal2-select">
-          ${cropCategories.value.map((c) => `<option value="${c.id}">${c.name}</option>`).join('')}
+          ${cropCategories.value.map((c) => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('')}
         </select>
       `,
       showCancelButton: true,
@@ -164,7 +168,7 @@ async function handleCreate() {
         <input id="swal-pc-code" class="swal2-input" placeholder="代碼" />
         <input id="swal-pc-name" class="swal2-input" placeholder="名稱" />
         <select id="swal-pc-type" class="swal2-select">
-          ${pestTypes.value.map((p) => `<option value="${p.id}">${p.name}</option>`).join('')}
+          ${pestTypes.value.map((p) => `<option value="${p.id}">${escapeHtml(p.name)}</option>`).join('')}
         </select>
         <input id="swal-pc-order" class="swal2-input" placeholder="排序" type="number" value="0" />
       `,
@@ -178,6 +182,8 @@ async function handleCreate() {
         const sortOrder = Number((document.getElementById('swal-pc-order') as HTMLInputElement).value)
         if (!code) return Swal.showValidationMessage('代碼不可為空白')
         if (!name) return Swal.showValidationMessage('名稱不可為空白')
+        if (!Number.isFinite(sortOrder)) return Swal.showValidationMessage('排序須為數字')
+        if (sortOrder < 0) return Swal.showValidationMessage('排序不可為負')
         return { code, name, pestTypeId, sortOrder }
       },
     })
@@ -239,9 +245,9 @@ async function handleEdit(item: any) {
     const { value: form } = await Swal.fire({
       title: '編輯作物',
       html: `
-        <input id="swal-crop-name" class="swal2-input" placeholder="作物名稱" value="${item.name}" />
+        <input id="swal-crop-name" class="swal2-input" placeholder="作物名稱" value="${escapeHtml(item.name)}" />
         <select id="swal-crop-cat" class="swal2-select">
-          ${cropCategories.value.map((c) => `<option value="${c.id}" ${c.id === item.cropCategoryId ? 'selected' : ''}>${c.name}</option>`).join('')}
+          ${cropCategories.value.map((c) => `<option value="${c.id}" ${c.id === item.cropCategoryId ? 'selected' : ''}>${escapeHtml(c.name)}</option>`).join('')}
         </select>
       `,
       showCancelButton: true,
@@ -264,10 +270,10 @@ async function handleEdit(item: any) {
     const { value: form } = await Swal.fire({
       title: '編輯病蟲害分類',
       html: `
-        <input id="swal-pc-code" class="swal2-input" placeholder="代碼" value="${item.code}" />
-        <input id="swal-pc-name" class="swal2-input" placeholder="名稱" value="${item.name}" />
+        <input id="swal-pc-code" class="swal2-input" placeholder="代碼" value="${escapeHtml(item.code)}" />
+        <input id="swal-pc-name" class="swal2-input" placeholder="名稱" value="${escapeHtml(item.name)}" />
         <select id="swal-pc-type" class="swal2-select">
-          ${pestTypes.value.map((p) => `<option value="${p.id}" ${p.id === item.pestTypeId ? 'selected' : ''}>${p.name}</option>`).join('')}
+          ${pestTypes.value.map((p) => `<option value="${p.id}" ${p.id === item.pestTypeId ? 'selected' : ''}>${escapeHtml(p.name)}</option>`).join('')}
         </select>
         <input id="swal-pc-order" class="swal2-input" placeholder="排序" type="number" value="${item.sortOrder}" />
       `,
@@ -281,6 +287,8 @@ async function handleEdit(item: any) {
         const sortOrder = Number((document.getElementById('swal-pc-order') as HTMLInputElement).value)
         if (!code) return Swal.showValidationMessage('代碼不可為空白')
         if (!name) return Swal.showValidationMessage('名稱不可為空白')
+        if (!Number.isFinite(sortOrder)) return Swal.showValidationMessage('排序須為數字')
+        if (sortOrder < 0) return Swal.showValidationMessage('排序不可為負')
         return { code, name, pestTypeId, sortOrder }
       },
     })
