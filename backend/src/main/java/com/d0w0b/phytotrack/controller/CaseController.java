@@ -5,7 +5,9 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -26,6 +28,7 @@ import com.d0w0b.phytotrack.dto.CaseDtos.CaseUpdateRequest;
 import com.d0w0b.phytotrack.dto.StatisticsDtos.CaseStatisticsResponse;
 import com.d0w0b.phytotrack.service.CaseService;
 
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 
 /**
@@ -73,6 +76,29 @@ public class CaseController {
   @PreAuthorize("isAuthenticated()")
   public ResponseEntity<CaseStatisticsResponse> statistics() {
     return ResponseEntity.ok(caseService.statistics());
+  }
+
+  /**
+   * CSV 匯出（登入即可，見 spec case-report）：依與列表相同的篩選參數全量匯出，
+   * 收件日期升序；以 attachment 下載（含 UTF-8 BOM，Excel 開啟中文正常）。
+   */
+  @GetMapping(value = "/export", produces = "text/csv")
+  @PreAuthorize("isAuthenticated()")
+  public ResponseEntity<byte[]> export(
+      @RequestParam(required = false) Long cropId,
+      @RequestParam(required = false) Long serviceId,
+      @RequestParam(required = false) String senderName,
+      @RequestParam(required = false) LocalDate receiveDateFrom,
+      @RequestParam(required = false) LocalDate receiveDateTo,
+      @RequestParam(required = false) String status) {
+    CaseFilter filter = new CaseFilter(cropId, serviceId, senderName,
+        receiveDateFrom, receiveDateTo, status);
+    byte[] body = caseService.exportCsv(filter).getBytes(StandardCharsets.UTF_8);
+    String filename = "case-export-" + LocalDate.now() + ".csv";
+    return ResponseEntity.ok()
+        .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+        .contentType(new MediaType("text", "csv", StandardCharsets.UTF_8))
+        .body(body);
   }
 
   /** 查詢案件詳細 */

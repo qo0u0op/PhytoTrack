@@ -94,7 +94,7 @@ HTTP 請求
 api/      axios 實例（baseURL /api）+ 型別化 API 函式；攔截器自動附 JWT、統一錯誤彈窗
 stores/   Pinia 狀態（登入 token / user，持久化於 localStorage）
 router/   路由表 + 全域守衛（登入、角色權限）
-views/    頁面：Home（hero 首頁）、Login、Register、Dashboard、Cases（列表＋篩選工具列）、CaseForm（診斷表單）、Users（管理員）
+views/    頁面：Home（hero 首頁）、Login、Register、Dashboard、Cases（列表＋篩選工具列）、CaseDetail（明細＋列印診斷單＋即時 AI 診斷）、CaseForm（診斷表單）、Users（管理員）
 types/    openapi-typescript 由 /v3/api-docs 自動生成的 API 型別（與後端契約同步）
 ```
 
@@ -112,6 +112,7 @@ types/    openapi-typescript 由 /v3/api-docs 自動生成的 API 型別（與�
 | POST | /api/auth/logout | 登入 | 登出（JWT 無狀態，前端丟棄 token） |
 | GET | /api/cases | 登入 | 分頁案件列表；篩選參數：`cropId`、`serviceId`、`senderName`（LIKE 部分比對）、`receiveDateFrom`、`receiveDateTo`、`status`（`PENDING`/`RESOLVED`/`CLOSED`），多參數為 AND 組合 |
 | GET | /api/cases/statistics | 登入 | 案件統計總覽：總數／本月新增／待處理／top 作物與病蟲害（top 5）／狀態比例／近 6 月趨勢；空資料庫回 0 或空清單。月份以收件日期（`receiveDate`）為基礎 |
+| GET | /api/cases/export | 登入 | CSV 匯出（`text/csv`，attachment 下載，UTF-8 BOM）：依與列表相同的篩選參數全量匯出，收件日期升序；欄位含送件人、作物／病蟲害、描述、防治建議等明細 |
 | GET | /api/cases/{id} | 登入 | 案件詳細 |
 | POST | /api/cases | STAFF+ | 建立案件 |
 | PUT | /api/cases/{id} | STAFF+ | 更新案件（純量欄位、送件人、多對多關聯整組替換、狀態轉移） |

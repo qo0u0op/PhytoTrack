@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import Swal from 'sweetalert2'
 import { caseApi, refApi } from '../api'
 import { useAuthStore } from '../stores/auth'
@@ -29,6 +30,7 @@ interface CaseFilters {
 }
 
 const auth = useAuthStore()
+const router = useRouter()
 
 const cases = ref<CaseSummary[]>([])
 const total = ref(0)
@@ -100,16 +102,16 @@ onMounted(() => {
   loadFilterOptions()
 })
 
-// 檢視案件詳細：以 SweetAlert 彈窗呈現
+// 預覽案件詳細：彈窗快速瀏覽，可進一步跳轉明細頁（列印診斷單）
 async function viewDetail(id: number) {
   const { data } = await caseApi.detail(id)
   // 彈窗內容以 HTML 插入，所有動態內文必須轉義（防 XSS）
   const esc = (v?: string | null) => escapeHtml(v ?? '')
-  const join = (items?: { id: number; name: string }[]) =>
+  const join = (items?: { id?: number; name?: string }[]) =>
     items?.map((i) => esc(i.name)).join('、') ?? '無'
 
-  Swal.fire({
-    title: `案件 #${data.caseId}`,
+  const result = await Swal.fire({
+    title: `案件 #${data.caseId} 預覽`,
     width: 640,
     html: `
       <div class="text-start small">
@@ -128,8 +130,37 @@ async function viewDetail(id: number) {
         <p class="text-muted">建立者：${esc(data.createdByName)}／建立時間：${esc(data.createdAt)}</p>
       </div>
     `,
-    confirmButtonText: '關閉',
+    showCancelButton: true,
+    confirmButtonText: '檢視',
+    cancelButtonText: '關閉',
   })
+  if (result.isConfirmed) {
+    router.push(`/cases/${id}`)
+  }
+}
+
+// 匯出 CSV：依目前篩選條件下載（blob 避免觸發瀏覽器跳頁）
+async function exportCsv() {
+  try {
+    const params: Record<string, string | number> = {}
+    if (filters.cropId) params.cropId = filters.cropId
+    if (filters.serviceId) params.serviceId = filters.serviceId
+    if (filters.senderName.trim()) params.senderName = filters.senderName.trim()
+    if (filters.receiveDateFrom) params.receiveDateFrom = filters.receiveDateFrom
+    if (filters.receiveDateTo) params.receiveDateTo = filters.receiveDateTo
+    if (filters.status) params.status = filters.status
+    const res = await caseApi.exportCsv(params)
+    const url = URL.createObjectURL(res.data as Blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `case-export-${new Date().toISOString().slice(0, 10)}.csv`
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(url)
+  } catch {
+    // 錯誤由攔截器處理
+  }
 }
 
 async function confirmDelete(id: number) {
@@ -159,7 +190,10 @@ async function confirmDelete(id: number) {
   <div class="container py-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
       <h4>案件管理</h4>
-      <router-link v-if="auth.isStaff" class="btn btn-success" to="/cases/new">建立案件</router-link>
+      <div>
+        <button class="btn btn-outline-success me-1" @click="exportCsv">匯出 CSV</button>
+        <router-link v-if="auth.isStaff" class="btn btn-success" to="/cases/new">建立案件</router-link>
+      </div>
     </div>
 
     <!-- 篩選工具列：條件同時存在時為 AND 組合 -->
@@ -245,7 +279,7 @@ async function confirmDelete(id: number) {
               </td>
               <td class="text-end">
                 <button class="btn btn-sm btn-outline-success me-1" @click="viewDetail(c.caseId)">
-                  檢視
+                  預覽
                 </button>
                 <template v-if="auth.isStaff">
                   <router-link

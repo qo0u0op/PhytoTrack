@@ -1,9 +1,11 @@
 package com.d0w0b.phytotrack;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.startsWith;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -137,6 +139,18 @@ class PhytoTrackIntegrationTest {
         .andExpect(jsonPath("$.topPestCategories").isArray())
         .andExpect(jsonPath("$.statusRatio.length()").value(3))
         .andExpect(jsonPath("$.monthlyTrend.length()").value(6));
+
+    // 7.6 CSV 匯出（登入即可）：含 UTF-8 BOM 與剛建立的案件編號
+    MvcResult export = mockMvc.perform(get("/api/cases/export")
+            .header(HttpHeaders.AUTHORIZATION, bearer(adminToken)))
+        .andExpect(status().isOk())
+        .andExpect(header().string(HttpHeaders.CONTENT_TYPE, "text/csv;charset=UTF-8"))
+        .andExpect(header().string(HttpHeaders.CONTENT_DISPOSITION,
+            startsWith("attachment; filename=\"case-export-")))
+        .andReturn();
+    String csv = export.getResponse().getContentAsString(StandardCharsets.UTF_8);
+    assertThat(csv).startsWith("\uFEFF案件編號");
+    assertThat(csv).contains(String.valueOf(caseId));
 
     // 8. 註冊一般檢視員（VIEWER）並登入
     String viewerUsername = "viewer_it_" + System.nanoTime();

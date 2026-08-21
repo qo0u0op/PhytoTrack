@@ -12,12 +12,14 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -616,6 +618,47 @@ class CaseServiceTest {
     assertThat(stats.statusRatio()).allMatch(sc -> sc.count() == 0);
     assertThat(stats.monthlyTrend()).hasSize(6);
     assertThat(stats.monthlyTrend()).allMatch(mc -> mc.count() == 0);
+  }
+
+  // ---------------------------------------------------------------
+  // CSV 匯出（exportCsv）
+  // ---------------------------------------------------------------
+
+  @Test
+  void exportCsv_shouldBuildRowsWithBomAndEscape() {
+    Case c1 = caseWithRefs();
+    c1.setCaseId(1L);
+    c1.setPestDescription("葉片斑點，含逗號,與\"引號\"");
+    Case c2 = caseWithRefs();
+    c2.setCaseId(2L);
+    c2.setCrop(crop(37L));
+    c2.getCrop().setCrop("水稻");
+    when(caseRepository.findAll(any(Specification.class), any(Sort.class)))
+        .thenReturn(List.of(c1, c2));
+
+    String csv = caseService.exportCsv(new CaseFilter(null, null, null, null, null, null));
+
+    // 首列欄位名並以 BOM 開頭（Excel 開啟中文正常）
+    assertThat(csv).startsWith("\uFEFF案件編號");
+    assertThat(csv).contains("收件日期,狀態,送件人");
+    // 描述含逗號與引號需轉義（以引號包覆、內部引號重複）
+    assertThat(csv).contains("\"葉片斑點，含逗號,與\"\"引號\"\"\"");
+    assertThat(csv).contains("王小明,0912345678,霧峰區");
+    assertThat(csv).contains("柑橘");
+    assertThat(csv).contains("水稻");
+  }
+
+  @Test
+  void exportCsv_shouldPassFilterAndSortAscending() {
+    when(caseRepository.findAll(any(Specification.class), any(Sort.class)))
+        .thenReturn(List.of());
+
+    caseService.exportCsv(new CaseFilter(36L, null, "王", null, null, "PENDING"));
+
+    ArgumentCaptor<Sort> sortCaptor = ArgumentCaptor.forClass(Sort.class);
+    verify(caseRepository).findAll(any(Specification.class), sortCaptor.capture());
+    assertThat(sortCaptor.getValue().getOrderFor("receiveDate")).isNotNull();
+    assertThat(sortCaptor.getValue().getOrderFor("receiveDate").isAscending()).isTrue();
   }
 
   // ---------------------------------------------------------------

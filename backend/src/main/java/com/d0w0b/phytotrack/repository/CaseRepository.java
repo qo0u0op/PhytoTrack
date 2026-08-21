@@ -2,6 +2,8 @@ package com.d0w0b.phytotrack.repository;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
@@ -30,6 +32,14 @@ public interface CaseRepository
   @Override
   @EntityGraph(attributePaths = {"crop", "casePestCategories.pestCategory"})
   List<Case> findAll();
+
+  /** CSV 匯出用：依規格查詢全部案件並預抓非 collection 關聯（Hibernate 不允許同時
+   * 抓取多個 List collection，被害部位／病蟲害等 collection 於交易內 Lazy 載入） */
+  @Override
+  @EntityGraph(attributePaths = {
+      "sender", "sender.district", "sender.senderType",
+      "crop", "method", "service", "delivery"})
+  List<Case> findAll(Specification<Case> spec, Sort sort);
 
   /** 依狀態計數（統計：待處理數等） */
   long countByStatus(CaseStatus status);
