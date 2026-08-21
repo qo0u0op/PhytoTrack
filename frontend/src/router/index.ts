@@ -54,6 +54,12 @@ const router = createRouter({
       component: () => import('../views/UsersView.vue'),
       meta: { requiresAuth: true, adminOnly: true },
     },
+    {
+      path: '/admin/reference-data',
+      name: 'reference-data-admin',
+      component: () => import('../views/ReferenceDataAdminView.vue'),
+      meta: { requiresAuth: true, adminOnly: true },
+    },
     { path: '/:pathMatch(.*)*', redirect: '/' },
   ],
 })
