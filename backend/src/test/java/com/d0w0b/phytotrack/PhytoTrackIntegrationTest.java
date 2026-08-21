@@ -3,6 +3,7 @@ package com.d0w0b.phytotrack;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.startsWith;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -183,6 +184,155 @@ class PhytoTrackIntegrationTest {
             .header(HttpHeaders.AUTHORIZATION, "Bearer invalid.token.here"))
         .andExpect(status().isUnauthorized())
         .andExpect(jsonPath("$.error.code").value("UNAUTHORIZED"));
+  }
+
+  @Test
+  void userAdmin_disableLoginTokenResetAndRoleChange() throws Exception {
+    // 以完整流程驗證 user-admin spec 四大 scenario
+    String adminToken = login("admin", "admin123");
+
+    // 取得建立案件所需參照（後續驗證角色變更後能否建立案件）
+    long districtId = firstNestedId("/api/ref/cities", adminToken, "districts");
+    long senderTypeId = firstId("/api/ref/sender-types", adminToken);
+    long methodId = firstId("/api/ref/methods", adminToken);
+    long cropId = firstCropId("/api/ref/crop-categories", adminToken);
+    long serviceId = firstId("/api/ref/services", adminToken);
+    long deliverId = firstId("/api/ref/deliveries", adminToken);
+    long damageId = firstId("/api/ref/damages", adminToken);
+    long hintId = firstId("/api/ref/hints", adminToken);
+    long pestCategoryId = firstPestCategoryId("/api/ref/pest-types", adminToken);
+
+    // 建立受測使用者（初始 VIEWER）
+    String uname = "uadmin_it_" + System.nanoTime();
+    MvcResult reg = mockMvc.perform(post("/api/auth/register")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {"username":"%s","displayName":"整合受測者","password":"password123"}
+                """.formatted(uname)))
+        .andExpect(status().isCreated())
+        .andReturn();
+    long userId = objectMapper.readTree(reg.getResponse().getContentAsString(StandardCharsets.UTF_8))
+        .path("userId").asLong();
+
+    String viewerTokenBefore = login(uname, "password123");
+
+    // VIEWER 初始無法建立案件（403）
+    Map<String, Object> caseBody = new LinkedHashMap<>();
+    caseBody.put("receiveDate", "2026-08-18");
+    caseBody.put("senderName", "測受測");
+    caseBody.put("senderPhone", "0912000001");
+    caseBody.put("senderAddress", "測試路 1 號");
+    caseBody.put("senderDistrictId", districtId);
+    caseBody.put("senderTypeId", senderTypeId);
+    caseBody.put("methodId", methodId);
+    caseBody.put("cropId", cropId);
+    caseBody.put("serviceId", serviceId);
+    caseBody.put("deliverId", deliverId);
+    caseBody.put("damageIds", List.of(damageId));
+    caseBody.put("hintIds", List.of(hintId));
+    caseBody.put("pestCategoryIds", List.of(pestCategoryId));
+    caseBody.put("identifierIds", List.of());
+    String caseJson = objectMapper.writeValueAsString(caseBody);
+
+    mockMvc.perform(post("/api/cases")
+            .header(HttpHeaders.AUTHORIZATION, bearer(viewerTokenBefore))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(caseJson))
+        .andExpect(status().isForbidden());
+
+    // 1. 停用帳號
+    mockMvc.perform(patch("/api/admin/users/{id}/active", userId)
+            .header(HttpHeaders.AUTHORIZATION, bearer(adminToken))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {"active":false}
+                """))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.active").value(false));
+
+    // 2. 停用後登入失敗（403 ACCOUNT_DISABLED）
+    mockMvc.perform(post("/api/auth/login")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {"username":"%s","password":"password123"}
+                """.formatted(uname)))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.error.code").value("ACCOUNT_DISABLED"));
+
+    // 3. 停用後舊 token 打受保護 API 應 401
+    mockMvc.perform(get("/api/cases")
+            .header(HttpHeaders.AUTHORIZATION, bearer(viewerTokenBefore)))
+        .andExpect(status().isUnauthorized())
+        .andExpect(jsonPath("$.error.code").value("UNAUTHORIZED"));
+
+    // 4. 重設密碼（仍停用狀態下重設，之後啟用）
+    mockMvc.perform(post("/api/admin/users/{id}/reset-password", userId)
+            .header(HttpHeaders.AUTHORIZATION, bearer(adminToken))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {"newPassword":"newPass1234"}
+                """))
+        .andExpect(status().isNoContent());
+
+    // 啟用回來
+    mockMvc.perform(patch("/api/admin/users/{id}/active", userId)
+            .header(HttpHeaders.AUTHORIZATION, bearer(adminToken))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {"active":true}
+                """))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.active").value(true));
+
+    // 用新密碼可登入
+    String tokenAfterReset = login(uname, "newPass1234");
+
+    // 舊密碼不可登入（401）
+    mockMvc.perform(post("/api/auth/login")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {"username":"%s","password":"password123"}
+                """.formatted(uname)))
+        .andExpect(status().isUnauthorized());
+
+    // 5. 變更角色為 STAFF 後，後續請求（包含舊 viewer token）應取得 STAFF 權限
+    // 舊的 viewerTokenBefore 雖然在停用期間失效，但重啟後仍以 DB role 為準：
+    // 為驗證「角色變更後續請求生效」，改用 tokenAfterReset（仍為 VIEWER 直到變更）
+    // 先確認 tokenAfterReset 仍為 VIEWER 時建案失敗，再變更角色，重試同一 token
+    mockMvc.perform(post("/api/cases")
+            .header(HttpHeaders.AUTHORIZATION, bearer(tokenAfterReset))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(caseJson))
+        .andExpect(status().isForbidden());
+
+    mockMvc.perform(patch("/api/admin/users/{id}/role", userId)
+            .header(HttpHeaders.AUTHORIZATION, bearer(adminToken))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {"role":"ROLE_STAFF"}
+                """))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.role").value("ROLE_STAFF"));
+
+    // 同一 token（未重新登入）再次打建案，應因 filter 的 DB 覆蓋而成功
+    mockMvc.perform(post("/api/cases")
+            .header(HttpHeaders.AUTHORIZATION, bearer(tokenAfterReset))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(caseJson))
+        .andExpect(status().isCreated());
+
+    // 新登入的 token 亦為 STAFF
+    String staffToken = login(uname, "newPass1234");
+    mockMvc.perform(get("/api/admin/users")
+            .header(HttpHeaders.AUTHORIZATION, bearer(staffToken)))
+        .andExpect(status().isForbidden()); // STAFF 不可存取管理端點，僅 ADMIN
+
+    // 管理者清單可見 active 與新 role
+    mockMvc.perform(get("/api/admin/users")
+            .header(HttpHeaders.AUTHORIZATION, bearer(adminToken)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$[?(@.username=='%s')].role".formatted(uname)).value("ROLE_STAFF"))
+        .andExpect(jsonPath("$[?(@.username=='%s')].active".formatted(uname)).value(true));
   }
 
   private String login(String username, String password) throws Exception {

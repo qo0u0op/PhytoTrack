@@ -72,7 +72,8 @@ HTTP 請求
 
 ### 認證授權
 
-- 登入成功後簽發 JWT（含 userId、role），前端存於 localStorage，之後以 `Authorization: Bearer <token>` 帶入
+- 登入成功後簽發 JWT（含 userId、role），前端存於 localStorage，之後以 `Authorization: Bearer <token>` 帶入；停用帳號登入被拒（`ACCOUNT_DISABLED`）
+- `JwtAuthenticationFilter` 每請求以 `userId` 查 DB 驗證 `active`，停用帳號的既有 token 立即 401，且以 DB 的最新 `role` 覆蓋 token 內 role（角色變更有即時生效）
 - 角色：`ROLE_VIEWER`（檢視者）/ `ROLE_STAFF`（診斷員）/ `ROLE_ADMIN`（管理者）
 - 權限：建立/更新案件與 AI 診斷需 STAFF+；狀態轉移 `RESOLVED → CLOSED` 僅 ADMIN（`PENDING → RESOLVED` 需 STAFF+）；**已結案案件僅 ADMIN 可修改內容**（STAFF 改內容回 403 `CLOSED_CASE_READONLY`，狀態同值 no-op 合法）；刪除案件與使用者管理僅 ADMIN
 - 送件人更新：update 依「有提供的 name/phone（未提供沿用現送件人身分）」比照 create 的去重語意關聯或建立送件人，不直接修改可能被多案件共享的既有 Sender row（避免撞 `UNIQUE(name, phone)`）
@@ -120,7 +121,10 @@ types/    openapi-typescript 由 /v3/api-docs 自動生成的 API 型別（與�
 | GET | /api/ref/* | 登入 | 參照資料（作物、病蟲害、縣市等下拉選單） |
 | POST | /api/ai/analyze | STAFF+ | AI 診斷 |
 | GET | /api/ai/health | 公開 | llama-server 健康檢查 |
-| GET | /api/admin/users | ADMIN | 使用者清單 |
+| GET | /api/admin/users | ADMIN | 使用者清單（含 active） |
+| PATCH | /api/admin/users/{id}/role | ADMIN | 調整使用者角色 |
+| PATCH | /api/admin/users/{id}/active | ADMIN | 啟停用帳號（停用後既有 token 立即失效） |
+| POST | /api/admin/users/{id}/reset-password | ADMIN | 重設使用者密碼（BCrypt） |
 
 完整規格：Swagger UI（`http://localhost:8080/swagger-ui/index.html`）或 `/v3/api-docs`。
 

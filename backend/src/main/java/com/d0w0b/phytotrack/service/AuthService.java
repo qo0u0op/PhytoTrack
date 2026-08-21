@@ -89,6 +89,10 @@ public class AuthService {
 
     User user = userRepository.findByUsername(principal.getUsername())
         .orElseThrow(() -> new ApiException("USER_NOT_FOUND", HttpStatus.NOT_FOUND, "使用者不存在"));
+    // 停用帳號拒絕簽發新 token（舊 token 由 JwtAuthenticationFilter 的 DB 檢查攔截）
+    if (!user.isActive()) {
+      throw new ApiException("ACCOUNT_DISABLED", HttpStatus.FORBIDDEN, "帳號已停用");
+    }
     return new AuthResponse(jwtTokenProvider.generateToken(user), toResponse(user));
   }
 
@@ -108,12 +112,46 @@ public class AuthService {
         .toList();
   }
 
+  /** 管理者調整角色 */
+  @Transactional
+  public UserResponse updateRole(Long userId, String roleStr) {
+    User user = userRepository.findById(userId)
+        .orElseThrow(() -> new ApiException("USER_NOT_FOUND", HttpStatus.NOT_FOUND, "使用者不存在"));
+    User.Role role;
+    try {
+      role = User.Role.valueOf(roleStr);
+    } catch (IllegalArgumentException e) {
+      throw new ApiException("INVALID_ROLE", HttpStatus.BAD_REQUEST, "角色不正確");
+    }
+    user.setRole(role);
+    return toResponse(userRepository.save(user));
+  }
+
+  /** 管理者啟停用帳號 */
+  @Transactional
+  public UserResponse updateActive(Long userId, Boolean active) {
+    User user = userRepository.findById(userId)
+        .orElseThrow(() -> new ApiException("USER_NOT_FOUND", HttpStatus.NOT_FOUND, "使用者不存在"));
+    user.setActive(active);
+    return toResponse(userRepository.save(user));
+  }
+
+  /** 管理者重設密碼 */
+  @Transactional
+  public void resetPassword(Long userId, String newPassword) {
+    User user = userRepository.findById(userId)
+        .orElseThrow(() -> new ApiException("USER_NOT_FOUND", HttpStatus.NOT_FOUND, "使用者不存在"));
+    user.setPassword(passwordEncoder.encode(newPassword));
+    userRepository.save(user);
+  }
+
   private UserResponse toResponse(User user) {
     return new UserResponse(
         user.getUserId(),
         user.getUsername(),
         user.getDisplayName(),
         user.getEmail(),
-        user.getRole().name());
+        user.getRole().name(),
+        user.isActive());
   }
 }

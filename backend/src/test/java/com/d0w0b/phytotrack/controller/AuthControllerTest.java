@@ -60,7 +60,7 @@ class AuthControllerTest {
   @Test
   void register_shouldReturnCreated() throws Exception {
     when(authService.register(any())).thenReturn(
-        new UserResponse(1L, "junit-user", "測試使用者", null, "ROLE_VIEWER"));
+        new UserResponse(1L, "junit-user", "測試使用者", null, "ROLE_VIEWER", true));
 
     mockMvc.perform(post("/api/auth/register")
             .contentType(MediaType.APPLICATION_JSON)
@@ -94,7 +94,7 @@ class AuthControllerTest {
   void login_shouldReturnToken() throws Exception {
     when(authService.login(any())).thenReturn(
         new AuthResponse("jwt-token",
-            new UserResponse(1L, "admin", "管理員", null, "ROLE_ADMIN")));
+            new UserResponse(1L, "admin", "管理員", null, "ROLE_ADMIN", true)));
 
     mockMvc.perform(post("/api/auth/login")
             .contentType(MediaType.APPLICATION_JSON)
