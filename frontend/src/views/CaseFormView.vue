@@ -2,7 +2,7 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import Swal from 'sweetalert2'
-import { aiApi, caseApi, refApi } from '../api'
+import { aiApi, caseApi, refApi, senderApi } from '../api'
 import { useAuthStore } from '../stores/auth'
 import { STATUS_OPTIONS } from '../utils/caseStatus'
 import { escapeHtml } from '../utils/escapeHtml'
@@ -48,7 +48,9 @@ const form = reactive({
   pestDescription: '',
   hintDescription: '',
   status: '' as string,
+  senderId: null as number | null,
   senderName: '',
+  senderDisplayName: '',
   senderPhone: '',
   senderAddress: '',
   senderDistrictId: 0,
@@ -78,6 +80,54 @@ const identifiers = ref<IdName[]>([])
 const loading = ref(true)
 const saving = ref(false)
 const analyzing = ref(false)
+
+async function searchCandidates() {
+  const q = [form.senderName, form.senderPhone, form.senderDisplayName].filter(Boolean).join(' ').trim()
+  if (!q) {
+    Swal.fire({ icon: 'info', title: '請輸入姓名、電話或顯示名稱關鍵字' })
+    return
+  }
+  try {
+    const { data } = await senderApi.search(q)
+    if (data.length === 0) {
+      Swal.fire({ icon: 'info', title: '無候選', text: '未找到相符的送件人，將建立新送件人' })
+      form.senderId = null
+      return
+    }
+    const inputOptions: Record<string, string> = {}
+    data.forEach((s: any) => {
+      const label = `${s.name ?? ''}${s.displayName ? '(' + s.displayName + ')' : ''} - ${s.phone ?? ''} - ${s.districtName ?? ''}`
+      inputOptions[String(s.senderId)] = label
+    })
+    inputOptions['0'] = '— 建立新送件人 —'
+    const { value: selected } = await Swal.fire({
+      title: '選擇送件人候選',
+      input: 'select',
+      inputOptions,
+      showCancelButton: true,
+      confirmButtonText: '沿用',
+      cancelButtonText: '取消',
+    })
+    if (selected !== undefined) {
+      if (selected === '0') {
+        form.senderId = null
+        Swal.fire({ icon: 'info', title: '將建立新送件人', timer: 1200, showConfirmButton: false })
+      } else if (selected) {
+        form.senderId = Number(selected)
+        const chosen = (data as any[]).find((s: any) => String(s.senderId) === String(selected))
+        if (chosen) {
+          form.senderName = chosen.name ?? ''
+          form.senderDisplayName = chosen.displayName ?? ''
+          form.senderPhone = chosen.phone ?? ''
+          form.senderAddress = chosen.address ?? form.senderAddress
+          if (chosen.districtId) form.senderDistrictId = chosen.districtId
+          if (chosen.senderTypeId) form.senderTypeId = chosen.senderTypeId
+        }
+        Swal.fire({ icon: 'success', title: '已選用既有送件人', timer: 1200, showConfirmButton: false })
+      }
+    }
+  } catch {}
+}
 
 // 依選定作物反查其所屬分類名稱（供 AI Prompt 使用）
 const selectedCropCategory = computed(() => {
@@ -150,10 +200,12 @@ async function loadCase(id: number) {
   form.hintDescription = d.hintDescription ?? ''
   form.status = d.status ?? ''
   form.senderName = d.senderName ?? ''
+  form.senderDisplayName = (d as any).senderDisplayName ?? ''
   form.senderPhone = d.senderPhone ?? ''
   form.senderAddress = d.senderAddress ?? ''
   form.senderDistrictId = d.senderDistrictId ?? 0
   form.senderTypeId = d.senderTypeId ?? 0
+  form.senderId = (d as any).senderId ?? null
   form.damageIds = d.damages?.map((x) => x.id).filter((x): x is number => x != null) ?? []
   form.hintIds = d.hints?.map((x) => x.id).filter((x): x is number => x != null) ?? []
   form.pestCategoryIds = d.pestCategories?.map((x) => x.id).filter((x): x is number => x != null) ?? []
@@ -187,6 +239,10 @@ async function submit() {
     Swal.fire({ icon: 'warning', title: '欄位不完整', text: '請選擇鄉鎮市區與作物' })
     return
   }
+  if (!form.senderPhone.trim() && !form.senderDisplayName.trim()) {
+    Swal.fire({ icon: 'warning', title: '欄位不完整', text: '電話與顯示名稱至少需提供一項' })
+    return
+  }
   saving.value = true
   try {
     if (editId) {
@@ -197,7 +253,9 @@ async function submit() {
         pestDescription: form.pestDescription || undefined,
         hintDescription: form.hintDescription || undefined,
         status: form.status || undefined,
+        senderId: form.senderId ?? undefined,
         senderName: form.senderName || undefined,
+        senderDisplayName: form.senderDisplayName || undefined,
         senderPhone: form.senderPhone || undefined,
         senderAddress: form.senderAddress || undefined,
         senderDistrictId: form.senderDistrictId || undefined,
@@ -210,7 +268,7 @@ async function submit() {
         hintIds: form.hintIds,
         pestCategoryIds: form.pestCategoryIds,
         identifierIds: form.identifierIds,
-      })
+      } as any)
     } else {
       await caseApi.create({
         receiveDate: form.receiveDate,
@@ -218,8 +276,10 @@ async function submit() {
         damageScale: form.damageScale || undefined,
         pestDescription: form.pestDescription || undefined,
         hintDescription: form.hintDescription || undefined,
-        senderName: form.senderName,
-        senderPhone: form.senderPhone,
+        senderId: form.senderId ?? undefined,
+        senderName: form.senderName || undefined,
+        senderDisplayName: form.senderDisplayName || undefined,
+        senderPhone: form.senderPhone || undefined,
         senderAddress: form.senderAddress,
         senderDistrictId: form.senderDistrictId,
         senderTypeId: form.senderTypeId,
@@ -231,7 +291,7 @@ async function submit() {
         hintIds: form.hintIds,
         pestCategoryIds: form.pestCategoryIds,
         identifierIds: form.identifierIds,
-      })
+      } as any)
     }
     Swal.fire({ icon: 'success', title: '儲存成功', timer: 1200, showConfirmButton: false }).then(() => {
       router.push('/cases')
@@ -293,17 +353,24 @@ async function runAi() {
     <form v-else @submit.prevent="submit">
       <!-- 送件人資料 -->
       <div class="card shadow-sm mb-4">
-        <div class="card-header bg-success text-white">送件人資料</div>
+        <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+          <span>送件人資料</span>
+          <button type="button" class="btn btn-sm btn-light" @click="searchCandidates">搜尋候選</button>
+        </div>
         <div class="card-body row g-3">
-          <div class="col-md-4">
+          <div class="col-md-3">
             <label class="form-label">姓名</label>
-            <input v-model.trim="form.senderName" class="form-control" required />
+            <input v-model.trim="form.senderName" class="form-control" placeholder="可空" />
           </div>
-          <div class="col-md-4">
+          <div class="col-md-3">
+            <label class="form-label">顯示名稱（Line/FB 暱稱）</label>
+            <input v-model.trim="form.senderDisplayName" class="form-control" placeholder="電話與顯示名稱至少一項" />
+          </div>
+          <div class="col-md-3">
             <label class="form-label">電話</label>
-            <input v-model.trim="form.senderPhone" class="form-control" required />
+            <input v-model.trim="form.senderPhone" class="form-control" placeholder="電話與顯示名稱至少一項" />
           </div>
-          <div class="col-md-4">
+          <div class="col-md-3">
             <label class="form-label">身分別</label>
             <select v-model.number="form.senderTypeId" class="form-select" required>
               <option v-for="s in senderTypes" :key="s.id" :value="s.id">{{ s.name }}</option>
@@ -321,6 +388,9 @@ async function runAi() {
           <div class="col-md-8">
             <label class="form-label">地址</label>
             <input v-model.trim="form.senderAddress" class="form-control" required />
+          </div>
+          <div v-if="form.senderId" class="col-12">
+            <div class="alert alert-info py-2 mb-0 small">已選用既有送件人 #{{ form.senderId }}，儲存時將沿用該送件人 <button type="button" class="btn btn-sm btn-outline-secondary ms-2" @click="form.senderId = null">取消沿用</button></div>
           </div>
         </div>
       </div>

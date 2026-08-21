@@ -65,7 +65,9 @@ HTTP 請求
 
 - 核心實體 **Case**（案件）：`@ManyToOne` 關聯 Sender、Method、Crop、Service、Delivery、User（createdBy）；`status` 為 `CaseStatus` 列舉（`PENDING`/`RESOLVED`/`CLOSED`），以 `@Enumerated(EnumType.ORDINAL)` 儲存，既有 `INTEGER 0/1/2` 直接對應（無資料遷移）
 - 多對多關聯透過 Junction 表：CaseDamage、CaseHint、CasePestCategory、CaseIdentifier
-- **Sender**（送件人）現況：`name + phone` UNIQUE、欄位皆不可空，隨案件建立；sender-management 能力將引入 `displayName`、弱識別符人工確認去重、VIEWER 個資遮蔽與統計去重鍵（見 ADR-011）
+- **Sender**（送件人）：`name` 可空、`displayName`（Line/FB 暱稱）可空，`phone` 與 `displayName` 至少一有值（Service 層檢查）；顯示規則 `name(displayName)` / `displayName` / `name`；`phone` 非空時以部分唯一索引防重；**不以 DB UNIQUE 強制合併**——建案時以前端候選彈窗人工確認沿用（帶 `senderId`）或新建；ADMIN 可硬刪除未被引用的送件人（見 ADR-011）
+- **VIEWER 個資遮蔽**：`CaseService.toDetail/toSummary` 依當前角色判斷，VIEWER 的回應不含送件人姓名/電話/地址，但保留縣市鄉鎮與 `senderId`
+- **統計去重鍵**：不重複送件人以 `COALESCE(phone, displayName)` distinct 計數
 - 案件列表篩選以 **Spring Data JPA `Specification`** 動態組合（`CaseSpecifications`，AND 組合）；`status` 為列舉字串契約，由 `CaseService` 解析為 `CaseStatus` 後傳入查詢（非法值 fail-fast 400 `INVALID_STATUS`）
 - 時間戳與建立者由 **JPA Auditing** 自動填寫（`@CreatedDate`/`@LastModifiedDate`/`@CreatedBy`），實作 `AuditorAware` 從 SecurityContext 取值（見 ADR-006）
 - SQLite 日期欄位以 `converter/` 的字串轉換器處理，避免 Hibernate 7 SQLiteDialect 的 epoch 毫秒寫入/嚴格格式讀取不一致問題
@@ -149,6 +151,10 @@ types/    openapi-typescript 由 /v3/api-docs 自動生成的 API 型別（與�
 | POST | /api/admin/ref/pest-categories | ADMIN | 新增病蟲害小分類 |
 | PUT | /api/admin/ref/pest-categories/{id} | ADMIN | 修改病蟲害小分類 |
 | DELETE | /api/admin/ref/pest-categories/{id} | ADMIN | 刪除病蟲害小分類（被引用時 409） |
+| GET | /api/senders/search?q= | 登入 | 送件人搜尋（name/phone/displayName 部分比對，限 10 筆），供建案去重候選 |
+| GET | /api/senders | 登入 | 送件人列表 |
+| GET | /api/senders/{id} | 登入 | 送件人詳細 |
+| DELETE | /api/senders/{id} | ADMIN | 硬刪除送件人（被案件引用時 409 `REFERENCE_IN_USE`，無 soft delete） |
 | POST | /api/ai/analyze | STAFF+ | AI 診斷 |
 | GET | /api/ai/health | 公開 | llama-server 健康檢查 |
 | GET | /api/admin/users | ADMIN | 使用者清單（含 active） |

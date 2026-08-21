@@ -13,11 +13,14 @@ public class Sender {
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Long senderId;
 
-  @Column(nullable = false)
+  @Column
   private String name;
 
-  @Column(nullable = false)
+  @Column
   private String phone;
+
+  @Column
+  private String displayName;
 
   @Column(nullable = false)
   private String address;

@@ -755,15 +755,16 @@ INSERT OR IGNORE INTO services (service_id, service) VALUES
 -- ============================================================
 CREATE TABLE IF NOT EXISTS senders (
   sender_id      INTEGER PRIMARY KEY,
-  name           TEXT    NOT NULL,
-  phone          TEXT    NOT NULL,
+  name           TEXT,
+  display_name   TEXT,
+  phone          TEXT,
   address        TEXT    NOT NULL,
   district_id    INTEGER NOT NULL REFERENCES districts(district_id),
-  sender_type_id INTEGER NOT NULL REFERENCES sender_types(sender_type_id),
-  UNIQUE(name, phone)
+  sender_type_id INTEGER NOT NULL REFERENCES sender_types(sender_type_id)
 );
 CREATE INDEX IF NOT EXISTS idx_senders_district_id    ON senders(district_id);
 CREATE INDEX IF NOT EXISTS idx_senders_sender_type_id ON senders(sender_type_id);
+CREATE INDEX IF NOT EXISTS idx_senders_phone ON senders(phone);
 
 -- ============================================================
 -- cases（核心案件）

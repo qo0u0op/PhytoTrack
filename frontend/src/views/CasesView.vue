@@ -13,10 +13,32 @@ interface CaseSummary {
   caseId: number
   receiveDate: string
   cropName: string
-  senderName: string
+  senderName: string | null
+  senderDisplayName: string | null
+  senderPhone: string | null
+  senderAddress: string | null
+  senderDistrictName: string | null
+  senderCityName: string | null
   serviceName: string
   status: string
   createdAt: string
+}
+
+function senderLabel(c: CaseSummary) {
+  // VIEWER 時後端已遮蔽為 null，前端僅顯示縣市鄉鎮
+  if (auth.isViewer) {
+    const city = (c as any).senderCityName ?? ''
+    const district = c.senderDistrictName ?? ''
+    return city && district ? `${city}${district}` : district || city || '—'
+  }
+  const name = c.senderName
+  const display = c.senderDisplayName
+  const hasName = name && name.trim()
+  const hasDisplay = display && display.trim()
+  if (hasName && hasDisplay) return `${name}(${display})`
+  if (hasDisplay) return display!
+  if (hasName) return name!
+  return c.senderPhone ?? '—'
 }
 
 // 篩選條件（對應後端 GET /api/cases 查詢參數）
@@ -116,6 +138,20 @@ async function viewDetail(id: number) {
   const join = (items?: { id?: number; name?: string }[]) =>
     items?.map((i) => esc(i.name)).join('、') ?? '無'
 
+  // 送件人顯示：支援 name(displayName) 與 VIEWER 遮蔽
+  const hasName = (data as any).senderName && String((data as any).senderName).trim()
+  const hasDisplay = (data as any).senderDisplayName && String((data as any).senderDisplayName).trim()
+  let senderLabel = ''
+  if (hasName && hasDisplay) senderLabel = `${(data as any).senderName}(${(data as any).senderDisplayName})`
+  else if (hasDisplay) senderLabel = (data as any).senderDisplayName
+  else if (hasName) senderLabel = (data as any).senderName
+  else senderLabel = (data as any).senderPhone ?? '—'
+  // VIEWER 時後端已遮蔽，僅保留縣市鄉鎮
+  const isViewer = auth.isViewer
+  const displaySender = isViewer ? '已遮蔽' : esc(senderLabel)
+  const displayPhone = isViewer ? '已遮蔽' : esc((data as any).senderPhone ?? '')
+  const displayAddress = isViewer ? '已遮蔽' : esc((data as any).senderAddress ?? '無')
+
   const result = await Swal.fire({
     title: `案件 #${data.caseId} 預覽`,
     width: 640,
@@ -123,8 +159,9 @@ async function viewDetail(id: number) {
       <div class="text-start small">
         <p><strong>收件日期：</strong>${esc(data.receiveDate)}</p>
         <p><strong>作物：</strong>${esc(data.cropName)}</p>
-        <p><strong>送件人：</strong>${esc(data.senderName)}（${esc(data.senderPhone)}）</p>
-        <p><strong>地址：</strong>${esc(data.senderAddress ?? '無')}</p>
+        <p><strong>送件人：</strong>${displaySender}${displayPhone ? `（${displayPhone}）` : ''}</p>
+        <p><strong>地址：</strong>${displayAddress}</p>
+        <p><strong>縣市鄉鎮：</strong>${esc((data as any).senderCityName ?? '')}${esc((data as any).senderDistrictName ?? '')}</p>
         <p><strong>耕種方式：</strong>${esc(data.methodName)}</p>
         <p><strong>被害部位：</strong>${join(data.damages)}</p>
         <p><strong>病蟲害分類：</strong>${join(data.pestCategories)}</p>
@@ -278,7 +315,7 @@ async function confirmDelete(id: number) {
               <td>{{ c.caseId }}</td>
               <td>{{ c.receiveDate }}</td>
               <td>{{ c.cropName }}</td>
-              <td>{{ c.senderName }}</td>
+              <td>{{ senderLabel(c) }}</td>
               <td>{{ c.serviceName }}</td>
               <td>
                 <span class="badge" :class="statusBadgeClass(c.status)">{{ statusLabel(c.status) }}</span>

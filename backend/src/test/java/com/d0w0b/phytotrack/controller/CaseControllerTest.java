@@ -124,7 +124,7 @@ class CaseControllerTest {
         1L, LocalDate.of(2026, 8, 18), "2 分地", "約 3 成",
         "葉片出現斑點", null, "PENDING",
         LocalDateTime.now(), LocalDateTime.now(),
-        "張三", "0912345678", "測試路 1 號", 1L, "霧峰區", 1L,
+        1L, "張三", "阿明", "0912345678", "測試路 1 號", 1L, "霧峰區", "臺中市", 1L,
         "水稻", "露天", "診斷", "送件",
         "管理員", List.of(), List.of(), List.of(), List.of());
   }
@@ -142,7 +142,8 @@ class CaseControllerTest {
   @WithMockUser(roles = "VIEWER")
   void list_shouldReturnPageForAnyAuthenticatedUser() throws Exception {
     when(caseService.list(any(), any())).thenReturn(new PageImpl<>(
-        List.of(new CaseSummaryResponse(1L, LocalDate.of(2026, 8, 18), "水稻", "張三", "診斷",
+        List.of(new CaseSummaryResponse(1L, LocalDate.of(2026, 8, 18), "水稻", "張三", "阿明", "0912345678",
+            "測試路 1 號", 1L, 1L, "霧峰區", "臺中市", "診斷",
             "PENDING", LocalDateTime.now()))));
 
     mockMvc.perform(get("/api/cases"))
@@ -185,7 +186,7 @@ class CaseControllerTest {
   @WithMockUser(roles = "VIEWER")
   void statistics_shouldReturnAggregates() throws Exception {
     when(caseService.statistics()).thenReturn(new CaseStatisticsResponse(
-        3L, 2L, 1L,
+        3L, 2L, 1L, 2L,
         List.of(new CountName("柑橘", 2L), new CountName("水稻", 1L)),
         List.of(new CountName("真菌", 3L)),
         List.of(new StatusCount("PENDING", 1L), new StatusCount("RESOLVED", 2L),
