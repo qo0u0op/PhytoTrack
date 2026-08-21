@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { aiApi, caseApi } from '../api'
 import { useAuthStore } from '../stores/auth'
@@ -11,7 +11,8 @@ const auth = useAuthStore()
 
 type CaseResponse = components['schemas']['CaseResponse']
 
-const id = Number(route.params.id)
+// 路由參數保持響應式：/cases/1 直接切換 /cases/2 時元件被複用，需重抓資料
+const id = computed(() => Number(route.params.id))
 const loading = ref(true)
 const notFound = ref(false)
 const detail = ref<CaseResponse | null>(null)
@@ -22,16 +23,25 @@ const aiSuggestion = ref<string | null>(null)
 const aiElapsed = ref<number | null>(null)
 const aiError = ref<string | null>(null)
 
-onMounted(async () => {
+async function load() {
+  loading.value = true
+  notFound.value = false
+  detail.value = null
+  // 換案件時清掉前一件的 AI 結果，避免顯示舊資料
+  aiSuggestion.value = null
+  aiElapsed.value = null
+  aiError.value = null
   try {
-    const { data } = await caseApi.detail(id)
+    const { data } = await caseApi.detail(id.value)
     detail.value = data
   } catch {
     notFound.value = true
   } finally {
     loading.value = false
   }
-})
+}
+
+watch(id, load, { immediate: true })
 
 const join = (items?: { id?: number; name?: string }[]) =>
   items?.map((i) => i.name).filter(Boolean).join('、') ?? '無'
