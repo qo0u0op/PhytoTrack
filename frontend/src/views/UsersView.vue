@@ -38,12 +38,28 @@ const ROLE_OPTIONS = [
 
 async function changeRole(u: UserRow, newRole: string) {
   if (newRole === u.role) return
+  const result = await Swal.fire({
+    icon: 'question',
+    title: '變更角色？',
+    text: `確定將 ${u.username} 的角色從 ${ROLE_OPTIONS.find((o) => o.value === u.role)?.label} 變更為 ${ROLE_OPTIONS.find((o) => o.value === newRole)?.label}？`,
+    showCancelButton: true,
+    confirmButtonText: '確認變更',
+    cancelButtonText: '取消',
+  })
+  if (!result.isConfirmed) {
+    // 還原下拉顯示（避免停留在未確認的新值）
+    const sel = document.querySelector(`select[data-user-id="${u.userId}"]`) as HTMLSelectElement | null
+    if (sel) sel.value = u.role
+    return
+  }
   try {
     await userApi.updateRole(u.userId, newRole)
     u.role = newRole
     Swal.fire({ icon: 'success', title: '角色已更新', timer: 1200, showConfirmButton: false })
   } catch {
-    // 錯誤由攔截器處理
+    // 失敗時還原下拉
+    const sel = document.querySelector(`select[data-user-id="${u.userId}"]`) as HTMLSelectElement | null
+    if (sel) sel.value = u.role
   }
 }
 
@@ -124,6 +140,7 @@ async function resetPassword(u: UserRow) {
               <td>
                 <select
                   :value="u.role"
+                  :data-user-id="u.userId"
                   class="form-select form-select-sm"
                   style="width: 130px"
                   @change="changeRole(u, ($event.target as HTMLSelectElement).value)"

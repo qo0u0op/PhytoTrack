@@ -4,6 +4,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -83,16 +84,14 @@ public class AuthService {
    */
   @Transactional(readOnly = true)
   public AuthResponse login(LoginRequest request) {
+    // 停用帳號由 CustomUserDetailsService 的 isEnabled()==active 觸發 DisabledException，
+    // 統一由 GlobalExceptionHandler 轉 403 ACCOUNT_DISABLED；此處不再重複檢查（避免 dead code）
     Authentication authentication = authenticationManager.authenticate(
         new UsernamePasswordAuthenticationToken(request.username(), request.password()));
     UserPrincipal principal = (UserPrincipal) authentication.getPrincipal();
 
     User user = userRepository.findByUsername(principal.getUsername())
         .orElseThrow(() -> new ApiException("USER_NOT_FOUND", HttpStatus.NOT_FOUND, "使用者不存在"));
-    // 停用帳號拒絕簽發新 token（舊 token 由 JwtAuthenticationFilter 的 DB 檢查攔截）
-    if (!user.isActive()) {
-      throw new ApiException("ACCOUNT_DISABLED", HttpStatus.FORBIDDEN, "帳號已停用");
-    }
     return new AuthResponse(jwtTokenProvider.generateToken(user), toResponse(user));
   }
 
@@ -123,6 +122,13 @@ public class AuthService {
     } catch (IllegalArgumentException e) {
       throw new ApiException("INVALID_ROLE", HttpStatus.BAD_REQUEST, "角色不正確");
     }
+    // 最後一位 active ADMIN 不可被降權
+    if (user.getRole() == User.Role.ROLE_ADMIN && user.isActive()
+        && role != User.Role.ROLE_ADMIN) {
+      if (userRepository.countByRoleAndActive(User.Role.ROLE_ADMIN, true) <= 1) {
+        throw new ApiException("LAST_ADMIN_FORBIDDEN", HttpStatus.CONFLICT, "不可移除最後一位管理者");
+      }
+    }
     user.setRole(role);
     return toResponse(userRepository.save(user));
   }
@@ -130,10 +136,32 @@ public class AuthService {
   /** 管理者啟停用帳號 */
   @Transactional
   public UserResponse updateActive(Long userId, Boolean active) {
+    if (active == null) {
+      throw new ApiException("VALIDATION_ERROR", HttpStatus.BAD_REQUEST, "啟用狀態不可為空");
+    }
     User user = userRepository.findById(userId)
         .orElseThrow(() -> new ApiException("USER_NOT_FOUND", HttpStatus.NOT_FOUND, "使用者不存在"));
+    // 禁止自我停用
+    Long currentUserId = currentUserId();
+    if (currentUserId != null && currentUserId.equals(userId) && !active) {
+      throw new ApiException("SELF_DISABLE_FORBIDDEN", HttpStatus.FORBIDDEN, "不可停用自己的帳號");
+    }
+    // 最後一位 active ADMIN 不可被停用
+    if (user.getRole() == User.Role.ROLE_ADMIN && user.isActive() && !active) {
+      if (userRepository.countByRoleAndActive(User.Role.ROLE_ADMIN, true) <= 1) {
+        throw new ApiException("LAST_ADMIN_FORBIDDEN", HttpStatus.CONFLICT, "不可停用最後一位管理者");
+      }
+    }
     user.setActive(active);
     return toResponse(userRepository.save(user));
+  }
+
+  private Long currentUserId() {
+    var auth = SecurityContextHolder.getContext().getAuthentication();
+    if (auth != null && auth.getPrincipal() instanceof UserPrincipal p) {
+      return p.getUserId();
+    }
+    return null;
   }
 
   /** 管理者重設密碼 */
