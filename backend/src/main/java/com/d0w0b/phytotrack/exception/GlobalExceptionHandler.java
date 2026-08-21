@@ -7,6 +7,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.DisabledException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -76,6 +77,14 @@ public class GlobalExceptionHandler {
       BadCredentialsException ex, HttpServletRequest request) {
     log.warn("登入失敗 {} {}：{}", request.getMethod(), request.getRequestURI(), ex.getMessage());
     return build("INVALID_CREDENTIALS", "帳號或密碼錯誤", HttpStatus.UNAUTHORIZED, request, null);
+  }
+
+  /** 帳號已停用（CustomUserDetailsService 的 isEnabled==false 觸發） */
+  @ExceptionHandler(DisabledException.class)
+  public ResponseEntity<ErrorResponse> handleDisabled(
+      DisabledException ex, HttpServletRequest request) {
+    log.warn("帳號已停用 {} {}：{}", request.getMethod(), request.getRequestURI(), ex.getMessage());
+    return build("ACCOUNT_DISABLED", "帳號已停用", HttpStatus.FORBIDDEN, request, null);
   }
 
   /** 權限不足 */

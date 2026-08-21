@@ -2,6 +2,7 @@ package com.d0w0b.phytotrack.dto;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 /**
@@ -49,6 +50,26 @@ public final class AuthDtos {
       String username,
       String displayName,
       String email,
+      String role,
+      boolean active) {
+  }
+
+  /** 管理者調整角色請求 */
+  public record RoleUpdateRequest(
+      @NotBlank(message = "角色不可為空白")
       String role) {
+  }
+
+  /** 管理者啟停用帳號請求 */
+  public record ActiveUpdateRequest(
+      @NotNull(message = "啟用狀態不可為空")
+      Boolean active) {
+  }
+
+  /** 管理者重設密碼請求 */
+  public record ResetPasswordRequest(
+      @NotBlank(message = "新密碼不可為空白")
+      @Size(min = 6, max = 72, message = "密碼長度需介於 6 到 72 之間")
+      String newPassword) {
   }
 }

@@ -69,4 +69,9 @@ export const aiApi = {
 /** 使用者管理 API（限管理者） */
 export const userApi = {
   list: () => http.get('/admin/users'),
+  updateRole: (id: number, role: string) => http.patch(`/admin/users/${id}/role`, { role }),
+  updateActive: (id: number, active: boolean) =>
+    http.patch(`/admin/users/${id}/active`, { active }),
+  resetPassword: (id: number, newPassword: string) =>
+    http.post(`/admin/users/${id}/reset-password`, { newPassword }),
 }
