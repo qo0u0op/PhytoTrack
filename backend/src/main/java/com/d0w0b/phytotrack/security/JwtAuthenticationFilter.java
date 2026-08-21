@@ -2,6 +2,8 @@ package com.d0w0b.phytotrack.security;
 
 import io.jsonwebtoken.Claims;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
@@ -14,7 +16,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 
-import java.util.List;
 import java.util.Optional;
 
 import com.d0w0b.phytotrack.models.User;
@@ -34,6 +35,8 @@ import com.d0w0b.phytotrack.repository.UserRepository;
  */
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
+
+  private static final Logger log = LoggerFactory.getLogger(JwtAuthenticationFilter.class);
 
   private final JwtTokenProvider jwtTokenProvider;
   private final UserRepository userRepository;
@@ -67,7 +70,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         if (userId != null) {
           userOpt = userRepository.findById(userId);
         } else {
-          // 相容舊 token（無 userId）：以 subject 回落查詢
+          // 相容舊 token（無 userId）：以 subject 回落查詢 TODO: remove after migration
+          log.warn("舊 token 無 userId，以 username 回落查詢 subject={}", claims.getSubject());
           String subject = claims.getSubject();
           if (subject != null) {
             userOpt = userRepository.findByUsername(subject);
@@ -86,7 +90,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         // 建立認證物件並帶上請求細節
         UsernamePasswordAuthenticationToken authentication =
             new UsernamePasswordAuthenticationToken(
-                principal, null, List.of(principal.getAuthorities().iterator().next()));
+                principal, null, principal.getAuthorities());
         authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
         SecurityContextHolder.getContext().setAuthentication(authentication);
