@@ -7,7 +7,8 @@ import lombok.Setter;
 @Getter
 @Setter
 @Entity
-@Table(name = "crops")
+@Table(name = "crops",
+       uniqueConstraints = @UniqueConstraint(columnNames = {"crop_category_id", "crop"}))
 public class Crop {
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)

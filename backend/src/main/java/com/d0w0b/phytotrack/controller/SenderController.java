@@ -1,16 +1,23 @@
 package com.d0w0b.phytotrack.controller;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.d0w0b.phytotrack.dto.SenderDtos.SenderResponse;
+import com.d0w0b.phytotrack.dto.SenderDtos.SenderUpsertRequest;
 import com.d0w0b.phytotrack.service.SenderService;
+
+import jakarta.validation.Valid;
 
 import java.util.List;
 
@@ -46,6 +53,22 @@ public class SenderController {
   @PreAuthorize("isAuthenticated()")
   public ResponseEntity<SenderResponse> detail(@PathVariable Long id) {
     return ResponseEntity.ok(senderService.detail(id));
+  }
+
+  /** 建立（STAFF+） */
+  @PostMapping
+  @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
+  public ResponseEntity<SenderResponse> create(@Valid @RequestBody SenderUpsertRequest request) {
+    SenderResponse response = senderService.create(request);
+    return ResponseEntity.status(HttpStatus.CREATED).body(response);
+  }
+
+  /** 編輯（STAFF+） */
+  @PutMapping("/{id}")
+  @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
+  public ResponseEntity<SenderResponse> update(
+      @PathVariable Long id, @Valid @RequestBody SenderUpsertRequest request) {
+    return ResponseEntity.ok(senderService.update(id, request));
   }
 
   /** 硬刪除（僅 ADMIN，被引用時 409） */

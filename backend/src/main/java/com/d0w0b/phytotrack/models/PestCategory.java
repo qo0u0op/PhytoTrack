@@ -7,7 +7,11 @@ import lombok.Setter;
 @Getter
 @Setter
 @Entity
-@Table(name = "pest_categories")
+@Table(name = "pest_categories",
+       uniqueConstraints = {
+           @UniqueConstraint(columnNames = {"pest_type_id", "pest_category_code"}),
+           @UniqueConstraint(columnNames = {"pest_type_id", "pest_category"})
+       })
 public class PestCategory {
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)

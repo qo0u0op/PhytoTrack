@@ -501,7 +501,9 @@ CREATE TABLE IF NOT EXISTS pest_categories (
   pest_category_code TEXT    NOT NULL,
   pest_category      TEXT    NOT NULL,
   pest_type_id       INTEGER NOT NULL REFERENCES pest_types(pest_type_id),
-  sort_order         INTEGER NOT NULL DEFAULT 0
+  sort_order         INTEGER NOT NULL DEFAULT 0,
+  UNIQUE(pest_type_id, pest_category_code),
+  UNIQUE(pest_type_id, pest_category)
 );
 
 INSERT OR IGNORE INTO pest_categories (pest_category_id, pest_category_code, pest_category, pest_type_id, sort_order) VALUES
@@ -591,7 +593,8 @@ INSERT OR IGNORE INTO crop_categories (crop_category_id, crop_category) VALUES
 CREATE TABLE IF NOT EXISTS crops (
   crop_id          INTEGER PRIMARY KEY,
   crop             TEXT    NOT NULL,
-  crop_category_id INTEGER NOT NULL REFERENCES crop_categories(crop_category_id)
+  crop_category_id INTEGER NOT NULL REFERENCES crop_categories(crop_category_id),
+  UNIQUE(crop_category_id, crop)
 );
 CREATE INDEX IF NOT EXISTS idx_crops_crop_category_id ON crops(crop_category_id);
 

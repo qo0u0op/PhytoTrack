@@ -8,6 +8,8 @@ import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -23,6 +25,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.security.core.context.SecurityContextHolderStrategy;
 import org.springframework.security.test.context.TestSecurityContextHolderStrategyAdapter;
 import org.springframework.security.test.context.support.WithMockUser;
@@ -32,6 +35,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
 import com.d0w0b.phytotrack.config.SecurityConfig;
+import com.d0w0b.phytotrack.controller.SenderController;
 import com.d0w0b.phytotrack.dto.SenderDtos.SenderResponse;
 import com.d0w0b.phytotrack.exception.ApiException;
 import com.d0w0b.phytotrack.security.JwtAuthenticationFilter;
@@ -176,5 +180,68 @@ class SenderControllerTest {
     mockMvc.perform(delete("/api/senders/{id}", 1L))
         .andExpect(status().isConflict())
         .andExpect(jsonPath("$.error.code").value("REFERENCE_IN_USE"));
+  }
+
+  // ===== create / update（STAFF+）=====
+
+  @Test
+  @WithMockUser(roles = "STAFF")
+  void create_shouldSucceedForStaff() throws Exception {
+    when(senderService.create(any()))
+        .thenReturn(sample(10L));
+
+    mockMvc.perform(post("/api/senders")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {"name":"新送件人","displayName":"暱稱","phone":"0912000000","address":"地址","districtId":1,"senderTypeId":1}
+                """))
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.senderId").value(10));
+  }
+
+  @Test
+  void create_shouldBeUnauthorizedWhenUnauthenticated() throws Exception {
+    mockMvc.perform(post("/api/senders")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {"phone":"0912000000","address":"地址","districtId":1,"senderTypeId":1}
+                """))
+        .andExpect(status().isUnauthorized());
+  }
+
+  @Test
+  @WithMockUser(roles = "VIEWER")
+  void create_shouldBeForbiddenForViewer() throws Exception {
+    mockMvc.perform(post("/api/senders")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {"phone":"0912000000","address":"地址","districtId":1,"senderTypeId":1}
+                """))
+        .andExpect(status().isForbidden());
+  }
+
+  @Test
+  @WithMockUser(roles = "STAFF")
+  void update_shouldSucceedForStaff() throws Exception {
+    when(senderService.update(eq(1L), any())).thenReturn(sample(1L));
+
+    mockMvc.perform(put("/api/senders/{id}", 1L)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {"name":"王小明","displayName":"阿明","phone":"0912345678","address":"新地址","districtId":1,"senderTypeId":1}
+                """))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.senderId").value(1));
+  }
+
+  @Test
+  @WithMockUser(roles = "VIEWER")
+  void update_shouldBeForbiddenForViewer() throws Exception {
+    mockMvc.perform(put("/api/senders/{id}", 1L)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {"address":"新地址","districtId":1,"senderTypeId":1}
+                """))
+        .andExpect(status().isForbidden());
   }
 }

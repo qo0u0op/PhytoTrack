@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import Swal from 'sweetalert2'
 import { aiApi, caseApi, refApi, senderApi } from '../api'
@@ -79,7 +79,118 @@ const identifiers = ref<IdName[]>([])
 
 const loading = ref(true)
 const saving = ref(false)
+const savingSender = ref(false)
 const analyzing = ref(false)
+
+// 送件人編輯狀態：快照（取消編輯還原用）與髒污判定
+interface SenderSnapshot {
+  senderId: number | null
+  senderName: string
+  senderDisplayName: string
+  senderPhone: string
+  senderAddress: string
+  senderDistrictId: number
+  senderTypeId: number
+}
+let senderSnapshot: SenderSnapshot | null = null
+
+function snapshotSender(): SenderSnapshot {
+  return {
+    senderId: form.senderId,
+    senderName: form.senderName,
+    senderDisplayName: form.senderDisplayName,
+    senderPhone: form.senderPhone,
+    senderAddress: form.senderAddress,
+    senderDistrictId: form.senderDistrictId,
+    senderTypeId: form.senderTypeId,
+  }
+}
+
+function restoreSender() {
+  if (!senderSnapshot) return
+  form.senderId = senderSnapshot.senderId
+  form.senderName = senderSnapshot.senderName
+  form.senderDisplayName = senderSnapshot.senderDisplayName
+  form.senderPhone = senderSnapshot.senderPhone
+  form.senderAddress = senderSnapshot.senderAddress
+  form.senderDistrictId = senderSnapshot.senderDistrictId
+  form.senderTypeId = senderSnapshot.senderTypeId
+}
+
+const senderDirty = computed(() => {
+  if (!senderSnapshot) return false
+  const s = senderSnapshot
+  return form.senderName !== s.senderName
+    || form.senderDisplayName !== s.senderDisplayName
+    || form.senderPhone !== s.senderPhone
+    || form.senderAddress !== s.senderAddress
+    || form.senderDistrictId !== s.senderDistrictId
+    || form.senderTypeId !== s.senderTypeId
+})
+
+// 診斷區段顯示條件：已帶入/儲存送件人（senderId 存在）或編輯既有案件
+const diagnosisVisible = computed(() => editId !== null || form.senderId !== null)
+
+// 診斷儲存阻擋：送件人未儲存前不可儲存診斷
+const diagnosisSaveBlocked = computed(() => !editId && (form.senderId === null || senderDirty.value))
+
+// Fuzzy 相似提示：任一欄位輸入後即時（debounce），有候選時提示帶入
+let fuzzyTimer: ReturnType<typeof setTimeout> | null = null
+let lastFuzzyQuery = ''
+watch(
+  () => [form.senderName, form.senderPhone, form.senderDisplayName],
+  () => {
+    if (fuzzyTimer) clearTimeout(fuzzyTimer)
+    // 已選用既有送件人且無編輯時不提示
+    if (form.senderId !== null && !senderDirty.value) return
+    fuzzyTimer = setTimeout(async () => {
+      const q = [form.senderName, form.senderPhone, form.senderDisplayName]
+        .map((v) => v.trim())
+        .filter(Boolean)
+        .join(' ')
+      if (q.length < 2 || q === lastFuzzyQuery) return
+      try {
+        const { data } = await senderApi.search(q)
+        if (data.length === 0) return
+        lastFuzzyQuery = q
+        const inputOptions: Record<string, string> = {}
+        data.forEach((s: any) => {
+          inputOptions[String(s.senderId)] =
+            `${s.name ?? ''}${s.displayName ? '(' + s.displayName + ')' : ''} - ${s.phone ?? ''}`
+        })
+        inputOptions['0'] = '— 建立新送件人 —'
+        const { value: selected } = await Swal.fire({
+          title: '有相似的資料，是否帶入?',
+          text: '找到相似的既有送件人，可沿用避免重複建立',
+          input: 'select',
+          inputOptions,
+          showCancelButton: true,
+          confirmButtonText: '帶入',
+          cancelButtonText: '忽略，繼續輸入',
+        })
+        if (selected === '0') {
+          form.senderId = null
+        } else if (selected) {
+          applyCandidate(Number(selected), data as any[])
+        }
+      } catch {}
+    }, 600)
+  },
+)
+
+function applyCandidate(id: number, candidates: any[]) {
+  form.senderId = id
+  const chosen = candidates.find((s) => String(s.senderId) === String(id))
+  if (chosen) {
+    form.senderName = chosen.name ?? ''
+    form.senderDisplayName = chosen.displayName ?? ''
+    form.senderPhone = chosen.phone ?? ''
+    form.senderAddress = chosen.address ?? form.senderAddress
+    if (chosen.districtId) form.senderDistrictId = chosen.districtId
+    if (chosen.senderTypeId) form.senderTypeId = chosen.senderTypeId
+  }
+  senderSnapshot = snapshotSender()
+}
 
 async function searchCandidates() {
   const q = [form.senderName, form.senderPhone, form.senderDisplayName].filter(Boolean).join(' ').trim()
@@ -111,22 +222,50 @@ async function searchCandidates() {
     if (selected !== undefined) {
       if (selected === '0') {
         form.senderId = null
+        senderSnapshot = snapshotSender()
         Swal.fire({ icon: 'info', title: '將建立新送件人', timer: 1200, showConfirmButton: false })
       } else if (selected) {
-        form.senderId = Number(selected)
-        const chosen = (data as any[]).find((s: any) => String(s.senderId) === String(selected))
-        if (chosen) {
-          form.senderName = chosen.name ?? ''
-          form.senderDisplayName = chosen.displayName ?? ''
-          form.senderPhone = chosen.phone ?? ''
-          form.senderAddress = chosen.address ?? form.senderAddress
-          if (chosen.districtId) form.senderDistrictId = chosen.districtId
-          if (chosen.senderTypeId) form.senderTypeId = chosen.senderTypeId
-        }
+        applyCandidate(Number(selected), data as any[])
         Swal.fire({ icon: 'success', title: '已選用既有送件人', timer: 1200, showConfirmButton: false })
       }
     }
   } catch {}
+}
+
+// 獨立儲存送件人：有 senderId 時 PUT 更新，否則 POST 建立；成功後鎖定 senderId 並解鎖診斷區段
+async function saveSender() {
+  if (!form.senderDistrictId) {
+    Swal.fire({ icon: 'warning', title: '欄位不完整', text: '請選擇鄉鎮市區' })
+    return
+  }
+  if (!form.senderPhone.trim() && !form.senderDisplayName.trim()) {
+    Swal.fire({ icon: 'warning', title: '欄位不完整', text: '電話與顯示名稱至少需提供一項' })
+    return
+  }
+  const payload = {
+    name: form.senderName || undefined,
+    displayName: form.senderDisplayName || undefined,
+    phone: form.senderPhone || undefined,
+    address: form.senderAddress,
+    districtId: form.senderDistrictId,
+    senderTypeId: form.senderTypeId,
+  }
+  savingSender.value = true
+  try {
+    if (form.senderId) {
+      await senderApi.update(form.senderId, payload)
+    } else {
+      const { data } = await senderApi.create(payload)
+      form.senderId = (data as any).senderId
+    }
+    senderSnapshot = snapshotSender()
+    Swal.fire({ icon: 'success', title: '送件人已儲存', timer: 1200, showConfirmButton: false })
+  } catch {}
+}
+
+// 取消送件人編輯：還原快照
+function cancelSenderEdit() {
+  restoreSender()
 }
 
 // 依選定作物反查其所屬分類名稱（供 AI Prompt 使用）
@@ -234,13 +373,14 @@ function toggle(arr: number[], id: number) {
 }
 
 async function submit() {
-  // 送出前檢查（後端仍有完整驗證）
-  if (!form.senderDistrictId || !form.cropId) {
-    Swal.fire({ icon: 'warning', title: '欄位不完整', text: '請選擇鄉鎮市區與作物' })
+  // 診斷儲存阻擋：送件人未儲存（無 senderId）或尚有未儲存的送件人編輯
+  if (diagnosisSaveBlocked.value) {
+    Swal.fire({ icon: 'warning', title: '請先儲存送件人', text: '送件人資料已修改，請先點「更新送件人」或「取消編輯」' })
     return
   }
-  if (!form.senderPhone.trim() && !form.senderDisplayName.trim()) {
-    Swal.fire({ icon: 'warning', title: '欄位不完整', text: '電話與顯示名稱至少需提供一項' })
+  // 送出前檢查（後端仍有完整驗證）
+  if (!form.cropId) {
+    Swal.fire({ icon: 'warning', title: '欄位不完整', text: '請選擇作物' })
     return
   }
   saving.value = true
@@ -355,7 +495,26 @@ async function runAi() {
       <div class="card shadow-sm mb-4">
         <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
           <span>送件人資料</span>
-          <button type="button" class="btn btn-sm btn-light" @click="searchCandidates">搜尋候選</button>
+          <div>
+            <button type="button" class="btn btn-sm btn-light me-1" @click="searchCandidates">搜尋候選</button>
+            <button
+              v-if="form.senderId && senderDirty"
+              type="button"
+              class="btn btn-sm btn-warning me-1"
+              :disabled="savingSender"
+              @click="saveSender"
+            >
+              {{ savingSender ? '更新中…' : '更新送件人' }}
+            </button>
+            <button
+              v-if="form.senderId && senderDirty"
+              type="button"
+              class="btn btn-sm btn-outline-light"
+              @click="cancelSenderEdit"
+            >
+              取消編輯
+            </button>
+          </div>
         </div>
         <div class="card-body row g-3">
           <div class="col-md-3">
@@ -395,8 +554,8 @@ async function runAi() {
         </div>
       </div>
 
-      <!-- 作物與診斷資訊 -->
-      <div class="card shadow-sm mb-4">
+      <!-- 作物與診斷資訊：送件人帶入/儲存後才顯示 -->
+      <div v-if="diagnosisVisible" class="card shadow-sm mb-4">
         <div class="card-header bg-success text-white">作物與診斷資訊</div>
         <div class="card-body row g-3">
           <div class="col-md-4">
@@ -497,8 +656,8 @@ async function runAi() {
         </div>
       </div>
 
-      <!-- 防治建議與簽名 -->
-      <div class="card shadow-sm mb-4">
+      <!-- 防治建議與簽名：同診斷區段 -->
+      <div v-if="diagnosisVisible" class="card shadow-sm mb-4">
         <div class="card-header bg-success text-white">防治建議與簽名</div>
         <div class="card-body row g-3">
           <div class="col-md-6">
@@ -528,7 +687,7 @@ async function runAi() {
         </div>
       </div>
 
-      <div class="d-flex gap-2 justify-content-end">
+      <div v-if="diagnosisVisible" class="d-flex gap-2 justify-content-end">
         <button
           v-if="auth.isStaff"
           type="button"
@@ -539,7 +698,12 @@ async function runAi() {
           {{ analyzing ? 'AI 診斷中…' : 'AI 診斷' }}
         </button>
         <router-link class="btn btn-outline-secondary" to="/cases">取消</router-link>
-        <button type="submit" class="btn btn-success" :disabled="saving">
+        <button
+          type="submit"
+          class="btn btn-success"
+          :disabled="saving || diagnosisSaveBlocked"
+          :title="diagnosisSaveBlocked ? '請先儲存送件人' : ''"
+        >
           {{ saving ? '儲存中…' : '儲存案件' }}
         </button>
       </div>

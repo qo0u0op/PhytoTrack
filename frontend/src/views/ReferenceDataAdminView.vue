@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import Swal from 'sweetalert2'
 import { refApi, refAdminApi } from '../api'
 
@@ -22,6 +22,9 @@ function escapeHtml(s: string) {
 
 const currentTab = ref<TabKey>('damages')
 const loading = ref(true)
+// 篩選：名稱關鍵字與（病蟲害分類限定）害物類型
+const filterQ = ref('')
+const filterPestTypeId = ref<number | null>(null)
 
 // 各類資料
 const damages = ref<IdName[]>([])
@@ -362,30 +365,38 @@ const tabs: { key: TabKey; label: string }[] = [
   { key: 'pestCategories', label: '病蟲害分類' },
 ]
 
-function currentList(): any[] {
+const currentList = computed<any[]>(() => {
+  const q = filterQ.value.trim().toLowerCase()
+  const matchQ = (name: string) => !q || name.toLowerCase().includes(q)
   switch (currentTab.value) {
     case 'damages':
-      return damages.value
+      return damages.value.filter((d) => matchQ(d.name))
     case 'hints':
-      return hints.value
+      return hints.value.filter((d) => matchQ(d.name))
     case 'methods':
-      return methods.value
+      return methods.value.filter((d) => matchQ(d.name))
     case 'deliveries':
-      return deliveries.value
+      return deliveries.value.filter((d) => matchQ(d.name))
     case 'services':
-      return services.value
+      return services.value.filter((d) => matchQ(d.name))
     case 'identifiers':
-      return identifiers.value
+      return identifiers.value.filter((d) => matchQ(d.name))
     case 'senderTypes':
-      return senderTypes.value
+      return senderTypes.value.filter((d) => matchQ(d.name))
     case 'crops':
-      return crops.value
+      return crops.value.filter((c) => matchQ(c.name))
     case 'cropCategories':
-      return cropCategories.value
-    case 'pestCategories':
-      return pestCategories.value
+      return cropCategories.value.filter((d) => matchQ(d.name))
+    case 'pestCategories': {
+      const typeId = filterPestTypeId.value
+      return pestCategories.value.filter(
+        (p) =>
+          (!typeId || p.pestTypeId === typeId) &&
+          (matchQ(p.name) || p.code.toLowerCase().includes(q)),
+      )
+    }
   }
-}
+})
 </script>
 
 <template>
@@ -403,6 +414,30 @@ function currentList(): any[] {
       </li>
     </ul>
 
+    <div class="card shadow-sm mb-3">
+      <div class="card-body py-2">
+        <div class="row g-2 align-items-center">
+          <div class="col-md-4">
+            <input
+              v-model="filterQ"
+              type="text"
+              class="form-control form-control-sm"
+              placeholder="篩選名稱／代碼"
+            />
+          </div>
+          <div v-if="currentTab === 'pestCategories'" class="col-md-4">
+            <select v-model.number="filterPestTypeId" class="form-select form-select-sm">
+              <option :value="null">全部類型</option>
+              <option v-for="p in pestTypes" :key="p.id" :value="p.id">{{ p.name }}</option>
+            </select>
+          </div>
+          <div class="col-md-4 text-muted small">
+            {{ currentList.length }} 筆
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div v-if="loading" class="text-center text-muted py-4">載入中…</div>
     <div v-else class="card shadow-sm">
       <div class="table-responsive">
@@ -419,10 +454,10 @@ function currentList(): any[] {
             </tr>
           </thead>
           <tbody>
-            <tr v-if="currentList().length === 0">
+            <tr v-if="currentList.length === 0">
               <td colspan="7" class="text-center text-muted py-4">尚無資料</td>
             </tr>
-            <tr v-for="item in currentList()" :key="item.id">
+            <tr v-for="item in currentList" :key="item.id">
               <td>{{ item.id }}</td>
               <td>{{ item.name }}</td>
               <td v-if="currentTab === 'crops'">{{ cropCategories.find((c) => c.id === (item as any).cropCategoryId)?.name ?? '—' }}</td>
