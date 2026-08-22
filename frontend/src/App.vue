@@ -41,7 +41,7 @@ async function handleLogout() {
           <li v-if="auth.isAdmin" class="nav-item">
             <router-link class="nav-link" to="/admin/reference-data">參照資料管理</router-link>
           </li>
-          <li v-if="auth.isAdmin" class="nav-item">
+          <li v-if="auth.isStaff" class="nav-item">
             <router-link class="nav-link" to="/admin/senders">送件人管理</router-link>
           </li>
         </ul>

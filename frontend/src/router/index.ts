@@ -64,7 +64,7 @@ const router = createRouter({
       path: '/admin/senders',
       name: 'senders-admin',
       component: () => import('../views/SendersView.vue'),
-      meta: { requiresAuth: true, adminOnly: true },
+      meta: { requiresAuth: true, staffOnly: true },
     },
     { path: '/:pathMatch(.*)*', redirect: '/' },
   ],

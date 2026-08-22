@@ -128,27 +128,41 @@ const senderDirty = computed(() => {
     || form.senderTypeId !== s.senderTypeId
 })
 
-// 診斷區段顯示條件：已帶入/儲存送件人（senderId 存在）或編輯既有案件
-const diagnosisVisible = computed(() => editId !== null || form.senderId !== null)
+// 診斷區段顯示條件：編輯模式先顯示但髒時隱藏；新增模式需已儲存送件人且無髒污
+const diagnosisVisible = computed(() => {
+  if (editId !== null) return !senderDirty.value
+  return form.senderId !== null && !senderDirty.value
+})
 
-// 診斷儲存阻擋：送件人未儲存前不可儲存診斷
+// 診斷儲存阻擋：送件人未儲存（無 senderId）或尚有未儲存的送件人編輯
 const diagnosisSaveBlocked = computed(() => !editId && (form.senderId === null || senderDirty.value))
 
 // Fuzzy 相似提示：任一欄位輸入後即時（debounce），有候選時提示帶入
 let fuzzyTimer: ReturnType<typeof setTimeout> | null = null
 let lastFuzzyQuery = ''
+const fuzzyFields = computed(() => [form.senderName, form.senderPhone, form.senderDisplayName] as const)
 watch(
-  () => [form.senderName, form.senderPhone, form.senderDisplayName],
-  () => {
+  fuzzyFields,
+  (newVals, oldVals) => {
     if (fuzzyTimer) clearTimeout(fuzzyTimer)
     // 已選用既有送件人且無編輯時不提示
     if (form.senderId !== null && !senderDirty.value) return
+    // 找出本次變動的欄位值作為 q（任一欄位相似即觸發，符合需求 3）
+    let q = ''
+    if (oldVals) {
+      for (let i = 0; i < newVals.length; i++) {
+        if (newVals[i] !== oldVals[i] && newVals[i].trim().length >= 2) {
+          q = newVals[i].trim()
+          break
+        }
+      }
+      if (!q) return // 無有效變動
+    } else {
+      q = newVals.find((v) => v.trim().length >= 2)?.trim() ?? ''
+      if (!q) return
+    }
+    if (q === lastFuzzyQuery) return
     fuzzyTimer = setTimeout(async () => {
-      const q = [form.senderName, form.senderPhone, form.senderDisplayName]
-        .map((v) => v.trim())
-        .filter(Boolean)
-        .join(' ')
-      if (q.length < 2 || q === lastFuzzyQuery) return
       try {
         const { data } = await senderApi.search(q)
         if (data.length === 0) return
@@ -315,6 +329,11 @@ async function loadRefs() {
   form.serviceId = services.value[0]?.id ?? 0
   form.senderTypeId = senderTypes.value[0]?.id ?? 0
 
+  // 新增模式亦初始化快照，確保髒污判定正確
+  if (!editId) {
+    senderSnapshot = snapshotSender()
+  }
+
   if (editId) {
     await loadCase(editId)
   }
@@ -345,6 +364,8 @@ async function loadCase(id: number) {
   form.senderDistrictId = d.senderDistrictId ?? 0
   form.senderTypeId = d.senderTypeId ?? 0
   form.senderId = (d as any).senderId ?? null
+  // 編輯模式快照：用於髒污判定與取消還原，修復編輯時無法更新 sender 的 bug
+  senderSnapshot = snapshotSender()
   form.damageIds = d.damages?.map((x) => x.id).filter((x): x is number => x != null) ?? []
   form.hintIds = d.hints?.map((x) => x.id).filter((x): x is number => x != null) ?? []
   form.pestCategoryIds = d.pestCategories?.map((x) => x.id).filter((x): x is number => x != null) ?? []
@@ -394,12 +415,6 @@ async function submit() {
         hintDescription: form.hintDescription || undefined,
         status: form.status || undefined,
         senderId: form.senderId ?? undefined,
-        senderName: form.senderName || undefined,
-        senderDisplayName: form.senderDisplayName || undefined,
-        senderPhone: form.senderPhone || undefined,
-        senderAddress: form.senderAddress || undefined,
-        senderDistrictId: form.senderDistrictId || undefined,
-        senderTypeId: form.senderTypeId || undefined,
         methodId: form.methodId,
         cropId: form.cropId,
         serviceId: form.serviceId,
@@ -417,9 +432,6 @@ async function submit() {
         pestDescription: form.pestDescription || undefined,
         hintDescription: form.hintDescription || undefined,
         senderId: form.senderId ?? undefined,
-        senderName: form.senderName || undefined,
-        senderDisplayName: form.senderDisplayName || undefined,
-        senderPhone: form.senderPhone || undefined,
         senderAddress: form.senderAddress,
         senderDistrictId: form.senderDistrictId,
         senderTypeId: form.senderTypeId,
@@ -498,22 +510,31 @@ async function runAi() {
           <div>
             <button type="button" class="btn btn-sm btn-light me-1" @click="searchCandidates">搜尋候選</button>
             <button
-              v-if="form.senderId && senderDirty"
+              v-if="!form.senderId"
               type="button"
               class="btn btn-sm btn-warning me-1"
               :disabled="savingSender"
               @click="saveSender"
             >
-              {{ savingSender ? '更新中…' : '更新送件人' }}
+              {{ savingSender ? '儲存中…' : '儲存送件人' }}
             </button>
-            <button
-              v-if="form.senderId && senderDirty"
-              type="button"
-              class="btn btn-sm btn-outline-light"
-              @click="cancelSenderEdit"
-            >
-              取消編輯
-            </button>
+            <template v-if="form.senderId && senderDirty">
+              <button
+                type="button"
+                class="btn btn-sm btn-warning me-1"
+                :disabled="savingSender"
+                @click="saveSender"
+              >
+                {{ savingSender ? '更新中…' : '更新送件人' }}
+              </button>
+              <button
+                type="button"
+                class="btn btn-sm btn-outline-light"
+                @click="cancelSenderEdit"
+              >
+                取消編輯
+              </button>
+            </template>
           </div>
         </div>
         <div class="card-body row g-3">

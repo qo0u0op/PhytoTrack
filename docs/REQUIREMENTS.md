@@ -64,3 +64,13 @@ CSRF off（Bearer header 無 cookie 面）、無狀態登出（前端丟 token�
 - OpenSpec：`openspec list` / `validate --specs` / `validate --changes`
 - 操作手冊：`docs/manual.typ`（`typst compile`）
 - 架構：`docs/ARCHITECTURE.md`、ADR 見 `docs/adr/`
+
+## 未電子化欄位（紙本表單保留，待後續評估）
+
+依 `docs/diagnoses.typ` 紙本表單，以下欄位尚未數位化，暫列 backlog：
+
+- 病蟲害發生地點（`同寄件人` / `其他：`）
+- 基本資料 電子信箱（`email`）
+- 被害描述（獨立於土壤、栽培、用藥紀錄）
+- 送件方式 Email / FB / Line 選項（現僅 郵寄/親送/電話等）
+- 土壤、栽培、用藥紀錄（現由 `pestDescription` 承接，後續將更名為 `caseDescription`）
