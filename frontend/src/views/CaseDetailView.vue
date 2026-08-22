@@ -46,6 +46,23 @@ watch(id, load, { immediate: true })
 const join = (items?: { id?: number; name?: string }[]) =>
   items?.map((i) => i.name).filter(Boolean).join('、') ?? '無'
 
+// 送件人顯示：支援 name(displayName)；VIEWER 時後端已遮蔽，僅顯示縣市鄉鎮
+function senderLabel(d: CaseResponse) {
+  if (auth.isViewer) {
+    const city = (d as any).senderCityName ?? ''
+    const district = d.senderDistrictName ?? ''
+    return city && district ? `${city}${district}` : district || city || '—'
+  }
+  const name = d.senderName
+  const display = (d as any).senderDisplayName
+  const hasName = name && name.trim()
+  const hasDisplay = display && display.trim()
+  if (hasName && hasDisplay) return `${name}(${display})`
+  if (hasDisplay) return display
+  if (hasName) return name
+  return d.senderPhone ?? '—'
+}
+
 const formatTime = (v?: string) => (v ? v.replace('T', ' ').slice(0, 19) : '—')
 
 function printDetail() {
@@ -139,12 +156,11 @@ async function runAi() {
               <strong>病蟲害分類：</strong>{{ join(detail.pestCategories) }}
             </div>
             <div class="col-12">
-              <strong>送件人：</strong>{{ detail.senderName ?? '無' }}
-              <template v-if="detail.senderPhone">（{{ detail.senderPhone }}）</template>
+              <strong>送件人：</strong>{{ senderLabel(detail) }}
             </div>
             <div class="col-12">
-              <strong>縣市鄉鎮：</strong>{{ detail.senderDistrictName ?? '無' }}　
-              <strong>地址：</strong>{{ detail.senderAddress ?? '無' }}
+              <strong>縣市鄉鎮：</strong>{{ (detail as any).senderCityName ?? '' }}{{ detail.senderDistrictName ?? '無' }}
+              <strong>地址：</strong>{{ auth.isViewer ? '已遮蔽' : detail.senderAddress ?? '無' }}
             </div>
             <div class="col-12">
               <strong>服務：</strong>{{ detail.serviceName ?? '無' }}　

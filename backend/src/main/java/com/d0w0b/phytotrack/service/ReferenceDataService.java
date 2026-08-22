@@ -364,6 +364,9 @@ public class ReferenceDataService {
   public IdNameResponse createCrop(String name, Long cropCategoryId) {
     CropCategory category = cropCategoryRepository.findById(cropCategoryId)
         .orElseThrow(() -> new ApiException("REFERENCE_NOT_FOUND", HttpStatus.NOT_FOUND, "作物分類不存在"));
+    if (cropRepository.existsByCropIgnoreCaseAndCropCategoryCropCategoryId(name.trim(), cropCategoryId)) {
+      throw new ApiException("REFERENCE_DUPLICATE", HttpStatus.CONFLICT, "同分類下已有同名作物");
+    }
     Crop e = new Crop();
     e.setCrop(name.trim());
     e.setCropCategory(category);
@@ -377,6 +380,11 @@ public class ReferenceDataService {
         .orElseThrow(() -> new ApiException("REFERENCE_NOT_FOUND", HttpStatus.NOT_FOUND, "作物不存在"));
     CropCategory category = cropCategoryRepository.findById(cropCategoryId)
         .orElseThrow(() -> new ApiException("REFERENCE_NOT_FOUND", HttpStatus.NOT_FOUND, "作物分類不存在"));
+    cropRepository.findByCropIgnoreCaseAndCropCategoryCropCategoryId(name.trim(), cropCategoryId)
+        .filter(other -> !other.getCropId().equals(id))
+        .ifPresent(other -> {
+          throw new ApiException("REFERENCE_DUPLICATE", HttpStatus.CONFLICT, "同分類下已有同名作物");
+        });
     e.setCrop(name.trim());
     e.setCropCategory(category);
     return new IdNameResponse(e.getCropId(), e.getCrop());
@@ -426,6 +434,12 @@ public class ReferenceDataService {
   public IdNameResponse createPestCategory(String code, String name, Long pestTypeId, Integer sortOrder) {
     PestType pestType = pestTypeRepository.findById(pestTypeId)
         .orElseThrow(() -> new ApiException("REFERENCE_NOT_FOUND", HttpStatus.NOT_FOUND, "害物類型不存在"));
+    if (pestCategoryRepository.existsByPestTypePestTypeIdAndPestCategoryCodeIgnoreCase(pestTypeId, code.trim())) {
+      throw new ApiException("REFERENCE_DUPLICATE", HttpStatus.CONFLICT, "同類型下已有相同代碼");
+    }
+    if (pestCategoryRepository.existsByPestTypePestTypeIdAndPestCategoryIgnoreCase(pestTypeId, name.trim())) {
+      throw new ApiException("REFERENCE_DUPLICATE", HttpStatus.CONFLICT, "同類型下已有相同名稱");
+    }
     PestCategory e = new PestCategory();
     e.setPestCategoryCode(code.trim());
     e.setPestCategory(name.trim());
@@ -441,6 +455,16 @@ public class ReferenceDataService {
         .orElseThrow(() -> new ApiException("REFERENCE_NOT_FOUND", HttpStatus.NOT_FOUND, "病蟲害分類不存在"));
     PestType pestType = pestTypeRepository.findById(pestTypeId)
         .orElseThrow(() -> new ApiException("REFERENCE_NOT_FOUND", HttpStatus.NOT_FOUND, "害物類型不存在"));
+    pestCategoryRepository.findByPestTypePestTypeIdAndPestCategoryCodeIgnoreCase(pestTypeId, code.trim())
+        .filter(other -> !other.getPestCategoryId().equals(id))
+        .ifPresent(other -> {
+          throw new ApiException("REFERENCE_DUPLICATE", HttpStatus.CONFLICT, "同類型下已有相同代碼");
+        });
+    pestCategoryRepository.findByPestTypePestTypeIdAndPestCategoryIgnoreCase(pestTypeId, name.trim())
+        .filter(other -> !other.getPestCategoryId().equals(id))
+        .ifPresent(other -> {
+          throw new ApiException("REFERENCE_DUPLICATE", HttpStatus.CONFLICT, "同類型下已有相同名稱");
+        });
     e.setPestCategoryCode(code.trim());
     e.setPestCategory(name.trim());
     e.setPestType(pestType);

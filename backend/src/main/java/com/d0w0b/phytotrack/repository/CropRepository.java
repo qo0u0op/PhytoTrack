@@ -16,4 +16,10 @@ public interface CropRepository extends JpaRepository<Crop, Long> {
   java.util.List<Crop> findByCropCategory(CropCategory category);
 
   boolean existsByCropCategoryCropCategoryId(Long cropCategoryId);
+
+  /** 同分類下同名作物（composite unique 前置檢查） */
+  boolean existsByCropIgnoreCaseAndCropCategoryCropCategoryId(String crop, Long cropCategoryId);
+
+  /** 同分類下同名作物查詢實體（更新時排除自身用） */
+  java.util.Optional<Crop> findByCropIgnoreCaseAndCropCategoryCropCategoryId(String crop, Long cropCategoryId);
 }

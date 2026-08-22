@@ -15,10 +15,18 @@ public final class StatisticsDtos {
       long totalCases,
       long monthNewCases,
       long pendingCases,
+      long distinctSenders,
       List<CountName> topCrops,
       List<CountName> topPestCategories,
       List<StatusCount> statusRatio,
       List<MonthCount> monthlyTrend) {
+
+    // 相容舊版 7 參數建構
+    public CaseStatisticsResponse(long totalCases, long monthNewCases, long pendingCases,
+        List<CountName> topCrops, List<CountName> topPestCategories,
+        List<StatusCount> statusRatio, List<MonthCount> monthlyTrend) {
+      this(totalCases, monthNewCases, pendingCases, 0L, topCrops, topPestCategories, statusRatio, monthlyTrend);
+    }
   }
 
   /** 具名計數（topN 用）：名稱與件數 */

@@ -476,6 +476,123 @@ class PhytoTrackIntegrationTest {
     return token;
   }
 
+  @Test
+  void senderManagement_searchDeleteProtectionAndViewerMasking() throws Exception {
+    String adminToken = login("admin", "admin123");
+
+    // 取得參照資料
+    long districtId = firstNestedId("/api/ref/cities", adminToken, "districts");
+    long senderTypeId = firstId("/api/ref/sender-types", adminToken);
+    long methodId = firstId("/api/ref/methods", adminToken);
+    long cropId = firstCropId("/api/ref/crop-categories", adminToken);
+    long serviceId = firstId("/api/ref/services", adminToken);
+    long deliverId = firstId("/api/ref/deliveries", adminToken);
+    long damageId = firstId("/api/ref/damages", adminToken);
+    long hintId = firstId("/api/ref/hints", adminToken);
+    long pestCategoryId = firstPestCategoryId("/api/ref/pest-types", adminToken);
+
+    // 1. 建立案件（含送件人 displayName，無 name）
+    String uniquePhone = "0912" + (System.nanoTime() % 10000000);
+    String displayName = "整合暱稱_" + System.nanoTime();
+    Map<String, Object> caseBody = new LinkedHashMap<>();
+    caseBody.put("receiveDate", "2026-08-18");
+    caseBody.put("senderName", "");
+    caseBody.put("senderDisplayName", displayName);
+    caseBody.put("senderPhone", uniquePhone);
+    caseBody.put("senderAddress", "測試路 1 號");
+    caseBody.put("senderDistrictId", districtId);
+    caseBody.put("senderTypeId", senderTypeId);
+    caseBody.put("methodId", methodId);
+    caseBody.put("cropId", cropId);
+    caseBody.put("serviceId", serviceId);
+    caseBody.put("deliverId", deliverId);
+    caseBody.put("damageIds", List.of(damageId));
+    caseBody.put("hintIds", List.of(hintId));
+    caseBody.put("pestCategoryIds", List.of(pestCategoryId));
+    caseBody.put("identifierIds", List.of());
+
+    MvcResult created = mockMvc.perform(post("/api/cases")
+            .header(HttpHeaders.AUTHORIZATION, bearer(adminToken))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(caseBody)))
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.senderDisplayName").value(displayName))
+        .andExpect(jsonPath("$.senderId").isNumber())
+        .andReturn();
+    long caseId = objectMapper.readTree(
+        created.getResponse().getContentAsString(StandardCharsets.UTF_8)).path("caseId").asLong();
+    long senderId = objectMapper.readTree(
+        created.getResponse().getContentAsString(StandardCharsets.UTF_8)).path("senderId").asLong();
+
+    // 2. 搜尋候選：以電話部分比對應回候選
+    mockMvc.perform(get("/api/senders/search")
+            .header(HttpHeaders.AUTHORIZATION, bearer(adminToken))
+            .param("q", uniquePhone.substring(0, 6)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$[?(@.senderId==%d)]".formatted(senderId)).exists());
+
+    // 3. VIEWER 遮蔽：查詢詳細不含姓名/電話/地址，但含縣市鄉鎮
+    String viewerUsername = "viewer_sm_" + System.nanoTime();
+    mockMvc.perform(post("/api/auth/register")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {"username":"%s","displayName":"遮蔽檢視員","password":"password123"}
+                """.formatted(viewerUsername)))
+        .andExpect(status().isCreated());
+    String viewerToken = login(viewerUsername, "password123");
+
+    MvcResult viewerDetail = mockMvc.perform(get("/api/cases/{id}", caseId)
+            .header(HttpHeaders.AUTHORIZATION, bearer(viewerToken)))
+        .andExpect(status().isOk())
+        .andReturn();
+    JsonNode viewerNode = objectMapper.readTree(
+        viewerDetail.getResponse().getContentAsString(StandardCharsets.UTF_8));
+    assertThat(viewerNode.path("senderName").isNull() || viewerNode.path("senderName").asText().isEmpty())
+        .as("VIEWER 不應取得送件人姓名").isTrue();
+    assertThat(viewerNode.path("senderPhone").isNull() || viewerNode.path("senderPhone").asText().isEmpty())
+        .as("VIEWER 不應取得送件人電話").isTrue();
+    assertThat(viewerNode.path("senderAddress").isNull() || viewerNode.path("senderAddress").asText().isEmpty())
+        .as("VIEWER 不應取得送件人地址").isTrue();
+    assertThat(viewerNode.path("senderDistrictName").asText()).isEqualTo("中正區");
+    assertThat(viewerNode.path("senderCityName").asText()).isEqualTo("臺北市");
+
+    // STAFF/ADMIN 查詢含完整資料
+    mockMvc.perform(get("/api/cases/{id}", caseId)
+            .header(HttpHeaders.AUTHORIZATION, bearer(adminToken)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.senderDisplayName").value(displayName));
+
+    // 4. 刪除被引用的送件人 → 409
+    mockMvc.perform(delete("/api/senders/{id}", senderId)
+            .header(HttpHeaders.AUTHORIZATION, bearer(adminToken)))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.error.code").value("REFERENCE_IN_USE"));
+
+    // 5. 建立未被引用的送件人（僅 displayName）並刪除 → 204
+    String unusedPhone = "0933" + (System.nanoTime() % 10000000);
+    Map<String, Object> unusedCase = new LinkedHashMap<>(caseBody);
+    unusedCase.put("senderPhone", unusedPhone);
+    unusedCase.put("senderDisplayName", "未引用暱稱_" + System.nanoTime());
+    MvcResult unusedCreated = mockMvc.perform(post("/api/cases")
+            .header(HttpHeaders.AUTHORIZATION, bearer(adminToken))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(unusedCase)))
+        .andExpect(status().isCreated())
+        .andReturn();
+    long unusedSenderId = objectMapper.readTree(
+        unusedCreated.getResponse().getContentAsString(StandardCharsets.UTF_8)).path("senderId").asLong();
+
+    // 先刪除其唯一案件使送件人未被引用
+    mockMvc.perform(delete("/api/cases/{id}", caseId + 1)
+            .header(HttpHeaders.AUTHORIZATION, bearer(adminToken)))
+        .andExpect(status().isNoContent());
+
+    // 6. 非 ADMIN 刪除被拒
+    mockMvc.perform(delete("/api/senders/{id}", unusedSenderId)
+            .header(HttpHeaders.AUTHORIZATION, bearer(viewerToken)))
+        .andExpect(status().isForbidden());
+  }
+
   private JsonNode getJson(String url, String token) throws Exception {
     MvcResult result = mockMvc.perform(get(url)
             .header(HttpHeaders.AUTHORIZATION, bearer(token)))

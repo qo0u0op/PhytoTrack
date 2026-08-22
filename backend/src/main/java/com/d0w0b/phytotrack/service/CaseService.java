@@ -29,6 +29,7 @@ import com.d0w0b.phytotrack.models.CaseStatus;
 import com.d0w0b.phytotrack.models.Crop;
 import com.d0w0b.phytotrack.models.Damage;
 import com.d0w0b.phytotrack.models.Delivery;
+import com.d0w0b.phytotrack.models.City;
 import com.d0w0b.phytotrack.models.District;
 import com.d0w0b.phytotrack.models.Hint;
 import com.d0w0b.phytotrack.models.Identifier;
@@ -248,6 +249,12 @@ public class CaseService {
         .anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()));
   }
 
+  private boolean isViewer() {
+    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+    return auth != null && auth.getAuthorities().stream()
+        .anyMatch(a -> "ROLE_VIEWER".equals(a.getAuthority()));
+  }
+
   /** 請求是否帶有任何「非狀態」欄位（用於 CLOSED 案件的管理者限改判斷） */
   private boolean hasContentUpdate(CaseUpdateRequest request) {
     return request.receiveDate() != null
@@ -259,7 +266,9 @@ public class CaseService {
         || request.cropId() != null
         || request.serviceId() != null
         || request.deliverId() != null
+        || request.senderId() != null
         || request.senderName() != null
+        || request.senderDisplayName() != null
         || request.senderPhone() != null
         || request.senderAddress() != null
         || request.senderDistrictId() != null
@@ -271,40 +280,50 @@ public class CaseService {
   }
 
   /**
-   * 更新送件人：任一送件人欄位提供時生效。
-   *
-   * 目標身分以「有提供的 name/phone」為準，未提供則沿用現送件人身分。
-   * 依目標身分尋找既有送件人並關聯之（與 create 的 findOrCreateSender
-   * 相同去重語意）；找不到才建立新送件人。如此不會修改可能被其他案件
-   * 共享的既有 Sender row，也避免將 name/phone 改成與其他送件人重複而
-   * 撞 UNIQUE(name, phone) 回 500。
+   * 更新送件人：若提供 senderId 則沿用，否則依有提供的欄位建立新送件人。
+   * 不再以 name+phone 強制去重，符合弱識別人工確認語意。
    */
   private void applySenderUpdate(Case caseEntity, CaseUpdateRequest request) {
-    boolean anyProvided = request.senderName() != null || request.senderPhone() != null
-        || request.senderAddress() != null || request.senderDistrictId() != null
-        || request.senderTypeId() != null;
+    if (request.senderId() != null) {
+      Sender sender = senderRepository.findById(request.senderId())
+          .orElseThrow(() -> new ApiException("SENDER_NOT_FOUND", HttpStatus.NOT_FOUND, "送件人不存在"));
+      caseEntity.setSender(sender);
+      return;
+    }
+    boolean anyProvided = request.senderName() != null || request.senderDisplayName() != null
+        || request.senderPhone() != null || request.senderAddress() != null
+        || request.senderDistrictId() != null || request.senderTypeId() != null;
     if (!anyProvided) {
       return;
     }
-    Sender current = caseEntity.getSender();
-    String name = request.senderName() != null ? request.senderName() : current.getName();
-    String phone = request.senderPhone() != null ? request.senderPhone() : current.getPhone();
-    Sender sender = senderRepository.findByNameAndPhone(name, phone)
-        .orElseGet(() -> {
-          Sender created = new Sender();
-          created.setName(name);
-          created.setPhone(phone);
-          return senderRepository.save(created);
-        });
-    if (request.senderAddress() != null) {
-      sender.setAddress(request.senderAddress());
+    // 若僅提供部分欄位，建立新 Sender 以避免改動被多案件共享的既有 row
+    String name = request.senderName() != null ? request.senderName() : caseEntity.getSender().getName();
+    String displayName = request.senderDisplayName() != null ? request.senderDisplayName() : caseEntity.getSender().getDisplayName();
+    String phone = request.senderPhone() != null ? request.senderPhone() : caseEntity.getSender().getPhone();
+    String address = request.senderAddress() != null ? request.senderAddress() : caseEntity.getSender().getAddress();
+    Long districtId = request.senderDistrictId() != null ? request.senderDistrictId() : Optional.ofNullable(caseEntity.getSender().getDistrict()).map(District::getDistrictId).orElse(null);
+    Long senderTypeId = request.senderTypeId() != null ? request.senderTypeId() : Optional.ofNullable(caseEntity.getSender().getSenderType()).map(SenderType::getSenderTypeId).orElse(null);
+    boolean hasPhone = phone != null && !phone.isBlank();
+    boolean hasDisplay = displayName != null && !displayName.isBlank();
+    if (!hasPhone && !hasDisplay) {
+      throw new ApiException("VALIDATION_ERROR", HttpStatus.BAD_REQUEST, "電話與顯示名稱至少需提供一項");
     }
-    if (request.senderDistrictId() != null) {
-      sender.setDistrict(getRef(districtRepository, request.senderDistrictId(), "鄉鎮市區"));
+    Sender sender = new Sender();
+    sender.setName(name);
+    sender.setDisplayName(displayName);
+    sender.setPhone(phone);
+    sender.setAddress(address);
+    if (districtId != null) {
+      sender.setDistrict(getRef(districtRepository, districtId, "鄉鎮市區"));
+    } else {
+      sender.setDistrict(caseEntity.getSender().getDistrict());
     }
-    if (request.senderTypeId() != null) {
-      sender.setSenderType(getRef(senderTypeRepository, request.senderTypeId(), "身分別"));
+    if (senderTypeId != null) {
+      sender.setSenderType(getRef(senderTypeRepository, senderTypeId, "身分別"));
+    } else {
+      sender.setSenderType(caseEntity.getSender().getSenderType());
     }
+    senderRepository.save(sender);
     caseEntity.setSender(sender);
   }
 
@@ -404,6 +423,15 @@ public class CaseService {
     long pending = caseRepository.countByStatus(CaseStatus.PENDING);
 
     List<Case> all = caseRepository.findAll();
+    long distinctSenders = all.stream()
+        .map(c -> {
+          String phone = c.getSender().getPhone();
+          String displayName = c.getSender().getDisplayName();
+          boolean hasPhone = phone != null && !phone.isBlank();
+          return hasPhone ? phone.trim() : (displayName != null ? displayName.trim() : null);
+        })
+        .filter(s -> s != null && !s.isBlank())
+        .collect(Collectors.toSet()).size();
     List<CountName> topCrops = topN(all.stream()
         .collect(Collectors.groupingBy(c -> c.getCrop().getCrop(), Collectors.counting())));
     List<CountName> topPestCategories = topN(all.stream()
@@ -416,7 +444,7 @@ public class CaseService {
         .toList();
     List<MonthCount> monthlyTrend = monthlyTrend(all);
 
-    return new CaseStatisticsResponse(total, monthNew, pending,
+    return new CaseStatisticsResponse(total, monthNew, pending, distinctSenders,
         topCrops, topPestCategories, statusRatio, monthlyTrend);
   }
 
@@ -513,18 +541,27 @@ public class CaseService {
   // 私有輔助方法
   // ------------------------------------------------------------------
 
-  /** 依姓名 + 電話尋找既有送件人，否則建立新送件人 */
+  /** 依 senderId 沿用或依欄位建立新送件人（phone 與 displayName 至少一有值） */
   private Sender findOrCreateSender(CaseCreateRequest request) {
-    return senderRepository.findByNameAndPhone(request.senderName(), request.senderPhone())
-        .orElseGet(() -> {
-          Sender sender = new Sender();
-          sender.setName(request.senderName());
-          sender.setPhone(request.senderPhone());
-          sender.setAddress(request.senderAddress());
-          sender.setDistrict(getRef(districtRepository, request.senderDistrictId(), "鄉鎮市區"));
-          sender.setSenderType(getRef(senderTypeRepository, request.senderTypeId(), "身分別"));
-          return senderRepository.save(sender);
-        });
+    if (request.senderId() != null) {
+      return senderRepository.findById(request.senderId())
+          .orElseThrow(() -> new ApiException("SENDER_NOT_FOUND", HttpStatus.NOT_FOUND, "送件人不存在"));
+    }
+    String phone = request.senderPhone();
+    String displayName = request.senderDisplayName();
+    boolean hasPhone = phone != null && !phone.isBlank();
+    boolean hasDisplay = displayName != null && !displayName.isBlank();
+    if (!hasPhone && !hasDisplay) {
+      throw new ApiException("VALIDATION_ERROR", HttpStatus.BAD_REQUEST, "電話與顯示名稱至少需提供一項");
+    }
+    Sender sender = new Sender();
+    sender.setName(request.senderName());
+    sender.setDisplayName(displayName);
+    sender.setPhone(phone);
+    sender.setAddress(request.senderAddress());
+    sender.setDistrict(getRef(districtRepository, request.senderDistrictId(), "鄉鎮市區"));
+    sender.setSenderType(getRef(senderTypeRepository, request.senderTypeId(), "身分別"));
+    return senderRepository.save(sender);
   }
 
   /** 建立案件的多對多關聯（Junction Record）：被害部位 */
@@ -597,11 +634,27 @@ public class CaseService {
 
   /** 轉換為摘要回應 */
   private CaseSummaryResponse toSummary(Case caseEntity) {
+    boolean viewer = isViewer();
+    String senderName = viewer ? null : caseEntity.getSender().getName();
+    String senderDisplayName = viewer ? null : caseEntity.getSender().getDisplayName();
+    String senderPhone = viewer ? null : caseEntity.getSender().getPhone();
+    String senderAddress = viewer ? null : caseEntity.getSender().getAddress();
+    Long senderDistrictId = Optional.ofNullable(caseEntity.getSender().getDistrict())
+        .map(District::getDistrictId).orElse(null);
+    String senderDistrictName = districtNameOf(caseEntity);
+    String senderCityName = cityNameOf(caseEntity);
     return new CaseSummaryResponse(
         caseEntity.getCaseId(),
         caseEntity.getReceiveDate(),
         caseEntity.getCrop().getCrop(),
-        caseEntity.getSender().getName(),
+        senderName,
+        senderDisplayName,
+        senderPhone,
+        senderAddress,
+        caseEntity.getSender().getSenderId(),
+        senderDistrictId,
+        senderDistrictName,
+        senderCityName,
         caseEntity.getService().getService(),
         caseEntity.getStatus().name(),
         caseEntity.getCreatedAt());
@@ -628,8 +681,14 @@ public class CaseService {
     Long senderDistrictId = Optional.ofNullable(caseEntity.getSender().getDistrict())
         .map(District::getDistrictId).orElse(null);
     String senderDistrictName = districtNameOf(caseEntity);
+    String senderCityName = cityNameOf(caseEntity);
     Long senderTypeId = Optional.ofNullable(caseEntity.getSender().getSenderType())
         .map(SenderType::getSenderTypeId).orElse(null);
+    boolean viewer = isViewer();
+    String senderName = viewer ? null : caseEntity.getSender().getName();
+    String senderDisplayName = viewer ? null : caseEntity.getSender().getDisplayName();
+    String senderPhone = viewer ? null : caseEntity.getSender().getPhone();
+    String senderAddress = viewer ? null : caseEntity.getSender().getAddress();
 
     return new CaseResponse(
         caseEntity.getCaseId(),
@@ -641,11 +700,14 @@ public class CaseService {
         caseEntity.getStatus().name(),
         caseEntity.getCreatedAt(),
         caseEntity.getUpdatedAt(),
-        caseEntity.getSender().getName(),
-        caseEntity.getSender().getPhone(),
-        caseEntity.getSender().getAddress(),
+        caseEntity.getSender().getSenderId(),
+        senderName,
+        senderDisplayName,
+        senderPhone,
+        senderAddress,
         senderDistrictId,
         senderDistrictName,
+        senderCityName,
         senderTypeId,
         caseEntity.getCrop().getCrop(),
         caseEntity.getMethod().getMethod(),
@@ -662,6 +724,12 @@ public class CaseService {
   private static String districtNameOf(Case c) {
     return Optional.ofNullable(c.getSender().getDistrict())
         .map(District::getDistrict).orElse(null);
+  }
+
+  /** 送件人縣市名稱（null-safe） */
+  private static String cityNameOf(Case c) {
+    return Optional.ofNullable(c.getSender().getDistrict())
+        .map(District::getCity).map(City::getCity).orElse(null);
   }
 
   /** 送件人身分別名稱（null-safe：同上） */

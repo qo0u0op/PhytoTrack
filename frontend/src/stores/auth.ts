@@ -21,6 +21,8 @@ export const useAuthStore = defineStore('auth', {
     isAdmin: (state) => state.user?.role === 'ROLE_ADMIN',
     /** 是否為員工層級以上（STAFF 或 ADMIN），可用 AI 診斷與建案 */
     isStaff: (state) => state.user?.role === 'ROLE_STAFF' || state.user?.role === 'ROLE_ADMIN',
+    /** 是否為檢視者（VIEWER） */
+    isViewer: (state) => state.user?.role === 'ROLE_VIEWER',
   },
   actions: {
     /** 登入成功後寫入 token 與使用者 */

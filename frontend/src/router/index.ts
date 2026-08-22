@@ -60,6 +60,12 @@ const router = createRouter({
       component: () => import('../views/ReferenceDataAdminView.vue'),
       meta: { requiresAuth: true, adminOnly: true },
     },
+    {
+      path: '/admin/senders',
+      name: 'senders-admin',
+      component: () => import('../views/SendersView.vue'),
+      meta: { requiresAuth: true, staffOnly: true },
+    },
     { path: '/:pathMatch(.*)*', redirect: '/' },
   ],
 })

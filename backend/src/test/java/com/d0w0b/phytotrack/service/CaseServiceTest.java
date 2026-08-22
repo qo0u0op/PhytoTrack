@@ -14,6 +14,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
+import org.mockito.quality.Strictness;
+import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -73,6 +75,7 @@ import java.util.Optional;
  * 案件服務（CaseService）單元測試
  */
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class CaseServiceTest {
 
   @Mock private CaseRepository caseRepository;
@@ -165,8 +168,9 @@ class CaseServiceTest {
 
   @Test
   void create_shouldReuseExistingSender() {
-    when(senderRepository.findByNameAndPhone("王小明", "0912345678"))
-        .thenReturn(Optional.of(sender()));
+    Sender existing = sender();
+    existing.setSenderId(99L);
+    when(senderRepository.findById(99L)).thenReturn(Optional.of(existing));
     when(methodRepository.findById(1L)).thenReturn(Optional.of(method(1L)));
     when(cropRepository.findById(36L)).thenReturn(Optional.of(crop(36L)));
     when(serviceRepository.findById(1L)).thenReturn(Optional.of(service(1L)));
@@ -181,20 +185,29 @@ class CaseServiceTest {
       return saved;
     });
 
-    caseService.create(validRequest());
+    CaseCreateRequest reqWithSenderId = new CaseCreateRequest(
+        LocalDate.of(2026, 8, 18), "2分地", "約3成", "葉片褐斑", "未用藥",
+        99L, "王小明", null, "0912345678", "臺中市霧峰區中正路1號", 1L, 1L,
+        1L, 36L, 1L, 1L, List.of(3L), List.of(1L), List.of(1L), List.of(1L));
+    caseService.create(reqWithSenderId);
 
-    // 已存在的送件人不應重複建立
+    // 使用 senderId 沿用既有送件人，不應新建
     verify(senderRepository, never()).save(any(Sender.class));
   }
 
   @Test
   void create_shouldThrowWhenCropMissing() {
-    when(senderRepository.findByNameAndPhone("王小明", "0912345678"))
-        .thenReturn(Optional.of(sender()));
+    Sender existing = sender();
+    existing.setSenderId(99L);
+    when(senderRepository.findById(99L)).thenReturn(Optional.of(existing));
     when(methodRepository.findById(1L)).thenReturn(Optional.of(method(1L)));
     when(cropRepository.findById(36L)).thenReturn(Optional.empty());
 
-    assertThatThrownBy(() -> caseService.create(validRequest()))
+    CaseCreateRequest reqWithSenderId2 = new CaseCreateRequest(
+        LocalDate.of(2026, 8, 18), "2分地", "約3成", "葉片褐斑", "未用藥",
+        99L, "王小明", null, "0912345678", "臺中市霧峰區中正路1號", 1L, 1L,
+        1L, 36L, 1L, 1L, List.of(3L), List.of(1L), List.of(1L), List.of(1L));
+    assertThatThrownBy(() -> caseService.create(reqWithSenderId2))
         .isInstanceOf(ApiException.class)
         .satisfies(e -> {
           ApiException ex = (ApiException) e;
@@ -414,7 +427,8 @@ class CaseServiceTest {
     Case c = caseWithRefs();
     c.setCaseId(1L);
     when(caseRepository.findById(1L)).thenReturn(Optional.of(c));
-    when(senderRepository.findByNameAndPhone("李四", "0911111111")).thenReturn(Optional.empty());
+    when(districtRepository.findById(1L)).thenReturn(Optional.of(district(1L)));
+    when(senderTypeRepository.findById(1L)).thenReturn(Optional.of(senderType(1L, "農民")));
     when(senderRepository.save(any(Sender.class))).thenAnswer(i -> i.getArgument(0));
 
     CaseUpdateRequest request = new CaseUpdateRequest(
@@ -436,18 +450,19 @@ class CaseServiceTest {
     c.setCaseId(1L);
     when(caseRepository.findById(1L)).thenReturn(Optional.of(c));
     Sender existing = sender();
+    existing.setSenderId(88L);
     existing.setName("李四");
     existing.setPhone("0911111111");
-    when(senderRepository.findByNameAndPhone("李四", "0911111111")).thenReturn(Optional.of(existing));
+    when(senderRepository.findById(88L)).thenReturn(Optional.of(existing));
 
     CaseUpdateRequest request = new CaseUpdateRequest(
         null, null, null, null, null, null,
         null, null, null, null,
-        "李四", "0911111111", null, null, null,
+        88L, "李四", null, "0911111111", null, null, null,
         null, null, null, null);
     caseService.update(1L, request);
 
-    // 目標身分已存在：關聯既有送件人，不建立新列、不改原送件人
+    // 使用 senderId 沿用既有送件人，不建立新列
     assertThat(c.getSender()).isSameAs(existing);
     verify(senderRepository, never()).save(any(Sender.class));
     Sender original = sender();
@@ -460,7 +475,9 @@ class CaseServiceTest {
     c.setCaseId(1L);
     when(caseRepository.findById(1L)).thenReturn(Optional.of(c));
     Sender current = c.getSender();
-    when(senderRepository.findByNameAndPhone("王小明", "0912345678")).thenReturn(Optional.of(current));
+    when(districtRepository.findById(1L)).thenReturn(Optional.of(district(1L)));
+    when(senderTypeRepository.findById(1L)).thenReturn(Optional.of(senderType(1L, "農民")));
+    when(senderRepository.save(any(Sender.class))).thenAnswer(i -> i.getArgument(0));
 
     CaseUpdateRequest request = new CaseUpdateRequest(
         null, null, null, null, null, null,
@@ -469,10 +486,11 @@ class CaseServiceTest {
         null, null, null, null);
     caseService.update(1L, request);
 
-    // 身分未變：沿用原送件人，僅更新地址
-    assertThat(c.getSender()).isSameAs(current);
+    // 僅更新地址：建立新送件人（避免改動共享 row），新地址生效
+    assertThat(c.getSender()).isNotSameAs(current);
     assertThat(c.getSender().getAddress()).isEqualTo("臺中市霧峰區新地址");
-    verify(senderRepository, never()).save(any(Sender.class));
+    assertThat(current.getAddress()).isEqualTo("臺中市霧峰區中正路1號");
+    verify(senderRepository).save(any(Sender.class));
   }
 
   @Test
@@ -675,7 +693,9 @@ class CaseServiceTest {
   private Sender sender() {
     Sender s = new Sender();
     s.setName("王小明");
+    s.setDisplayName("阿明");
     s.setPhone("0912345678");
+    s.setAddress("臺中市霧峰區中正路1號");
     s.setDistrict(district(1L));
     s.setSenderType(senderType(1L, "農民"));
     return s;
