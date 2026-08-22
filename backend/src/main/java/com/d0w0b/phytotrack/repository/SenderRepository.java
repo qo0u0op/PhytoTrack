@@ -14,9 +14,6 @@ import java.util.Optional;
  */
 public interface SenderRepository extends JpaRepository<Sender, Long> {
 
-  /** 依姓名與電話查詢送件人（schema 中此組合為唯一鍵） */
-  Optional<Sender> findByNameAndPhone(String name, String phone);
-
   boolean existsBySenderTypeSenderTypeId(Long senderTypeId);
 
   @Query("SELECT s FROM Sender s WHERE LOWER(s.name) LIKE LOWER(CONCAT('%', :q, '%')) "

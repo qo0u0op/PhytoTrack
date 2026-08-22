@@ -13,6 +13,9 @@ import com.d0w0b.phytotrack.repository.DistrictRepository;
 import com.d0w0b.phytotrack.repository.SenderRepository;
 import com.d0w0b.phytotrack.repository.SenderTypeRepository;
 
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+
 import java.util.List;
 
 /**
@@ -123,6 +126,9 @@ public class SenderService {
   }
 
   private SenderResponse toResponse(Sender s) {
+    boolean isViewer = isViewer();
+    String phone = isViewer ? null : s.getPhone();
+    String address = isViewer ? null : s.getAddress();
     String districtName = null;
     String cityName = null;
     Long districtId = null;
@@ -139,16 +145,25 @@ public class SenderService {
       senderTypeId = s.getSenderType().getSenderTypeId();
       senderTypeName = s.getSenderType().getSenderType();
     }
+    // VIEWER 時姓名與顯示名稱亦視為個資，一併遮蔽（僅留縣市鄉鎮）
+    String name = isViewer ? null : s.getName();
+    String displayName = isViewer ? null : s.getDisplayName();
     return new SenderResponse(
         s.getSenderId(),
-        s.getName(),
-        s.getDisplayName(),
-        s.getPhone(),
-        s.getAddress(),
+        name,
+        displayName,
+        phone,
+        address,
         districtId,
         districtName,
         cityName,
         senderTypeId,
         senderTypeName);
+  }
+
+  private boolean isViewer() {
+    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+    return auth != null && auth.getAuthorities().stream()
+        .anyMatch(a -> "ROLE_VIEWER".equals(a.getAuthority()));
   }
 }
