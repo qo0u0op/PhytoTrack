@@ -80,7 +80,7 @@ async function runAi() {
       cropName: detail.value.cropName,
       damages: detail.value.damages?.map((d) => d.name).filter((x): x is string => !!x),
       pestCategories: detail.value.pestCategories?.map((p) => p.name).filter((x): x is string => !!x),
-      pestDescription: detail.value.pestDescription,
+      pestDescription: detail.value.caseDescription,
       cropScale: detail.value.cropScale,
       damageScale: detail.value.damageScale,
       cultivationMethod: detail.value.methodName,
@@ -175,7 +175,7 @@ async function runAi() {
             <div class="col-12">
               <hr class="my-2" />
               <strong>病害情形描述：</strong>
-              <p class="mb-2">{{ detail.pestDescription ?? '無' }}</p>
+              <p class="mb-2">{{ detail.caseDescription ?? '無' }}</p>
               <strong>防治措施：</strong>
               <p class="mb-0">{{ detail.hintDescription ?? '無' }}</p>
             </div>

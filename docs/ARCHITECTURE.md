@@ -63,8 +63,8 @@ HTTP 請求
 
 ### 資料模型重點
 
-- 核心實體 **Case**（案件）：`@ManyToOne` 關聯 Sender、Method、Crop、Service、Delivery、User（createdBy）；`status` 為 `CaseStatus` 列舉（`PENDING`/`RESOLVED`/`CLOSED`），以 `@Enumerated(EnumType.ORDINAL)` 儲存，既有 `INTEGER 0/1/2` 直接對應（無資料遷移）
-- 多對多關聯透過 Junction 表：CaseDamage、CaseHint、CasePestCategory、CaseIdentifier
+- 核心實體 **Case**（案件）：`@ManyToOne` 關聯 Sender、Method、Crop、Service、Delivery、User（createdBy）；`status` 為 `CaseStatus` 列舉（`PENDING`/`RESOLVED`/`CLOSED`），以 `@Enumerated(EnumType.ORDINAL)` 儲存，既有 `INTEGER 0/1/2` 直接對應（無資料遷移）；`caseDescription` 為土壤、栽培、用藥紀錄（對應紙本表單，對應舊 `pestDescription`，BREAKING 直接重建 DB）
+- 多對多關聯透過 Junction 表：CaseDamage、CaseHint、CasePestCategory（含 `pestNote` 學名：描述，同分類可多筆，無 `UNIQUE(case_id, pest_category_id)`）、CaseIdentifier
 - **Sender**（送件人）：`name` 可空、`displayName`（Line/FB 暱稱）可空，`phone` 與 `displayName` 至少一有值（Service 層檢查）；顯示規則 `name(displayName)` / `displayName` / `name`；`phone` 非空時以部分唯一索引防重；**不以 DB UNIQUE 強制合併**——建案時以前端候選彈窗人工確認沿用（帶 `senderId`）或新建；ADMIN 可硬刪除未被引用的送件人（見 ADR-011）
 - **VIEWER 個資遮蔽**：`CaseService.toDetail/toSummary` 依當前角色判斷，VIEWER 的回應不含送件人姓名/電話/地址，但保留縣市鄉鎮與 `senderId`
 - **統計去重鍵**：不重複送件人以 `COALESCE(phone, displayName)` distinct 計數

@@ -4,7 +4,7 @@
  */
 
 export interface paths {
-    "/api/cases/{id}": {
+    "/api/senders/{id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -15,6 +15,22 @@ export interface paths {
         put: operations["update"];
         post?: never;
         delete: operations["delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/cases/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["detail_1"];
+        put: operations["update_1"];
+        post?: never;
+        delete: operations["delete_1"];
         options?: never;
         head?: never;
         patch?: never;
@@ -180,7 +196,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/cases": {
+    "/api/senders": {
         parameters: {
             query?: never;
             header?: never;
@@ -190,6 +206,22 @@ export interface paths {
         get: operations["list"];
         put?: never;
         post: operations["create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/cases": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list_1"];
+        put?: never;
+        post: operations["create_1"];
         delete?: never;
         options?: never;
         head?: never;
@@ -484,38 +516,6 @@ export interface paths {
         patch: operations["updateActive"];
         trace?: never;
     };
-    "/api/senders": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["list_1"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/senders/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["detail_1"];
-        put?: never;
-        post?: never;
-        delete: operations["delete_1"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/senders/search": {
         parameters: {
             query?: never;
@@ -760,12 +760,37 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        SenderUpsertRequest: {
+            name?: string;
+            displayName?: string;
+            phone?: string;
+            address: string;
+            /** Format: int64 */
+            districtId: number;
+            /** Format: int64 */
+            senderTypeId: number;
+        };
+        SenderResponse: {
+            /** Format: int64 */
+            senderId?: number;
+            name?: string;
+            displayName?: string;
+            phone?: string;
+            address?: string;
+            /** Format: int64 */
+            districtId?: number;
+            districtName?: string;
+            cityName?: string;
+            /** Format: int64 */
+            senderTypeId?: number;
+            senderTypeName?: string;
+        };
         CaseUpdateRequest: {
             /** Format: date */
             receiveDate?: string;
             cropScale?: string;
             damageScale?: string;
-            pestDescription?: string;
+            caseDescription?: string;
             hintDescription?: string;
             status?: string;
             /** Format: int64 */
@@ -789,7 +814,13 @@ export interface components {
             damageIds?: number[];
             hintIds?: number[];
             pestCategoryIds?: number[];
+            pestCategoryWithNotes?: components["schemas"]["PestCategoryNote"][];
             identifierIds?: number[];
+        };
+        PestCategoryNote: {
+            /** Format: int64 */
+            pestCategoryId: number;
+            pestNote?: string;
         };
         CaseResponse: {
             /** Format: int64 */
@@ -798,7 +829,7 @@ export interface components {
             receiveDate?: string;
             cropScale?: string;
             damageScale?: string;
-            pestDescription?: string;
+            caseDescription?: string;
             hintDescription?: string;
             status?: string;
             /** Format: date-time */
@@ -824,13 +855,19 @@ export interface components {
             createdByName?: string;
             damages?: components["schemas"]["IdName"][];
             hints?: components["schemas"]["IdName"][];
-            pestCategories?: components["schemas"]["IdName"][];
+            pestCategories?: components["schemas"]["IdNameWithNote"][];
             identifiers?: components["schemas"]["IdName"][];
         };
         IdName: {
             /** Format: int64 */
             id?: number;
             name?: string;
+        };
+        IdNameWithNote: {
+            /** Format: int64 */
+            id?: number;
+            name?: string;
+            pestNote?: string;
         };
         IdNameUpdateRequest: {
             name: string;
@@ -861,7 +898,7 @@ export interface components {
             receiveDate: string;
             cropScale?: string;
             damageScale?: string;
-            pestDescription?: string;
+            caseDescription?: string;
             hintDescription?: string;
             /** Format: int64 */
             senderId?: number;
@@ -884,6 +921,7 @@ export interface components {
             damageIds?: number[];
             hintIds?: number[];
             pestCategoryIds?: number[];
+            pestCategoryWithNotes?: components["schemas"]["PestCategoryNote"][];
             identifierIds?: number[];
         };
         RegisterRequest: {
@@ -915,6 +953,7 @@ export interface components {
             cropCategory?: string;
             damages?: string[];
             pestCategories?: string[];
+            caseDescription?: string;
             pestDescription?: string;
             cropScale?: string;
             damageScale?: string;
@@ -953,21 +992,6 @@ export interface components {
         };
         ActiveUpdateRequest: {
             active: boolean;
-        };
-        SenderResponse: {
-            /** Format: int64 */
-            senderId?: number;
-            name?: string;
-            displayName?: string;
-            phone?: string;
-            address?: string;
-            /** Format: int64 */
-            districtId?: number;
-            districtName?: string;
-            cityName?: string;
-            /** Format: int64 */
-            senderTypeId?: number;
-            senderTypeName?: string;
         };
         PestCategoryItem: {
             /** Format: int64 */
@@ -1124,12 +1148,80 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["CaseResponse"];
+                    "*/*": components["schemas"]["SenderResponse"];
                 };
             };
         };
     };
     update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SenderUpsertRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["SenderResponse"];
+                };
+            };
+        };
+    };
+    delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    detail_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CaseResponse"];
+                };
+            };
+        };
+    };
+    update_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -1155,7 +1247,7 @@ export interface operations {
             };
         };
     };
-    delete: {
+    delete_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -1637,6 +1729,50 @@ export interface operations {
     };
     list: {
         parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["SenderResponse"][];
+                };
+            };
+        };
+    };
+    create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SenderUpsertRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["SenderResponse"];
+                };
+            };
+        };
+    };
+    list_1: {
+        parameters: {
             query: {
                 cropId?: number;
                 serviceId?: number;
@@ -1663,7 +1799,7 @@ export interface operations {
             };
         };
     };
-    create: {
+    create_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -2110,68 +2246,6 @@ export interface operations {
                 content: {
                     "*/*": components["schemas"]["UserResponse"];
                 };
-            };
-        };
-    };
-    list_1: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["SenderResponse"][];
-                };
-            };
-        };
-    };
-    detail_1: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["SenderResponse"];
-                };
-            };
-        };
-    };
-    delete_1: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
             };
         };
     };

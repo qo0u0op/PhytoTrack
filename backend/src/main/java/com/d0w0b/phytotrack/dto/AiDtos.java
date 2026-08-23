@@ -20,6 +20,7 @@ public final class AiDtos {
       String cropCategory,
       List<String> damages,
       List<String> pestCategories,
+      String caseDescription,
       String pestDescription,
       String cropScale,
       String damageScale,

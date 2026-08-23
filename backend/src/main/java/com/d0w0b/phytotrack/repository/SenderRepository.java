@@ -14,6 +14,9 @@ import java.util.Optional;
  */
 public interface SenderRepository extends JpaRepository<Sender, Long> {
 
+  @Deprecated
+  java.util.Optional<Sender> findByNameAndPhone(String name, String phone);
+
   boolean existsBySenderTypeSenderTypeId(Long senderTypeId);
 
   @Query("SELECT s FROM Sender s WHERE LOWER(s.name) LIKE LOWER(CONCAT('%', :q, '%')) "

@@ -7,8 +7,7 @@ import lombok.Setter;
 @Getter
 @Setter
 @Entity
-@Table(name = "case_pest_categories",
-       uniqueConstraints = @UniqueConstraint(columnNames = {"case_id", "pest_category_id"}))
+@Table(name = "case_pest_categories")
 public class CasePestCategory {
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -21,4 +20,7 @@ public class CasePestCategory {
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "pest_category_id", nullable = false)
   private PestCategory pestCategory;
+
+  @Column(columnDefinition = "TEXT")
+  private String pestNote;
 }

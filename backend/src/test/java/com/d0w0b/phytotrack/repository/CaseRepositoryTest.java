@@ -124,7 +124,7 @@ class CaseRepositoryTest {
     caseEntity.setReceiveDate(LocalDate.of(2026, 8, 18));
     caseEntity.setCropScale("2 分地");
     caseEntity.setDamageScale("約 3 成");
-    caseEntity.setPestDescription("葉片出現斑點");
+    caseEntity.setCaseDescription("葉片出現斑點");
     caseEntity.setStatus(CaseStatus.PENDING);
     caseEntity.setSender(sender);
     caseEntity.setMethod(method);

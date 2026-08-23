@@ -83,12 +83,14 @@ public class AIService {
   }
 
   private String buildUserPrompt(AnalyzeRequest request) {
+    // 相容舊版 pestDescription 與新版 caseDescription（土壤紀錄）
+    String desc = request.caseDescription() != null ? request.caseDescription() : request.pestDescription();
     return """
         作物名稱：%s
         作物類別：%s
         被害部位：%s
         病蟲害分類（可多選）：%s
-        病害情形描述：%s
+        土壤、栽培、用藥紀錄：%s
         種植面積：%s
         被害面積或植株數：%s
         耕種方式：%s
@@ -97,7 +99,7 @@ public class AIService {
             nullToEmpty(request.cropCategory()),
             join(request.damages()),
             join(request.pestCategories()),
-            nullToEmpty(request.pestDescription()),
+            nullToEmpty(desc),
             nullToEmpty(request.cropScale()),
             nullToEmpty(request.damageScale()),
             nullToEmpty(request.cultivationMethod()),

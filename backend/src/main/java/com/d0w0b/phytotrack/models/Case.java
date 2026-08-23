@@ -29,8 +29,8 @@ public class Case {
 
   private String damageScale;
 
-  @Column(columnDefinition = "TEXT")
-  private String pestDescription;
+  @Column(name = "case_description", columnDefinition = "TEXT")
+  private String caseDescription;
 
   @Column(columnDefinition = "TEXT")
   private String hintDescription;

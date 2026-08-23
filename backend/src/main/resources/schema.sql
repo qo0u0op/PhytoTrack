@@ -777,7 +777,7 @@ CREATE TABLE IF NOT EXISTS cases (
   receive_date     DATE    NOT NULL,
   crop_scale       TEXT,
   damage_scale     TEXT,
-  pest_description TEXT,
+  case_description TEXT,
   hint_description TEXT,
   status           INTEGER NOT NULL DEFAULT 0,
   created_at       TEXT    NOT NULL DEFAULT (datetime('now', 'localtime')),
@@ -824,7 +824,7 @@ CREATE TABLE IF NOT EXISTS case_pest_categories (
   cpc_id            INTEGER PRIMARY KEY,
   case_id           INTEGER NOT NULL REFERENCES cases(case_id),
   pest_category_id  INTEGER NOT NULL REFERENCES pest_categories(pest_category_id),
-  UNIQUE(case_id, pest_category_id)
+  pest_note         TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_case_pest_categories_case_id   ON case_pest_categories(case_id);
 CREATE INDEX IF NOT EXISTS idx_case_pest_categories_pest_id   ON case_pest_categories(pest_category_id);
