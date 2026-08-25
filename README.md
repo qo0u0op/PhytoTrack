@@ -34,7 +34,9 @@
 
 ```bash
 cd backend
-./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
+mvn spring-boot:run -Dspring-boot.run.profiles=dev          # 已安裝 mise（mise 提供 maven 3.9.16）
+# 或
+./mvnw spring-boot:run -Dspring-boot.run.profiles=dev       # 無 mise 時 fallback（零依賴，wrapper 3.9.16）
 ```
 
 - 啟動後 Swagger UI：<http://localhost:8080/swagger-ui.html>
@@ -74,7 +76,8 @@ npm run dev
 
 ```bash
 # 後端測試
-cd backend && ./mvnw test
+cd backend && mvn test          # 已安裝 mise
+# 或 cd backend && ./mvnw test  # 無 mise 時 fallback
 
 # 前端單元測試（vitest）
 cd frontend && npm test
@@ -95,6 +98,6 @@ cd frontend && npm run build
 
 統計 Dashboard、使用者管理完整化、送件人管理（displayName、去重合併、VIEWER 個資遮蔽）、參照資料維護、監控與備份等，詳見 `openspec/specs/`（10 份能力契約）與 `openspec/changes/`。案件生命週期（狀態流轉：PENDING→RESOLVED→CLOSED）與更新契約補全已交付。
 
-## 同時啟動前後端
+## 同時啟動前後端（選用，需 mise）
 
-以 `mise run dev` 可同時啟動後端（`dev:backend`）與前端（`dev:frontend`），並等待兩者就緒。
+以 `mise run dev` 可同時啟動後端（`dev:backend`，走 `mvn`）與前端（`dev:frontend`），並等待兩者就緒；未安裝 mise 請分開執行 `./mvnw` 與 `npm run dev`。

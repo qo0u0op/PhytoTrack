@@ -4,12 +4,12 @@
 
 ## 指令
 
-- 後端所有驗證：`cd backend && ./mvnw test`；單一測試：`./mvnw test -Dtest=CaseControllerTest`
-- 後端啟動（dev）：`./mvnw spring-boot:run -Dspring-boot.run.profiles=dev`，Swagger UI 於 <http://localhost:8080/swagger-ui.html>
+- 後端所有驗證：`cd backend && mvn test`（已安裝 mise）或 `./mvnw test`（無 mise 時 fallback）；單一測試：`mvn test -Dtest=CaseControllerTest` / `./mvnw test -Dtest=CaseControllerTest`
+- 後端啟動（dev）：`mvn spring-boot:run -Dspring-boot.run.profiles=dev`（mise）或 `./mvnw spring-boot:run -Dspring-boot.run.profiles=dev`（fallback），Swagger UI 於 <http://localhost:8080/swagger-ui.html>
 - 前端建置（含 vue-tsc 型別檢查）：`cd frontend && npm run build`；開發伺服器 `npm run dev`（已將 `/api` 代理至 8080）；前端測試 `npm test`（vitest，happy-dom）
 - 操作手冊：`typst compile docs/manual.typ docs/manual.pdf`（PDF 為產物，`*.pdf` 已 gitignore，勿提交）
 - 本機 shell 慣例以 `rtk` 開頭執行指令（如 `rtk ./mvnw test`），一般指令亦可直接執行
-- 同時啟動前後端：`mise run dev`（`mise.toml` 另有 `dev:backend` / `dev:frontend` / `d2`）
+- 同時啟動前後端：`mise run dev`（`dev:backend` 走 `mvn`，`mise.toml` 另有 `dev:frontend` / `d2`；無 mise 時分開執行 `./mvnw` 與 `npm run dev`）
 - 前端 `npm install` 免 flag：`frontend/.npmrc` 已設 `legacy-peer-deps=true`（`openapi-typescript@7` 只支援 TS^5，專案用 TS 6），勿移除該設定
 
 ## 架構重點

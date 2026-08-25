@@ -1,6 +1,6 @@
 [tools]
 java = "openjdk-21.0.2"
-maven = "3.9.15"
+maven = "3.9.16"
 
 [tasks.d2]
 description = "Compile D2 diagrams to docs/img"
@@ -18,7 +18,7 @@ done
 
 [tasks."dev:backend"]
 description = "啟動後端 dev server（dev profile，Swagger UI 於 :8080）"
-run = "cd backend && ./mvnw spring-boot:run -Dspring-boot.run.profiles=dev"
+run = "cd backend && mvn spring-boot:run -Dspring-boot.run.profiles=dev"
 
 [tasks."dev:frontend"]
 description = "啟動前端 dev server（:5173，/api 代理至 8080；--host 供 Tailscale／LAN 連線）"
