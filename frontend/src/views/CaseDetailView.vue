@@ -43,6 +43,9 @@ async function load() {
 
 watch(id, load, { immediate: true })
 
+const joinWithNote = (items?: { id?: number; name?: string; pestNote?: string }[]) =>
+  items?.map((i: any) => (i.pestNote ? `${i.name}(${i.pestNote})` : i.name)).filter(Boolean).join('、') ?? '無'
+
 const join = (items?: { id?: number; name?: string }[]) =>
   items?.map((i) => i.name).filter(Boolean).join('、') ?? '無'
 
@@ -153,7 +156,7 @@ async function runAi() {
               <strong>被害部位：</strong>{{ join(detail.damages) }}
             </div>
             <div class="col-md-6">
-              <strong>病蟲害分類：</strong>{{ join(detail.pestCategories) }}
+              <strong>病蟲害分類：</strong>{{ joinWithNote(detail.pestCategories as any) }}
             </div>
             <div class="col-12">
               <strong>送件人：</strong>{{ senderLabel(detail) }}

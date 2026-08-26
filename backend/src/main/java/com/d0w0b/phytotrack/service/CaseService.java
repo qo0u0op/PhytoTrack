@@ -286,6 +286,7 @@ public class CaseService {
         || request.damageIds() != null
         || request.hintIds() != null
         || request.pestCategoryIds() != null
+        || request.pestCategoryWithNotes() != null
         || request.identifierIds() != null;
   }
 
@@ -369,17 +370,6 @@ public class CaseService {
         caseEntity.getCasePestCategories().add(j);
       }
     } else if (request.pestCategoryIds() != null) {
-    if (request.hintIds() != null) {
-      replaceJunctionGroup(caseEntity, caseEntity.getCaseHints(), request.hintIds(),
-          j -> j.getHint().getHintId(),
-          (c, id) -> {
-            CaseHint junction = new CaseHint();
-            junction.setCaseEntity(c);
-            junction.setHint(getRef(hintRepository, id, "防治建議"));
-            return junction;
-          });
-    }
-    if (request.pestCategoryIds() != null) {
       replaceJunctionGroup(caseEntity, caseEntity.getCasePestCategories(),
           request.pestCategoryIds(), j -> j.getPestCategory().getPestCategoryId(),
           (c, id) -> {
@@ -389,6 +379,15 @@ public class CaseService {
             return junction;
           });
     }
+    if (request.hintIds() != null) {
+      replaceJunctionGroup(caseEntity, caseEntity.getCaseHints(), request.hintIds(),
+          j -> j.getHint().getHintId(),
+          (c, id) -> {
+            CaseHint junction = new CaseHint();
+            junction.setCaseEntity(c);
+            junction.setHint(getRef(hintRepository, id, "防治建議"));
+            return junction;
+          });
     }
     if (request.identifierIds() != null) {
       replaceJunctionGroup(caseEntity, caseEntity.getCaseIdentifiers(),
@@ -512,7 +511,7 @@ public class CaseService {
     StringBuilder sb = new StringBuilder("\uFEFF");
     sb.append(join(
         "案件編號", "收件日期", "狀態", "送件人", "電話", "縣市鄉鎮", "地址", "身分別",
-        "作物", "種植面積", "被害面積", "被害部位", "病蟲害", "病害描述", "防治建議",
+        "作物", "種植面積", "被害面積", "被害部位", "病蟲害", "土壤栽培用藥紀錄", "防治建議",
         "簽名人", "耕種方式", "服務", "交付", "建立時間", "更新時間"));
     for (Case c : cases) {
       sb.append('\n').append(join(
@@ -528,7 +527,11 @@ public class CaseService {
           c.getCropScale(),
           c.getDamageScale(),
           names(c.getCaseDamages(), d -> d.getDamage().getDamage()),
-          names(c.getCasePestCategories(), j -> j.getPestCategory().getPestCategory()),
+          c.getCasePestCategories().stream().map(j -> {
+            String base = j.getPestCategory().getPestCategory();
+            String note = j.getPestNote();
+            return note != null && !note.isBlank() ? base + "(" + note + ")" : base;
+          }).collect(java.util.stream.Collectors.joining("、")),
           c.getCaseDescription(),
           c.getHintDescription(),
           names(c.getCaseIdentifiers(), j -> j.getIdentifier().getIdentifier()),

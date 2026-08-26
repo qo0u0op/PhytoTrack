@@ -154,7 +154,12 @@ class CaseRepositoryTest {
     casePestCategory.setPestCategory(pestCategory);
     caseEntity.getCasePestCategories().add(casePestCategory);
 
-    Identifier identifier = identifierRepository.findAll().stream().findFirst().orElseThrow();
+    Identifier identifier = identifierRepository.findAll().stream().findFirst()
+        .orElseGet(() -> {
+          Identifier i = new Identifier();
+          i.setIdentifier("測試簽名人");
+          return identifierRepository.save(i);
+        });
     CaseIdentifier caseIdentifier = new CaseIdentifier();
     caseIdentifier.setCaseEntity(caseEntity);
     caseIdentifier.setIdentifier(identifier);

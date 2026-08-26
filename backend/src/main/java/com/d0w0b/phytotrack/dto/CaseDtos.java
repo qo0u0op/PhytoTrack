@@ -1,5 +1,6 @@
 package com.d0w0b.phytotrack.dto;
 
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
@@ -43,7 +44,7 @@ public final class CaseDtos {
       List<Long> damageIds,
       List<Long> hintIds,
       List<Long> pestCategoryIds,
-      List<PestCategoryNote> pestCategoryWithNotes,
+      List<@Valid PestCategoryNote> pestCategoryWithNotes,
       List<Long> identifierIds) {
 
     // 相容舊版 18 參數建構（無 senderId/displayName）
@@ -102,7 +103,7 @@ public final class CaseDtos {
       List<Long> damageIds,
       List<Long> hintIds,
       List<Long> pestCategoryIds,
-      List<PestCategoryNote> pestCategoryWithNotes,
+      List<@Valid PestCategoryNote> pestCategoryWithNotes,
       List<Long> identifierIds) {
 
     // 相容舊版 19 參數建構

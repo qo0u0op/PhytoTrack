@@ -731,25 +731,39 @@ async function runAi() {
             </div>
           </div>
           <div class="col-12">
-            <label class="form-label">病蟲害分類（可複選）</label>
-            <div v-for="p in pestTypes" :key="p.id" class="mb-2">
-              <div class="fw-bold small text-muted">{{ p.name }}</div>
-              <div class="d-flex flex-wrap gap-3">
-                <label v-for="c in p.categories" :key="c.id" class="form-check form-check-inline">
-                  <input
-                    class="form-check-input"
-                    type="checkbox"
-                    :checked="form.pestCategoryIds.includes(c.id)"
-                    @change="toggle(form.pestCategoryIds, c.id)"
-                  />
-                  <span class="form-check-label">{{ c.code }} {{ c.name }}</span>
-                </label>
+            <label class="form-label">病蟲害明細（可增刪多列，同分類可多筆）</label>
+            <div v-for="(row, idx) in pestRows" :key="idx" class="row g-2 align-items-end mb-2">
+              <div class="col-md-3">
+                <label class="form-label small text-muted mb-1">害物類型</label>
+                <select v-model.number="row.pestTypeId" class="form-select form-select-sm">
+                  <option v-for="p in pestTypes" :key="p.id" :value="p.id">{{ p.name }}</option>
+                </select>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label small text-muted mb-1">病蟲害分類</label>
+                <select v-model.number="row.pestCategoryId" class="form-select form-select-sm">
+                  <option
+                    v-for="c in (pestTypes.find((p) => p.id === row.pestTypeId)?.categories ?? [])"
+                    :key="c.id"
+                    :value="c.id"
+                  >
+                    {{ c.code }} {{ c.name }}
+                  </option>
+                </select>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label small text-muted mb-1">學名：描述</label>
+                <input v-model.trim="row.pestNote" class="form-control form-control-sm" placeholder="學名：描述（選填）" maxlength="500" />
+              </div>
+              <div class="col-md-1">
+                <button type="button" class="btn btn-sm btn-outline-danger" @click="pestRows.splice(idx, 1)">刪除</button>
               </div>
             </div>
+            <button type="button" class="btn btn-sm btn-outline-primary" @click="pestRows.push({ pestTypeId: pestTypes[0]?.id ?? 0, pestCategoryId: pestTypes[0]?.categories[0]?.id ?? 0, pestNote: '' })">＋新增一列</button>
           </div>
           <div class="col-12">
-            <label class="form-label">病害情形描述</label>
-            <textarea v-model.trim="form.caseDescription" class="form-control" rows="2"></textarea>
+            <label class="form-label">土壤、栽培、用藥紀錄</label>
+            <textarea v-model.trim="form.caseDescription" class="form-control" rows="2" placeholder="對應紙本表單土壤、栽培、用藥紀錄欄位"></textarea>
           </div>
           <div class="col-12">
             <label class="form-label">是否已採取防治措施及其效果</label>
