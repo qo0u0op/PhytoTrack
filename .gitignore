@@ -48,3 +48,6 @@ docs/notebook/
 ### pdf ###
 *.pdf
 
+### Playwright ###
+.playwright/
+
