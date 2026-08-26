@@ -7,7 +7,7 @@
 | 元件 | 版本 | 用途 |
 |------|------|------|
 | JDK | 21+ | 執行 Spring Boot 後端 |
-| Node.js | 20+ | 建置前端（npm） |
+| Node.js | 24 LTS（`mise.toml` 以 `node = "lts"` 鎖定 24.19.0，`mise.lock` 鎖定工具鏈） | 建置前端（npm）與 Playwright E2E |
 | llama.cpp | 最新版 | 提供 AI 診斷（`llama-server`） |
 | GGUF 模型 | 任一繁體中文相容模型 | 如 `llama-3.2-3b-instruct` 或 `qwen2.5-3b-instruct` |
 
