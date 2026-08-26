@@ -125,9 +125,9 @@ class CaseServiceTest {
   private CaseCreateRequest validRequest() {
     return new CaseCreateRequest(
         LocalDate.of(2026, 8, 18), "2分地", "約3成", "葉片褐斑", "未用藥",
-        "王小明", "0912345678", "臺中市霧峰區中正路1號", 1L, 1L,
+        null, "王小明", null, "0912345678", "臺中市霧峰區中正路1號", 1L, 1L,
         1L, 36L, 1L, 1L,
-        List.of(3L), List.of(1L), List.of(1L), List.of(1L));
+        List.of(3L), List.of(1L), List.of(1L), null, List.of(1L));
   }
 
   @Test
@@ -188,7 +188,7 @@ class CaseServiceTest {
     CaseCreateRequest reqWithSenderId = new CaseCreateRequest(
         LocalDate.of(2026, 8, 18), "2分地", "約3成", "葉片褐斑", "未用藥",
         99L, "王小明", null, "0912345678", "臺中市霧峰區中正路1號", 1L, 1L,
-        1L, 36L, 1L, 1L, List.of(3L), List.of(1L), List.of(1L), List.of(1L));
+        1L, 36L, 1L, 1L, List.of(3L), List.of(1L), List.of(1L), null, List.of(1L));
     caseService.create(reqWithSenderId);
 
     // 使用 senderId 沿用既有送件人，不應新建
@@ -206,7 +206,7 @@ class CaseServiceTest {
     CaseCreateRequest reqWithSenderId2 = new CaseCreateRequest(
         LocalDate.of(2026, 8, 18), "2分地", "約3成", "葉片褐斑", "未用藥",
         99L, "王小明", null, "0912345678", "臺中市霧峰區中正路1號", 1L, 1L,
-        1L, 36L, 1L, 1L, List.of(3L), List.of(1L), List.of(1L), List.of(1L));
+        1L, 36L, 1L, 1L, List.of(3L), List.of(1L), List.of(1L), null, List.of(1L));
     assertThatThrownBy(() -> caseService.create(reqWithSenderId2))
         .isInstanceOf(ApiException.class)
         .satisfies(e -> {
@@ -459,7 +459,7 @@ class CaseServiceTest {
         null, null, null, null, null, null,
         null, null, null, null,
         88L, "李四", null, "0911111111", null, null, null,
-        null, null, null, null);
+        null, null, null, null, null);
     caseService.update(1L, request);
 
     // 使用 senderId 沿用既有送件人，不建立新列
@@ -646,7 +646,7 @@ class CaseServiceTest {
   void exportCsv_shouldBuildRowsWithBomAndEscape() {
     Case c1 = caseWithRefs();
     c1.setCaseId(1L);
-    c1.setPestDescription("葉片斑點，含逗號,與\"引號\"");
+    c1.setCaseDescription("葉片斑點，含逗號,與\"引號\"");
     Case c2 = caseWithRefs();
     c2.setCaseId(2L);
     c2.setCrop(crop(37L));

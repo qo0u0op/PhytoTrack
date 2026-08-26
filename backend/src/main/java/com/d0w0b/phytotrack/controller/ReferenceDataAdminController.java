@@ -127,6 +127,7 @@ public class ReferenceDataAdminController {
 
   // ===== identifiers =====
   @PostMapping("/identifiers")
+  @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
   public ResponseEntity<IdNameResponse> createIdentifier(@Valid @RequestBody IdNameCreateRequest req) {
     return ResponseEntity.status(HttpStatus.CREATED).body(service.createIdentifier(req.name()));
   }
@@ -161,6 +162,7 @@ public class ReferenceDataAdminController {
 
   // ===== crops =====
   @PostMapping("/crops")
+  @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
   public ResponseEntity<IdNameResponse> createCrop(@Valid @RequestBody CropCreateRequest req) {
     return ResponseEntity.status(HttpStatus.CREATED).body(service.createCrop(req.name(), req.cropCategoryId()));
   }

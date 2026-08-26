@@ -168,7 +168,7 @@ async function viewDetail(id: number) {
         <p><strong>防治建議：</strong>${join(data.hints)}</p>
         <p><strong>診斷簽名人：</strong>${join(data.identifiers)}</p>
         <hr />
-        <p><strong>病害情形：</strong>${esc(data.pestDescription ?? '無')}</p>
+        <p><strong>病害情形：</strong>${esc(data.caseDescription ?? '無')}</p>
         <p><strong>防治措施：</strong>${esc(data.hintDescription ?? '無')}</p>
         <p class="text-muted">建立者：${esc(data.createdByName)}／建立時間：${esc(data.createdAt)}</p>
       </div>

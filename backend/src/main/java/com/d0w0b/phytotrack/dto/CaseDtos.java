@@ -1,5 +1,6 @@
 package com.d0w0b.phytotrack.dto;
 
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
@@ -21,7 +22,7 @@ public final class CaseDtos {
 
       String cropScale,
       String damageScale,
-      String pestDescription,
+      String caseDescription,
       String hintDescription,
 
       // 送件人（Sender）欄位：若提供 senderId 則沿用，否則依 name/phone/displayName 建立
@@ -43,18 +44,36 @@ public final class CaseDtos {
       List<Long> damageIds,
       List<Long> hintIds,
       List<Long> pestCategoryIds,
+      List<@Valid PestCategoryNote> pestCategoryWithNotes,
       List<Long> identifierIds) {
 
     // 相容舊版 18 參數建構（無 senderId/displayName）
     public CaseCreateRequest(LocalDate receiveDate, String cropScale, String damageScale,
-        String pestDescription, String hintDescription,
+        String caseDescription, String hintDescription,
         String senderName, String senderPhone, String senderAddress,
         Long senderDistrictId, Long senderTypeId,
         Long methodId, Long cropId, Long serviceId, Long deliverId,
         List<Long> damageIds, List<Long> hintIds, List<Long> pestCategoryIds, List<Long> identifierIds) {
-      this(receiveDate, cropScale, damageScale, pestDescription, hintDescription,
+      this(receiveDate, cropScale, damageScale, caseDescription, hintDescription,
           null, senderName, null, senderPhone, senderAddress, senderDistrictId, senderTypeId,
-          methodId, cropId, serviceId, deliverId, damageIds, hintIds, pestCategoryIds, identifierIds);
+          methodId, cropId, serviceId, deliverId, damageIds, hintIds, pestCategoryIds, null, identifierIds);
+    }
+
+    // 相容 20 參數（有 senderId/displayName 但無 pestCategoryWithNotes）
+    public CaseCreateRequest(LocalDate receiveDate, String cropScale, String damageScale,
+        String caseDescription, String hintDescription,
+        Long senderId, String senderName, String senderDisplayName, String senderPhone, String senderAddress,
+        Long senderDistrictId, Long senderTypeId,
+        Long methodId, Long cropId, Long serviceId, Long deliverId,
+        List<Long> damageIds, List<Long> hintIds, List<Long> pestCategoryIds, List<Long> identifierIds) {
+      this(receiveDate, cropScale, damageScale, caseDescription, hintDescription,
+          senderId, senderName, senderDisplayName, senderPhone, senderAddress, senderDistrictId, senderTypeId,
+          methodId, cropId, serviceId, deliverId, damageIds, hintIds, pestCategoryIds, null, identifierIds);
+    }
+
+    public record PestCategoryNote(
+        @NotNull(message = "病蟲害分類不可為空") Long pestCategoryId,
+        @jakarta.validation.constraints.Size(max = 500, message = "害物備註不可超過 500 字元") String pestNote) {
     }
   }
 
@@ -63,7 +82,7 @@ public final class CaseDtos {
       LocalDate receiveDate,
       String cropScale,
       String damageScale,
-      String pestDescription,
+      String caseDescription,
       String hintDescription,
       String status,
       Long methodId,
@@ -84,19 +103,38 @@ public final class CaseDtos {
       List<Long> damageIds,
       List<Long> hintIds,
       List<Long> pestCategoryIds,
+      List<@Valid PestCategoryNote> pestCategoryWithNotes,
       List<Long> identifierIds) {
 
     // 相容舊版 19 參數建構
     public CaseUpdateRequest(LocalDate receiveDate, String cropScale, String damageScale,
-        String pestDescription, String hintDescription, String status,
+        String caseDescription, String hintDescription, String status,
         Long methodId, Long cropId, Long serviceId, Long deliverId,
         String senderName, String senderPhone, String senderAddress,
         Long senderDistrictId, Long senderTypeId,
         List<Long> damageIds, List<Long> hintIds, List<Long> pestCategoryIds, List<Long> identifierIds) {
-      this(receiveDate, cropScale, damageScale, pestDescription, hintDescription, status,
+      this(receiveDate, cropScale, damageScale, caseDescription, hintDescription, status,
           methodId, cropId, serviceId, deliverId,
           null, senderName, null, senderPhone, senderAddress, senderDistrictId, senderTypeId,
-          damageIds, hintIds, pestCategoryIds, identifierIds);
+          damageIds, hintIds, pestCategoryIds, null, identifierIds);
+    }
+
+    // 相容 20 參數（有 senderId/displayName 但無 pestCategoryWithNotes）
+    public CaseUpdateRequest(LocalDate receiveDate, String cropScale, String damageScale,
+        String caseDescription, String hintDescription, String status,
+        Long methodId, Long cropId, Long serviceId, Long deliverId,
+        Long senderId, String senderName, String senderDisplayName, String senderPhone, String senderAddress,
+        Long senderDistrictId, Long senderTypeId,
+        List<Long> damageIds, List<Long> hintIds, List<Long> pestCategoryIds, List<Long> identifierIds) {
+      this(receiveDate, cropScale, damageScale, caseDescription, hintDescription, status,
+          methodId, cropId, serviceId, deliverId,
+          senderId, senderName, senderDisplayName, senderPhone, senderAddress, senderDistrictId, senderTypeId,
+          damageIds, hintIds, pestCategoryIds, null, identifierIds);
+    }
+
+    public record PestCategoryNote(
+        @NotNull(message = "病蟲害分類不可為空") Long pestCategoryId,
+        @jakarta.validation.constraints.Size(max = 500, message = "害物備註不可超過 500 字元") String pestNote) {
     }
   }
 
@@ -152,7 +190,7 @@ public final class CaseDtos {
       LocalDate receiveDate,
       String cropScale,
       String damageScale,
-      String pestDescription,
+      String caseDescription,
       String hintDescription,
       String status,
       LocalDateTime createdAt,
@@ -173,26 +211,32 @@ public final class CaseDtos {
       String createdByName,
       List<IdName> damages,
       List<IdName> hints,
-      List<IdName> pestCategories,
+      List<IdNameWithNote> pestCategories,
       List<IdName> identifiers) {
 
     // 相容舊版 24 參數建構（無 senderId/displayName/city）
     public CaseResponse(Long caseId, LocalDate receiveDate, String cropScale, String damageScale,
-        String pestDescription, String hintDescription, String status,
+        String caseDescription, String hintDescription, String status,
         LocalDateTime createdAt, LocalDateTime updatedAt,
         String senderName, String senderPhone, String senderAddress,
         Long senderDistrictId, String senderDistrictName, Long senderTypeId,
         String cropName, String methodName, String serviceName, String deliveryName,
         String createdByName, List<IdName> damages, List<IdName> hints,
         List<IdName> pestCategories, List<IdName> identifiers) {
-      this(caseId, receiveDate, cropScale, damageScale, pestDescription, hintDescription, status,
+      this(caseId, receiveDate, cropScale, damageScale, caseDescription, hintDescription, status,
           createdAt, updatedAt, null, senderName, null, senderPhone, senderAddress,
           senderDistrictId, senderDistrictName, null, senderTypeId, cropName, methodName,
-          serviceName, deliveryName, createdByName, damages, hints, pestCategories, identifiers);
+          serviceName, deliveryName, createdByName, damages, hints,
+          pestCategories.stream().map(x -> new IdNameWithNote(x.id(), x.name(), null)).toList(),
+          identifiers);
     }
 
     /** 通用的「ID + 名稱」結構，用於多對多關聯 */
     public record IdName(Long id, String name) {
+    }
+
+    /** 病蟲害分類含備註（學名：描述） */
+    public record IdNameWithNote(Long id, String name, String pestNote) {
     }
   }
 }

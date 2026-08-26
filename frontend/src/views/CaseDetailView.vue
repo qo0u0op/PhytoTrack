@@ -43,6 +43,9 @@ async function load() {
 
 watch(id, load, { immediate: true })
 
+const joinWithNote = (items?: { id?: number; name?: string; pestNote?: string }[]) =>
+  items?.map((i: any) => (i.pestNote ? `${i.name}(${i.pestNote})` : i.name)).filter(Boolean).join('、') ?? '無'
+
 const join = (items?: { id?: number; name?: string }[]) =>
   items?.map((i) => i.name).filter(Boolean).join('、') ?? '無'
 
@@ -80,7 +83,7 @@ async function runAi() {
       cropName: detail.value.cropName,
       damages: detail.value.damages?.map((d) => d.name).filter((x): x is string => !!x),
       pestCategories: detail.value.pestCategories?.map((p) => p.name).filter((x): x is string => !!x),
-      pestDescription: detail.value.pestDescription,
+      pestDescription: detail.value.caseDescription,
       cropScale: detail.value.cropScale,
       damageScale: detail.value.damageScale,
       cultivationMethod: detail.value.methodName,
@@ -153,7 +156,7 @@ async function runAi() {
               <strong>被害部位：</strong>{{ join(detail.damages) }}
             </div>
             <div class="col-md-6">
-              <strong>病蟲害分類：</strong>{{ join(detail.pestCategories) }}
+              <strong>病蟲害分類：</strong>{{ joinWithNote(detail.pestCategories as any) }}
             </div>
             <div class="col-12">
               <strong>送件人：</strong>{{ senderLabel(detail) }}
@@ -175,7 +178,7 @@ async function runAi() {
             <div class="col-12">
               <hr class="my-2" />
               <strong>病害情形描述：</strong>
-              <p class="mb-2">{{ detail.pestDescription ?? '無' }}</p>
+              <p class="mb-2">{{ detail.caseDescription ?? '無' }}</p>
               <strong>防治措施：</strong>
               <p class="mb-0">{{ detail.hintDescription ?? '無' }}</p>
             </div>

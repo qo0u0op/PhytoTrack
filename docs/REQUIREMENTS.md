@@ -30,7 +30,7 @@
 - **更新契約補全（case-lifecycle）**：案件更新已涵蓋純量欄位、送件人（senderName/phone/address/districtId/typeId）、多對多關聯整組替換（damage/hint/pestCategory/identifier）與狀態轉移（PENDING→RESOLVED 需 STAFF/ADMIN，RESOLVED→CLOSED 僅 ADMIN）。
 - **統計吃 status**：case-statistics 應於 case-lifecycle 完成後實作，避免重做對映。
 - **SQLite**：`status` 以 ORDINAL 儲存 `CaseStatus` 列舉，既有 `INTEGER 0/1/2` 直接對應 `PENDING`/`RESOLVED`/`CLOSED`（無資料遷移，見 case-lifecycle）。
-- **送件人唯一鍵**：`senders.name + phone` UNIQUE，測試資料勿撞值。
+- **送件人去重**：`senders.name + phone` 不再以 `UNIQUE` 強制合併（改弱識別人工確認，去重候選由 `GET /api/senders/search` 提供）；`phone` 非空時以普通索引支援搜尋，不強制唯一，測試避免撞 `phone` 重複導致的假陽性。
 - **送件人（sender-management）**：`name` 可空、`phone`/`displayName` 至少一必填（ADR-011）；統計去重鍵 `COALESCE(phone, display_name)`；VIEWER 遮蔽姓名／電話／地址但保留縣市鄉鎮，與 case-report 的明細輸出需配合（遮蔽由 Service/投影層做）。
 
 ## 登入／JWT 安全審查待辦（2026-08-20）

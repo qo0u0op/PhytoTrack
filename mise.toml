@@ -1,6 +1,9 @@
 [tools]
 java = "openjdk-21.0.2"
 maven = "3.9.16"
+node = "lts"
+"npm:@playwright/cli" = "0.1.18"
+"npm:@playwright/test" = "1.62.1"
 
 [tasks.d2]
 description = "Compile D2 diagrams to docs/img"

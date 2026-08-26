@@ -152,7 +152,7 @@ public class CaseService {
     caseEntity.setReceiveDate(request.receiveDate());
     caseEntity.setCropScale(request.cropScale());
     caseEntity.setDamageScale(request.damageScale());
-    caseEntity.setPestDescription(request.pestDescription());
+    caseEntity.setCaseDescription(request.caseDescription());
     caseEntity.setHintDescription(request.hintDescription());
     // 新案件一律從待處理（PENDING）開始
     caseEntity.setStatus(CaseStatus.PENDING);
@@ -165,7 +165,17 @@ public class CaseService {
 
     addDamages(caseEntity, request.damageIds());
     addHints(caseEntity, request.hintIds());
-    addPestCategories(caseEntity, request.pestCategoryIds());
+    if (request.pestCategoryWithNotes() != null) {
+      for (var note : request.pestCategoryWithNotes()) {
+        CasePestCategory j = new CasePestCategory();
+        j.setCaseEntity(caseEntity);
+        j.setPestCategory(getRef(pestCategoryRepository, note.pestCategoryId(), "病蟲害分類"));
+        j.setPestNote(note.pestNote());
+        caseEntity.getCasePestCategories().add(j);
+      }
+    } else {
+      addPestCategories(caseEntity, request.pestCategoryIds());
+    }
     addIdentifiers(caseEntity, request.identifierIds());
 
     caseRepository.save(caseEntity);
@@ -192,8 +202,8 @@ public class CaseService {
     if (request.damageScale() != null) {
       caseEntity.setDamageScale(request.damageScale());
     }
-    if (request.pestDescription() != null) {
-      caseEntity.setPestDescription(request.pestDescription());
+    if (request.caseDescription() != null) {
+      caseEntity.setCaseDescription(request.caseDescription());
     }
     if (request.hintDescription() != null) {
       caseEntity.setHintDescription(request.hintDescription());
@@ -260,7 +270,7 @@ public class CaseService {
     return request.receiveDate() != null
         || request.cropScale() != null
         || request.damageScale() != null
-        || request.pestDescription() != null
+        || request.caseDescription() != null
         || request.hintDescription() != null
         || request.methodId() != null
         || request.cropId() != null
@@ -276,6 +286,7 @@ public class CaseService {
         || request.damageIds() != null
         || request.hintIds() != null
         || request.pestCategoryIds() != null
+        || request.pestCategoryWithNotes() != null
         || request.identifierIds() != null;
   }
 
@@ -347,6 +358,27 @@ public class CaseService {
             return junction;
           });
     }
+    // 害物明細：優先使用 pestCategoryWithNotes（含 note），否則回退至舊的 pestCategoryIds
+    if (request.pestCategoryWithNotes() != null) {
+      // 直接 clear+add，因為同分類多筆且含 note 需保留重複 categoryId 的不同 note
+      caseEntity.getCasePestCategories().clear();
+      for (var note : request.pestCategoryWithNotes()) {
+        CasePestCategory j = new CasePestCategory();
+        j.setCaseEntity(caseEntity);
+        j.setPestCategory(getRef(pestCategoryRepository, note.pestCategoryId(), "病蟲害分類"));
+        j.setPestNote(note.pestNote());
+        caseEntity.getCasePestCategories().add(j);
+      }
+    } else if (request.pestCategoryIds() != null) {
+      replaceJunctionGroup(caseEntity, caseEntity.getCasePestCategories(),
+          request.pestCategoryIds(), j -> j.getPestCategory().getPestCategoryId(),
+          (c, id) -> {
+            CasePestCategory junction = new CasePestCategory();
+            junction.setCaseEntity(c);
+            junction.setPestCategory(getRef(pestCategoryRepository, id, "病蟲害分類"));
+            return junction;
+          });
+    }
     if (request.hintIds() != null) {
       replaceJunctionGroup(caseEntity, caseEntity.getCaseHints(), request.hintIds(),
           j -> j.getHint().getHintId(),
@@ -354,16 +386,6 @@ public class CaseService {
             CaseHint junction = new CaseHint();
             junction.setCaseEntity(c);
             junction.setHint(getRef(hintRepository, id, "防治建議"));
-            return junction;
-          });
-    }
-    if (request.pestCategoryIds() != null) {
-      replaceJunctionGroup(caseEntity, caseEntity.getCasePestCategories(),
-          request.pestCategoryIds(), j -> j.getPestCategory().getPestCategoryId(),
-          (c, id) -> {
-            CasePestCategory junction = new CasePestCategory();
-            junction.setCaseEntity(c);
-            junction.setPestCategory(getRef(pestCategoryRepository, id, "病蟲害分類"));
             return junction;
           });
     }
@@ -489,7 +511,7 @@ public class CaseService {
     StringBuilder sb = new StringBuilder("\uFEFF");
     sb.append(join(
         "案件編號", "收件日期", "狀態", "送件人", "電話", "縣市鄉鎮", "地址", "身分別",
-        "作物", "種植面積", "被害面積", "被害部位", "病蟲害", "病害描述", "防治建議",
+        "作物", "種植面積", "被害面積", "被害部位", "病蟲害", "土壤栽培用藥紀錄", "防治建議",
         "簽名人", "耕種方式", "服務", "交付", "建立時間", "更新時間"));
     for (Case c : cases) {
       sb.append('\n').append(join(
@@ -505,8 +527,12 @@ public class CaseService {
           c.getCropScale(),
           c.getDamageScale(),
           names(c.getCaseDamages(), d -> d.getDamage().getDamage()),
-          names(c.getCasePestCategories(), j -> j.getPestCategory().getPestCategory()),
-          c.getPestDescription(),
+          c.getCasePestCategories().stream().map(j -> {
+            String base = j.getPestCategory().getPestCategory();
+            String note = j.getPestNote();
+            return note != null && !note.isBlank() ? base + "(" + note + ")" : base;
+          }).collect(java.util.stream.Collectors.joining("、")),
+          c.getCaseDescription(),
           c.getHintDescription(),
           names(c.getCaseIdentifiers(), j -> j.getIdentifier().getIdentifier()),
           c.getMethod() != null ? c.getMethod().getMethod() : null,
@@ -668,9 +694,9 @@ public class CaseService {
     List<CaseResponse.IdName> hints = caseEntity.getCaseHints().stream()
         .map(j -> new CaseResponse.IdName(j.getHint().getHintId(), j.getHint().getHint()))
         .collect(Collectors.toList());
-    List<CaseResponse.IdName> pestCategories = caseEntity.getCasePestCategories().stream()
-        .map(j -> new CaseResponse.IdName(
-            j.getPestCategory().getPestCategoryId(), j.getPestCategory().getPestCategory()))
+    List<CaseResponse.IdNameWithNote> pestCategories = caseEntity.getCasePestCategories().stream()
+        .map(j -> new CaseResponse.IdNameWithNote(
+            j.getPestCategory().getPestCategoryId(), j.getPestCategory().getPestCategory(), j.getPestNote()))
         .collect(Collectors.toList());
     List<CaseResponse.IdName> identifiers = caseEntity.getCaseIdentifiers().stream()
         .map(j -> new CaseResponse.IdName(
@@ -695,7 +721,7 @@ public class CaseService {
         caseEntity.getReceiveDate(),
         caseEntity.getCropScale(),
         caseEntity.getDamageScale(),
-        caseEntity.getPestDescription(),
+        caseEntity.getCaseDescription(),
         caseEntity.getHintDescription(),
         caseEntity.getStatus().name(),
         caseEntity.getCreatedAt(),

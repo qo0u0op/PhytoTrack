@@ -2,7 +2,7 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import Swal from 'sweetalert2'
-import { aiApi, caseApi, refApi, senderApi } from '../api'
+import { aiApi, caseApi, refApi, refAdminApi, senderApi } from '../api'
 import { useAuthStore } from '../stores/auth'
 import { STATUS_OPTIONS } from '../utils/caseStatus'
 import { escapeHtml } from '../utils/escapeHtml'
@@ -45,7 +45,7 @@ const form = reactive({
   receiveDate: new Date().toISOString().slice(0, 10),
   cropScale: '',
   damageScale: '',
-  pestDescription: '',
+  caseDescription: '',
   hintDescription: '',
   status: '' as string,
   senderId: null as number | null,
@@ -64,6 +64,17 @@ const form = reactive({
   pestCategoryIds: [] as number[],
   identifierIds: [] as number[],
 })
+
+// 作物級聯：所選分類（null 為全部）
+const selectedCropCategoryId = ref<number | null>(null)
+
+// 害物三段式列編輯：每列為一害物（類型→分類→學名：描述），可同分類多筆
+interface PestRow {
+  pestTypeId: number
+  pestCategoryId: number
+  pestNote: string
+}
+const pestRows = ref<PestRow[]>([])
 
 // 參照資料
 const cropCategories = ref<CropCategory[]>([])
@@ -282,6 +293,34 @@ function cancelSenderEdit() {
   restoreSender()
 }
 
+async function handleCreateCrop() {
+  const { value: name } = await Swal.fire({
+    title: '新增作物',
+    input: 'text',
+    inputLabel: '作物名稱',
+    inputPlaceholder: '請輸入作物名稱',
+    showCancelButton: true,
+    confirmButtonText: '新增',
+    cancelButtonText: '取消',
+    inputValidator: (v) => (!v?.trim() ? '名稱不可為空白' : null),
+  })
+  if (!name) return
+  const categoryId = selectedCropCategoryId.value ?? cropCategories.value[0]?.id
+  if (!categoryId) {
+    Swal.fire({ icon: 'warning', title: '請先選擇作物別' })
+    return
+  }
+  try {
+    const { data } = await refAdminApi.createCrop({ name: name.trim(), cropCategoryId: categoryId })
+    // 重新載入分類以刷新作物清單
+    const cc = await refApi.cropCategories()
+    cropCategories.value = cc.data
+    form.cropId = (data as any).id
+    selectedCropCategoryId.value = categoryId
+    Swal.fire({ icon: 'success', title: '已新增作物', timer: 1200, showConfirmButton: false })
+  } catch {}
+}
+
 // 依選定作物反查其所屬分類名稱（供 AI Prompt 使用）
 const selectedCropCategory = computed(() => {
   const crop = cropCategories.value
@@ -354,7 +393,7 @@ async function loadCase(id: number) {
   form.receiveDate = d.receiveDate ?? ''
   form.cropScale = d.cropScale ?? ''
   form.damageScale = d.damageScale ?? ''
-  form.pestDescription = d.pestDescription ?? ''
+  form.caseDescription = (d as any).caseDescription ?? ''
   form.hintDescription = d.hintDescription ?? ''
   form.status = d.status ?? ''
   form.senderName = d.senderName ?? ''
@@ -368,7 +407,28 @@ async function loadCase(id: number) {
   senderSnapshot = snapshotSender()
   form.damageIds = d.damages?.map((x) => x.id).filter((x): x is number => x != null) ?? []
   form.hintIds = d.hints?.map((x) => x.id).filter((x): x is number => x != null) ?? []
-  form.pestCategoryIds = d.pestCategories?.map((x) => x.id).filter((x): x is number => x != null) ?? []
+  // 新結構：pestCategoryWithNotes（含 note），回退舊 pestCategoryIds
+  const pcs = (d as any).pestCategories ?? []
+  // 若為新結構（有 pestNote），轉為 pestRows；否則回退為舊的 id 列表
+  if (pcs.length > 0 && pcs[0] && 'pestNote' in pcs[0]) {
+    pestRows.value = pcs.map((x: any) => ({
+      pestTypeId: pestTypes.value.find((p) => p.categories.some((c) => c.id === x.id))?.id ?? pestTypes.value[0]?.id ?? 0,
+      pestCategoryId: x.id,
+      pestNote: x.pestNote ?? '',
+    }))
+    // 同步舊的 id 列表供 submit 回退
+    form.pestCategoryIds = pcs.map((x: any) => x.id).filter((x: any) => x != null)
+  } else {
+    form.pestCategoryIds = pcs.map((x: any) => x.id).filter((x: any) => x != null)
+    // 若舊資料無 note，初始化一列空的 pestRow 以便編輯
+    if (form.pestCategoryIds.length > 0 && pestRows.value.length === 0) {
+      pestRows.value = form.pestCategoryIds.map((id) => ({
+        pestTypeId: pestTypes.value.find((p) => p.categories.some((c) => c.id === id))?.id ?? pestTypes.value[0]?.id ?? 0,
+        pestCategoryId: id,
+        pestNote: '',
+      }))
+    }
+  }
   form.identifierIds = d.identifiers?.map((x) => x.id).filter((x): x is number => x != null) ?? []
 
   // 由名稱反查 ID（後端詳細回應帶的是名稱而非 ID）
@@ -376,6 +436,8 @@ async function loadCase(id: number) {
     .flatMap((c) => c.crops)
     .find((c) => c.name === d.cropName)
   form.cropId = crop?.id ?? 0
+  const catForCrop = cropCategories.value.find((cc) => cc.crops.some((cr) => cr.id === form.cropId))
+  selectedCropCategoryId.value = catForCrop?.id ?? null
   form.methodId = methods.value.find((m) => m.name === d.methodName)?.id ?? 0
   form.serviceId = services.value.find((s) => s.name === d.serviceName)?.id ?? 0
   form.deliverId = deliveries.value.find((x) => x.name === d.deliveryName)?.id ?? 0
@@ -407,11 +469,14 @@ async function submit() {
   saving.value = true
   try {
     if (editId) {
+      const pestWithNotes = pestRows.value
+        .filter((r) => r.pestCategoryId)
+        .map((r) => ({ pestCategoryId: r.pestCategoryId, pestNote: r.pestNote?.trim() || undefined }))
       await caseApi.update(editId, {
         receiveDate: form.receiveDate,
         cropScale: form.cropScale || undefined,
         damageScale: form.damageScale || undefined,
-        pestDescription: form.pestDescription || undefined,
+        caseDescription: form.caseDescription || undefined,
         hintDescription: form.hintDescription || undefined,
         status: form.status || undefined,
         senderId: form.senderId ?? undefined,
@@ -422,14 +487,18 @@ async function submit() {
         damageIds: form.damageIds,
         hintIds: form.hintIds,
         pestCategoryIds: form.pestCategoryIds,
+        pestCategoryWithNotes: pestWithNotes.length > 0 ? pestWithNotes : undefined,
         identifierIds: form.identifierIds,
       } as any)
     } else {
+      const pestWithNotes2 = pestRows.value
+        .filter((r) => r.pestCategoryId)
+        .map((r) => ({ pestCategoryId: r.pestCategoryId, pestNote: r.pestNote?.trim() || undefined }))
       await caseApi.create({
         receiveDate: form.receiveDate,
         cropScale: form.cropScale || undefined,
         damageScale: form.damageScale || undefined,
-        pestDescription: form.pestDescription || undefined,
+        caseDescription: form.caseDescription || undefined,
         hintDescription: form.hintDescription || undefined,
         senderId: form.senderId ?? undefined,
         senderAddress: form.senderAddress,
@@ -442,6 +511,7 @@ async function submit() {
         damageIds: form.damageIds,
         hintIds: form.hintIds,
         pestCategoryIds: form.pestCategoryIds,
+        pestCategoryWithNotes: pestWithNotes2.length > 0 ? pestWithNotes2 : undefined,
         identifierIds: form.identifierIds,
       } as any)
     }
@@ -475,7 +545,7 @@ async function runAi() {
         .flatMap((p) => p.categories)
         .filter((c) => form.pestCategoryIds.includes(c.id))
         .map((c) => c.name),
-      pestDescription: form.pestDescription,
+      caseDescription: form.caseDescription,
       cropScale: form.cropScale,
       damageScale: form.damageScale,
       cultivationMethod: methods.value.find((m) => m.id === form.methodId)?.name,
@@ -580,12 +650,23 @@ async function runAi() {
         <div class="card-header bg-success text-white">作物與診斷資訊</div>
         <div class="card-body row g-3">
           <div class="col-md-4">
-            <label class="form-label">作物</label>
+            <label class="form-label">作物別</label>
+            <select v-model.number="selectedCropCategoryId" class="form-select">
+              <option :value="null">全部</option>
+              <option v-for="cc in cropCategories" :key="cc.id" :value="cc.id">{{ cc.name }}</option>
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label d-flex justify-content-between">作物 <button type="button" class="btn btn-sm btn-outline-success py-0" @click="handleCreateCrop">＋新增</button></label>
             <select v-model.number="form.cropId" class="form-select" required>
               <option value="0" disabled>請選擇作物</option>
-              <optgroup v-for="cc in cropCategories" :key="cc.id" :label="cc.name">
-                <option v-for="cr in cc.crops" :key="cr.id" :value="cr.id">{{ cr.name }}</option>
-              </optgroup>
+              <option
+                v-for="cr in (selectedCropCategoryId ? (cropCategories.find((c) => c.id === selectedCropCategoryId)?.crops ?? []) : cropCategories.flatMap((c) => c.crops))"
+                :key="cr.id"
+                :value="cr.id"
+              >
+                {{ cr.name }}
+              </option>
             </select>
           </div>
           <div class="col-md-4">
@@ -650,25 +731,39 @@ async function runAi() {
             </div>
           </div>
           <div class="col-12">
-            <label class="form-label">病蟲害分類（可複選）</label>
-            <div v-for="p in pestTypes" :key="p.id" class="mb-2">
-              <div class="fw-bold small text-muted">{{ p.name }}</div>
-              <div class="d-flex flex-wrap gap-3">
-                <label v-for="c in p.categories" :key="c.id" class="form-check form-check-inline">
-                  <input
-                    class="form-check-input"
-                    type="checkbox"
-                    :checked="form.pestCategoryIds.includes(c.id)"
-                    @change="toggle(form.pestCategoryIds, c.id)"
-                  />
-                  <span class="form-check-label">{{ c.code }} {{ c.name }}</span>
-                </label>
+            <label class="form-label">病蟲害明細（可增刪多列，同分類可多筆）</label>
+            <div v-for="(row, idx) in pestRows" :key="idx" class="row g-2 align-items-end mb-2">
+              <div class="col-md-3">
+                <label class="form-label small text-muted mb-1">害物類型</label>
+                <select v-model.number="row.pestTypeId" class="form-select form-select-sm">
+                  <option v-for="p in pestTypes" :key="p.id" :value="p.id">{{ p.name }}</option>
+                </select>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label small text-muted mb-1">病蟲害分類</label>
+                <select v-model.number="row.pestCategoryId" class="form-select form-select-sm">
+                  <option
+                    v-for="c in (pestTypes.find((p) => p.id === row.pestTypeId)?.categories ?? [])"
+                    :key="c.id"
+                    :value="c.id"
+                  >
+                    {{ c.code }} {{ c.name }}
+                  </option>
+                </select>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label small text-muted mb-1">學名：描述</label>
+                <input v-model.trim="row.pestNote" class="form-control form-control-sm" placeholder="學名：描述（選填）" maxlength="500" />
+              </div>
+              <div class="col-md-1">
+                <button type="button" class="btn btn-sm btn-outline-danger" @click="pestRows.splice(idx, 1)">刪除</button>
               </div>
             </div>
+            <button type="button" class="btn btn-sm btn-outline-primary" @click="pestRows.push({ pestTypeId: pestTypes[0]?.id ?? 0, pestCategoryId: pestTypes[0]?.categories[0]?.id ?? 0, pestNote: '' })">＋新增一列</button>
           </div>
           <div class="col-12">
-            <label class="form-label">病害情形描述</label>
-            <textarea v-model.trim="form.pestDescription" class="form-control" rows="2"></textarea>
+            <label class="form-label">土壤、栽培、用藥紀錄</label>
+            <textarea v-model.trim="form.caseDescription" class="form-control" rows="2" placeholder="對應紙本表單土壤、栽培、用藥紀錄欄位"></textarea>
           </div>
           <div class="col-12">
             <label class="form-label">是否已採取防治措施及其效果</label>
