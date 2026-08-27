@@ -87,7 +87,38 @@ npm run preview          # 本機預覽 http://localhost:4173
 - [ ] 後端 `diagnoses.db` 有定期備份
 - [ ] llama-server 已隨開機啟動（如需 AI 診斷）
 
-## 6. 升級到 PostgreSQL（選用）
+## 6. 備份與還原
+
+SQLite 為單檔資料庫，定期備份可降低誤刪或損壞風險。
+
+### 備份
+
+```bash
+bash scripts/backup.sh
+# 備份完成：/path/to/PhytoTrack/backups/phytotrack-20250827-143000.db
+ls backups/
+```
+
+- 腳本會在專案根建立 `backups/` 目錄（已於 `.gitignore` 忽略，不納版控）
+- 來源優先 `backend/diagnoses.db`，其次 `diagnoses.db`；不存在時回非零並提示
+- 檔名含本地時間戳 `YYYYmmdd-HHMMSS`，排序即時間排序
+- 建議頻率：每日一次或每次部署前執行；可加入 `cron` 排程
+
+### 還原
+
+1. 停止後端服務（避免寫入中複製）
+2. 複製備份檔覆蓋原庫：
+
+```bash
+cp backups/phytotrack-YYYYmmdd-HHMMSS.db backend/diagnoses.db
+# 或專案根的 diagnoses.db，依實際部署路徑而定
+```
+
+3. 重新啟動後端
+
+> 備份目錄未納版控，請自行保留異地或雲端備份。
+
+## 7. 升級到 PostgreSQL（選用）
 
 現階段使用 SQLite 起步（理由見 ADR-007）。若未來資料量與並發需求增加，切換方式：
 

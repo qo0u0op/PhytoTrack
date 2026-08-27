@@ -71,6 +71,7 @@ npm run dev
 - SQLite 檔案位於 `backend/diagnoses.db`（clone 即跑、零安裝）
 - 資料表與種子資料由 `backend/src/main/resources/schema.sql` 建立（`IF NOT EXISTS` 冪等），Hibernate 以 `ddl-auto: update` 同步實體
 - 擴充至 PostgreSQL 只需切換 `application-postgres.yaml` profile（見 ADR-007）
+- 備份：`bash scripts/backup.sh` 產生帶時間戳備份至 `backups/`（見 `docs/DEPLOY.md` §6）
 
 ## 測試與驗證
 
@@ -84,6 +85,10 @@ cd frontend && npm test
 
 # 前端型別檢查與建置
 cd frontend && npm run build
+
+# E2E（需先 mise run dev 啟動前後端，見 docs/E2E.md）
+playwright-cli open http://localhost:5173/login   # microsoft/playwright-cli（mise 提供）
+terminal-browser open http://localhost:5173        # zenbu-labs/terminal-browser（互動式預覽）
 ```
 
 ## 架構決策與文件
@@ -92,6 +97,7 @@ cd frontend && npm run build
 - `docs/ARCHITECTURE.md`：整體架構與請求流程
 - `docs/REQUIREMENTS.md`：10 能力需求總覽與 Phase 1 範圍
 - `docs/DEPLOY.md`：部署與備份指引
+- `docs/E2E.md`：E2E 指引（terminal-browser / playwright-cli 使用方式）
 - `docs/manual.typ`：操作手冊（`typst compile` 產生 PDF）
 
 ## 規劃中（見 openspec）

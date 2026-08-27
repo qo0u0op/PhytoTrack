@@ -7,6 +7,7 @@
 - 後端所有驗證：`cd backend && mvn test`（已安裝 mise）或 `./mvnw test`（無 mise 時 fallback）；單一測試：`mvn test -Dtest=CaseControllerTest` / `./mvnw test -Dtest=CaseControllerTest`
 - 後端啟動（dev）：`mvn spring-boot:run -Dspring-boot.run.profiles=dev`（mise）或 `./mvnw spring-boot:run -Dspring-boot.run.profiles=dev`（fallback），Swagger UI 於 <http://localhost:8080/swagger-ui.html>
 - 前端建置（含 vue-tsc 型別檢查）：`cd frontend && npm run build`；開發伺服器 `npm run dev`（已將 `/api` 代理至 8080）；前端測試 `npm test`（vitest，happy-dom）
+- E2E：`playwright-cli`（`microsoft/playwright-cli`，mise 提供 `npm:@playwright/cli`）與 `terminal-browser`（`zenbu-labs/terminal-browser`，二進位）— 前置需 `mise run dev` 啟動前後端，詳見 `docs/E2E.md`
 - 操作手冊：`typst compile docs/manual.typ docs/manual.pdf`（PDF 為產物，`*.pdf` 已 gitignore，勿提交）
 - 本機 shell 慣例以 `rtk` 開頭執行指令（如 `rtk ./mvnw test`），一般指令亦可直接執行
 - 同時啟動前後端：`mise run dev`（`dev:backend` 走 `mvn`，`mise.toml` 另有 `dev:frontend` / `d2`；無 mise 時分開執行 `./mvnw` 與 `npm run dev`）
@@ -50,6 +51,6 @@
 
 - `README.md`：快速啟動的權威來源
 - `docs/adr/ADR-001~011`：架構決策（前後分離、Boot 4、三層、JWT/RBAC、DTO、JPA Auditing、SQLite→PostgreSQL、OpenAPI、llama 代理、統一錯誤處理、送件人管理），實作前先查對應 ADR
-- `docs/ARCHITECTURE.md`、`docs/DEPLOY.md`
+- `docs/ARCHITECTURE.md`、`docs/DEPLOY.md`、`docs/E2E.md`（E2E：terminal-browser / playwright-cli）
 - `docs/REQUIREMENTS.md`：10 能力需求總覽與 Phase 1 範圍（見「OpenSpec 操作」）
 - `openspec/specs`：Phase 1 能力契約基準（見「OpenSpec 操作」）
