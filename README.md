@@ -71,6 +71,7 @@ npm run dev
 - SQLite 檔案位於 `backend/diagnoses.db`（clone 即跑、零安裝）
 - 資料表與種子資料由 `backend/src/main/resources/schema.sql` 建立（`IF NOT EXISTS` 冪等），Hibernate 以 `ddl-auto: update` 同步實體
 - 擴充至 PostgreSQL 只需切換 `application-postgres.yaml` profile（見 ADR-007）
+- 備份：`bash scripts/backup.sh` 產生帶時間戳備份至 `backups/`（見 `docs/DEPLOY.md` §6）
 
 ## 測試與驗證
 
