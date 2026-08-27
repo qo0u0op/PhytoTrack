@@ -50,5 +50,7 @@ docs/notebook/
 *.pdf
 
 ### Playwright ###
-.playwright/
+.playwright-cli/
+.playwright/*
+!.playwright/cli.config.json
 
