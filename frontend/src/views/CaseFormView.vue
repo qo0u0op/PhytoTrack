@@ -284,8 +284,12 @@ async function saveSender() {
       form.senderId = (data as any).senderId
     }
     senderSnapshot = snapshotSender()
+    lastFuzzyQuery = ''
     Swal.fire({ icon: 'success', title: '送件人已儲存', timer: 1200, showConfirmButton: false })
   } catch {}
+  finally {
+    savingSender.value = false
+  }
 }
 
 // 取消送件人編輯：還原快照

@@ -2,6 +2,9 @@
 import { onMounted, ref } from 'vue'
 import Swal from 'sweetalert2'
 import { senderApi } from '../api'
+import { useAuthStore } from '../stores/auth'
+
+const auth = useAuthStore()
 
 interface SenderRow {
   senderId: number
@@ -9,8 +12,10 @@ interface SenderRow {
   displayName: string | null
   phone: string | null
   address: string
+  districtId?: number
   districtName: string
   cityName: string
+  senderTypeId?: number
   senderTypeName: string
 }
 
@@ -66,6 +71,49 @@ async function handleDelete(id: number, label: string) {
     await load()
   } catch {}
 }
+
+async function handleEdit(s: SenderRow) {
+  // 先取完整資料以補齊 districtId / senderTypeId
+  let detailData: any = s
+  try {
+    const { data } = await senderApi.detail(s.senderId)
+    detailData = data
+  } catch {}
+  const { value: form } = await Swal.fire({
+    title: `編輯送件人 #${s.senderId}`,
+    html: `
+      <input id="swal-sender-name" class="swal2-input" placeholder="姓名" value="${(detailData.name ?? '').replace(/"/g, '&quot;')}" />
+      <input id="swal-sender-displayName" class="swal2-input" placeholder="顯示名稱" value="${(detailData.displayName ?? '').replace(/"/g, '&quot;')}" />
+      <input id="swal-sender-phone" class="swal2-input" placeholder="電話" value="${(detailData.phone ?? '').replace(/"/g, '&quot;')}" />
+      <input id="swal-sender-address" class="swal2-input" placeholder="地址" value="${(detailData.address ?? '').replace(/"/g, '&quot;')}" />
+    `,
+    showCancelButton: true,
+    confirmButtonText: '儲存',
+    cancelButtonText: '取消',
+    preConfirm: () => {
+      const name = (document.getElementById('swal-sender-name') as HTMLInputElement).value.trim()
+      const displayName = (document.getElementById('swal-sender-displayName') as HTMLInputElement).value.trim()
+      const phone = (document.getElementById('swal-sender-phone') as HTMLInputElement).value.trim()
+      const address = (document.getElementById('swal-sender-address') as HTMLInputElement).value.trim()
+      if (!phone && !displayName) return Swal.showValidationMessage('電話與顯示名稱至少需提供一項')
+      if (!address) return Swal.showValidationMessage('地址不可為空白')
+      return { name: name || undefined, displayName: displayName || undefined, phone: phone || undefined, address }
+    },
+  })
+  if (!form) return
+  try {
+    await senderApi.update(s.senderId, {
+      name: form.name,
+      displayName: form.displayName,
+      phone: form.phone,
+      address: form.address,
+      districtId: detailData.districtId ?? 1,
+      senderTypeId: detailData.senderTypeId ?? 1,
+    } as any)
+    Swal.fire({ icon: 'success', title: '已更新', timer: 1200, showConfirmButton: false })
+    await load()
+  } catch {}
+}
 </script>
 
 <template>
@@ -117,7 +165,8 @@ async function handleDelete(id: number, label: string) {
               <td>{{ s.cityName }}</td>
               <td>{{ s.senderTypeName }}</td>
               <td class="text-end">
-                <button class="btn btn-sm btn-outline-danger" @click="handleDelete(s.senderId, displayLabel(s))">刪除</button>
+                <button v-if="auth.isStaff" class="btn btn-sm btn-outline-primary me-1" @click="handleEdit(s)">編輯</button>
+                <button v-if="auth.isAdmin" class="btn btn-sm btn-outline-danger" @click="handleDelete(s.senderId, displayLabel(s))">刪除</button>
               </td>
             </tr>
           </tbody>
