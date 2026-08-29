@@ -218,7 +218,8 @@ function applyCandidate(id: number, candidates: any[]) {
 }
 
 async function searchCandidates() {
-  const q = [form.senderName, form.senderPhone, form.senderDisplayName].filter(Boolean).join(' ').trim()
+  // 手動搜尋：以任一非空欄位單獨為查詢（符合 fuzzy 任一欄位相似即提示）
+  const q = form.senderName.trim() || form.senderPhone.trim() || form.senderDisplayName.trim()
   if (!q) {
     Swal.fire({ icon: 'info', title: '請輸入姓名、電話或顯示名稱關鍵字' })
     return
@@ -322,6 +323,26 @@ async function handleCreateCrop() {
     form.cropId = (data as any).id
     selectedCropCategoryId.value = categoryId
     Swal.fire({ icon: 'success', title: '已新增作物', timer: 1200, showConfirmButton: false })
+  } catch {}
+}
+
+async function handleCreateIdentifier() {
+  const { value: name } = await Swal.fire({
+    title: '新增簽名人',
+    input: 'text',
+    inputLabel: '簽名人名稱',
+    inputPlaceholder: '請輸入簽名人名稱',
+    showCancelButton: true,
+    confirmButtonText: '新增',
+    cancelButtonText: '取消',
+    inputValidator: (v) => (!v?.trim() ? '名稱不可為空白' : null),
+  })
+  if (!name) return
+  try {
+    const { data } = await refAdminApi.createIdentifier({ name: name.trim() })
+    identifiers.value.push({ id: (data as any).id, name: (data as any).name })
+    form.identifierIds.push((data as any).id)
+    Swal.fire({ icon: 'success', title: '已新增簽名人', timer: 1200, showConfirmButton: false })
   } catch {}
 }
 
@@ -793,7 +814,7 @@ async function runAi() {
             </div>
           </div>
           <div class="col-md-6">
-            <label class="form-label">診斷簽名人（可複選）</label>
+            <label class="form-label d-flex justify-content-between">診斷簽名人（可複選） <button type="button" class="btn btn-sm btn-outline-success py-0" @click="handleCreateIdentifier">＋新增</button></label>
             <div v-for="i in identifiers" :key="i.id" class="form-check">
               <input
                 class="form-check-input"
