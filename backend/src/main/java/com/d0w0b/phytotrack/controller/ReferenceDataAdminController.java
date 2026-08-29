@@ -168,6 +168,7 @@ public class ReferenceDataAdminController {
   }
 
   @PutMapping("/crops/{id}")
+  @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
   public ResponseEntity<IdNameResponse> updateCrop(@PathVariable Long id, @Valid @RequestBody CropUpdateRequest req) {
     return ResponseEntity.ok(service.updateCrop(id, req.name(), req.cropCategoryId()));
   }

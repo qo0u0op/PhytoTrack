@@ -299,29 +299,32 @@ function cancelSenderEdit() {
 }
 
 async function handleCreateCrop() {
-  const { value: name } = await Swal.fire({
+  const { value: formData } = await Swal.fire({
     title: '新增作物',
-    input: 'text',
-    inputLabel: '作物名稱',
-    inputPlaceholder: '請輸入作物名稱',
+    html: `
+      <input id="swal-crop-name" class="swal2-input" placeholder="作物名稱" />
+      <select id="swal-crop-category" class="swal2-select">
+        ${cropCategories.value.map((c) => `<option value="${c.id}" ${c.id === selectedCropCategoryId.value ? 'selected' : ''}>${c.name}</option>`).join('')}
+      </select>
+    `,
     showCancelButton: true,
     confirmButtonText: '新增',
     cancelButtonText: '取消',
-    inputValidator: (v) => (!v?.trim() ? '名稱不可為空白' : null),
+    preConfirm: () => {
+      const name = (document.getElementById('swal-crop-name') as HTMLInputElement).value.trim()
+      const catId = Number((document.getElementById('swal-crop-category') as HTMLSelectElement).value)
+      if (!name) return Swal.showValidationMessage('名稱不可為空白')
+      if (!catId) return Swal.showValidationMessage('請選擇作物別')
+      return { name, categoryId: catId }
+    },
   })
-  if (!name) return
-  const categoryId = selectedCropCategoryId.value ?? cropCategories.value[0]?.id
-  if (!categoryId) {
-    Swal.fire({ icon: 'warning', title: '請先選擇作物別' })
-    return
-  }
+  if (!formData) return
   try {
-    const { data } = await refAdminApi.createCrop({ name: name.trim(), cropCategoryId: categoryId })
-    // 重新載入分類以刷新作物清單
+    const { data } = await refAdminApi.createCrop({ name: formData.name, cropCategoryId: formData.categoryId })
     const cc = await refApi.cropCategories()
     cropCategories.value = cc.data
     form.cropId = (data as any).id
-    selectedCropCategoryId.value = categoryId
+    selectedCropCategoryId.value = formData.categoryId
     Swal.fire({ icon: 'success', title: '已新增作物', timer: 1200, showConfirmButton: false })
   } catch {}
 }
