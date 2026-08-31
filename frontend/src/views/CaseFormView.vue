@@ -67,6 +67,7 @@ const form = reactive({
 
 // 作物級聯：所選分類（null 為全部）
 const selectedCropCategoryId = ref<number | null>(null)
+const selectedSenderCityId = ref<number | null>(null)
 
 // 害物三段式列編輯：每列為一害物（類型→分類→學名：描述），可同分類多筆
 interface PestRow {
@@ -137,6 +138,27 @@ const senderDirty = computed(() => {
     || form.senderAddress !== s.senderAddress
     || form.senderDistrictId !== s.senderDistrictId
     || form.senderTypeId !== s.senderTypeId
+})
+
+const filteredSenderDistricts = computed(() => {
+  if (selectedSenderCityId.value == null) return []
+  const city = cities.value.find((c) => c.id === selectedSenderCityId.value)
+  return city ? city.districts : []
+})
+
+watch(selectedSenderCityId, (newCityId) => {
+  const districts = cities.value.find((c) => c.id === newCityId)?.districts ?? []
+  if (districts.length > 0 && !districts.some((d) => d.id === form.senderDistrictId)) {
+    form.senderDistrictId = districts[0].id
+  }
+})
+
+watch(() => form.senderDistrictId, (districtId) => {
+  if (!districtId) return
+  const city = cities.value.find((c) => c.districts.some((d) => d.id === districtId))
+  if (city && selectedSenderCityId.value !== city.id) {
+    selectedSenderCityId.value = city.id
+  }
 })
 
 // 診斷區段顯示條件：編輯模式先顯示但髒時隱藏；新增模式需已儲存送件人且無髒污
@@ -293,9 +315,13 @@ async function saveSender() {
   }
 }
 
-// 取消送件人編輯：還原快照
+// 取消送件人編輯：還原快照並同步縣市
 function cancelSenderEdit() {
   restoreSender()
+  if (form.senderDistrictId) {
+    const city = cities.value.find((c) => c.districts.some((d) => d.id === form.senderDistrictId))
+    if (city) selectedSenderCityId.value = city.id
+  }
 }
 
 async function handleCreateCrop() {
@@ -395,6 +421,15 @@ async function loadRefs() {
   form.deliverId = deliveries.value[0]?.id ?? 0
   form.serviceId = services.value[0]?.id ?? 0
   form.senderTypeId = senderTypes.value[0]?.id ?? 0
+  // 初始化縣市選取（依預設 district 或首個城市）
+  if (cities.value.length > 0) {
+    const initDistrict = form.senderDistrictId
+    const city = cities.value.find((c) => c.districts.some((d) => d.id === initDistrict))
+    selectedSenderCityId.value = city ? city.id : cities.value[0].id
+    if (!initDistrict && city) {
+      form.senderDistrictId = city.districts[0]?.id ?? 0
+    }
+  }
 
   // 新增模式亦初始化快照，確保髒污判定正確
   if (!editId) {
@@ -431,6 +466,11 @@ async function loadCase(id: number) {
   form.senderDistrictId = d.senderDistrictId ?? 0
   form.senderTypeId = d.senderTypeId ?? 0
   form.senderId = (d as any).senderId ?? null
+  // 同步縣市選取
+  if (form.senderDistrictId) {
+    const city = cities.value.find((c) => c.districts.some((d2) => d2.id === form.senderDistrictId))
+    if (city) selectedSenderCityId.value = city.id
+  }
   // 編輯模式快照：用於髒污判定與取消還原，修復編輯時無法更新 sender 的 bug
   senderSnapshot = snapshotSender()
   form.damageIds = d.damages?.map((x) => x.id).filter((x): x is number => x != null) ?? []
@@ -502,10 +542,10 @@ async function submit() {
         .map((r) => ({ pestCategoryId: r.pestCategoryId, pestNote: r.pestNote?.trim() || undefined }))
       await caseApi.update(editId, {
         receiveDate: form.receiveDate,
-        cropScale: form.cropScale || undefined,
-        damageScale: form.damageScale || undefined,
-        caseDescription: form.caseDescription || undefined,
-        hintDescription: form.hintDescription || undefined,
+        cropScale: form.cropScale ?? undefined,
+        damageScale: form.damageScale ?? undefined,
+        caseDescription: form.caseDescription,
+        hintDescription: form.hintDescription,
         status: form.status || undefined,
         senderId: form.senderId ?? undefined,
         methodId: form.methodId,
@@ -514,20 +554,22 @@ async function submit() {
         deliverId: form.deliverId,
         damageIds: form.damageIds,
         hintIds: form.hintIds,
-        pestCategoryIds: form.pestCategoryIds,
-        pestCategoryWithNotes: pestWithNotes.length > 0 ? pestWithNotes : undefined,
+        pestCategoryWithNotes: pestWithNotes,
         identifierIds: form.identifierIds,
       } as any)
+      Swal.fire({ icon: 'success', title: '儲存成功', timer: 1200, showConfirmButton: false }).then(() => {
+        router.push(`/cases/${editId}`)
+      })
     } else {
       const pestWithNotes2 = pestRows.value
         .filter((r) => r.pestCategoryId)
         .map((r) => ({ pestCategoryId: r.pestCategoryId, pestNote: r.pestNote?.trim() || undefined }))
-      await caseApi.create({
+      const { data } = await caseApi.create({
         receiveDate: form.receiveDate,
-        cropScale: form.cropScale || undefined,
-        damageScale: form.damageScale || undefined,
-        caseDescription: form.caseDescription || undefined,
-        hintDescription: form.hintDescription || undefined,
+        cropScale: form.cropScale ?? undefined,
+        damageScale: form.damageScale ?? undefined,
+        caseDescription: form.caseDescription,
+        hintDescription: form.hintDescription,
         senderId: form.senderId ?? undefined,
         senderAddress: form.senderAddress,
         senderDistrictId: form.senderDistrictId,
@@ -538,14 +580,15 @@ async function submit() {
         deliverId: form.deliverId,
         damageIds: form.damageIds,
         hintIds: form.hintIds,
-        pestCategoryIds: form.pestCategoryIds,
-        pestCategoryWithNotes: pestWithNotes2.length > 0 ? pestWithNotes2 : undefined,
+        pestCategoryWithNotes: pestWithNotes2,
         identifierIds: form.identifierIds,
       } as any)
+      const newId = (data as any)?.caseId
+      Swal.fire({ icon: 'success', title: '儲存成功', timer: 1200, showConfirmButton: false }).then(() => {
+        if (newId) router.push(`/cases/${newId}`)
+        else router.push('/cases')
+      })
     }
-    Swal.fire({ icon: 'success', title: '儲存成功', timer: 1200, showConfirmButton: false }).then(() => {
-      router.push('/cases')
-    })
   } catch {
     // 錯誤由攔截器處理
   } finally {
@@ -565,20 +608,22 @@ async function runAi() {
   }
   analyzing.value = true
   try {
+    const pestCategoryNames = pestRows.value
+      .map((r) => pestTypes.value.flatMap((p) => p.categories).find((c) => c.id === r.pestCategoryId)?.name)
+      .filter((n): n is string => !!n)
+    const pestNotes = pestRows.value.map((r) => r.pestNote?.trim()).filter((n): n is string => !!n && n.length > 0)
     const { data } = await aiApi.analyze({
       cropName: crop.name,
       cropCategory: category,
       damages: damages.value.filter((d) => form.damageIds.includes(d.id)).map((d) => d.name),
-      pestCategories: pestTypes.value
-        .flatMap((p) => p.categories)
-        .filter((c) => form.pestCategoryIds.includes(c.id))
-        .map((c) => c.name),
+      pestCategories: pestCategoryNames,
+      pestNotes: pestNotes.length > 0 ? pestNotes : undefined,
       caseDescription: form.caseDescription,
       cropScale: form.cropScale,
       damageScale: form.damageScale,
       cultivationMethod: methods.value.find((m) => m.id === form.methodId)?.name,
       hintDescription: form.hintDescription,
-    })
+    } as any)
     Swal.fire({
       icon: 'info',
       title: `AI 診斷建議（${(data.elapsedMs / 1000).toFixed(1)} 秒）`,
@@ -655,15 +700,20 @@ async function runAi() {
             </select>
           </div>
           <div class="col-md-4">
-            <label class="form-label">縣市／鄉鎮市區</label>
-            <select v-model.number="form.senderDistrictId" class="form-select">
-              <option value="0" disabled>請選擇鄉鎮市區</option>
-              <optgroup v-for="c in cities" :key="c.id" :label="c.name">
-                <option v-for="d in c.districts" :key="d.id" :value="d.id">{{ d.name }}</option>
-              </optgroup>
+            <label class="form-label">縣市</label>
+            <select v-model.number="selectedSenderCityId" class="form-select">
+              <option :value="null" disabled>請選擇縣市</option>
+              <option v-for="c in cities" :key="c.id" :value="c.id">{{ c.name }}</option>
             </select>
           </div>
-          <div class="col-md-8">
+          <div class="col-md-3">
+            <label class="form-label">鄉鎮市區</label>
+            <select v-model.number="form.senderDistrictId" class="form-select">
+              <option value="0" disabled>請選擇鄉鎮市區</option>
+              <option v-for="d in filteredSenderDistricts" :key="d.id" :value="d.id">{{ d.name }}</option>
+            </select>
+          </div>
+          <div class="col-md-5">
             <label class="form-label">地址</label>
             <input v-model.trim="form.senderAddress" class="form-control" required />
           </div>

@@ -22,7 +22,7 @@
 
 - **auto-configuration**：classpath 出現 `sqlite-jdbc` 就自動配好 DataSource，開發專注在業務
 - **starter**：一次引入一組相容依賴，不用自己對版本
-- **內嵌伺服器**：`./mvnw spring-boot:run` 即起，零部署即跑
+- **內嵌伺服器**：`mvn spring-boot:run`（已安裝 mise）或 `./mvnw spring-boot:run`（Unix/macOS）/ `.\mvnw.cmd spring-boot:run`（Windows）即起，零部署即跑
 - **Java 21**：record、pattern matching 等現代語法，配合 DTO（ADR-005）乾淨俐落
 - Boot 4 將 `spring-boot-starter-web` 更名為 **`spring-boot-starter-webmvc`**，明確區分 MVC（servlet）與 WebFlux（reactive）——用 Boot 4 本身就是在展示對新版本的理解
 

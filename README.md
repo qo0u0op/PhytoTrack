@@ -35,8 +35,9 @@
 ```bash
 cd backend
 mvn spring-boot:run -Dspring-boot.run.profiles=dev          # 已安裝 mise（mise 提供 maven 3.9.16）
-# 或
-./mvnw spring-boot:run -Dspring-boot.run.profiles=dev       # 無 mise 時 fallback（零依賴，wrapper 3.9.16）
+# 或（無 mise 時）
+./mvnw spring-boot:run -Dspring-boot.run.profiles=dev       # Unix/macOS
+.\mvnw.cmd spring-boot:run -Dspring-boot.run.profiles=dev   # Windows
 ```
 
 - 啟動後 Swagger UI：<http://localhost:8080/swagger-ui.html>
@@ -77,8 +78,9 @@ npm run dev
 
 ```bash
 # 後端測試
-cd backend && mvn test          # 已安裝 mise
-# 或 cd backend && ./mvnw test  # 無 mise 時 fallback
+cd backend && mvn test                          # 已安裝 mise
+# 或（無 mise 時） cd backend && ./mvnw test     # Unix/macOS
+# 或（無 mise 時） cd backend && .\mvnw.cmd test # Windows
 
 # 前端單元測試（vitest）
 cd frontend && npm test
@@ -106,4 +108,4 @@ terminal-browser open http://localhost:5173        # zenbu-labs/terminal-browser
 
 ## 同時啟動前後端（選用，需 mise）
 
-以 `mise run dev` 可同時啟動後端（`dev:backend`，走 `mvn`）與前端（`dev:frontend`），並等待兩者就緒；未安裝 mise 請分開執行 `./mvnw` 與 `npm run dev`。
+以 `mise run dev` 可同時啟動後端（`dev:backend`，走 `mvn`）與前端（`dev:frontend`），並等待兩者就緒；未安裝 mise 請分開執行 `./mvnw`（Unix/macOS）/ `.\mvnw.cmd`（Windows）與 `npm run dev`。

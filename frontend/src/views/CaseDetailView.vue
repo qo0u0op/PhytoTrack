@@ -49,12 +49,10 @@ const joinWithNote = (items?: { id?: number; name?: string; pestNote?: string }[
 const join = (items?: { id?: number; name?: string }[]) =>
   items?.map((i) => i.name).filter(Boolean).join('、') ?? '無'
 
-// 送件人顯示：支援 name(displayName)；VIEWER 時後端已遮蔽，僅顯示縣市鄉鎮
+// 送件人顯示：支援 name(displayName)；VIEWER 時後端已遮蔽，顯示已遮蔽(已遮蔽)
 function senderLabel(d: CaseResponse) {
   if (auth.isViewer) {
-    const city = (d as any).senderCityName ?? ''
-    const district = d.senderDistrictName ?? ''
-    return city && district ? `${city}${district}` : district || city || '—'
+    return '已遮蔽(已遮蔽)'
   }
   const name = d.senderName
   const display = (d as any).senderDisplayName
@@ -79,16 +77,18 @@ async function runAi() {
   aiSuggestion.value = null
   aiError.value = null
   try {
+    const pestNotes = detail.value.pestCategories?.map((p: any) => p.pestNote).filter((x: any) => !!x && String(x).trim().length > 0) as string[] | undefined
     const { data } = await aiApi.analyze({
       cropName: detail.value.cropName,
       damages: detail.value.damages?.map((d) => d.name).filter((x): x is string => !!x),
       pestCategories: detail.value.pestCategories?.map((p) => p.name).filter((x): x is string => !!x),
-      pestDescription: detail.value.caseDescription,
+      pestNotes: pestNotes && pestNotes.length > 0 ? pestNotes : undefined,
+      caseDescription: detail.value.caseDescription,
       cropScale: detail.value.cropScale,
       damageScale: detail.value.damageScale,
       cultivationMethod: detail.value.methodName,
       hintDescription: detail.value.hintDescription,
-    })
+    } as any)
     aiSuggestion.value = data.suggestion ?? ''
     aiElapsed.value = data.elapsedMs
   } catch {

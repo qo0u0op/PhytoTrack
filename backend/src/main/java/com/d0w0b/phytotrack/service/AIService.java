@@ -73,9 +73,10 @@ public class AIService {
     return """
         你是一位專業的臺灣農業病蟲害診斷專家，服務於植物病蟲害診斷諮詢服務站。
         請根據使用者提供的作物與症狀，判斷可能的病蟲害種類，並以繁體中文回覆。
+        回覆時請一律使用臺灣慣用之病蟲害學名與農藥商品名稱（以農委會核准之臺灣登記名稱為準，避免使用中國或日本慣用譯名；學名請標示拉丁學名）。
         回覆格式請遵守：
-        1. 開頭先說明可能的診斷結果（1～3 種，附理由）
-        2. 第二段給出具體的防治建議（用藥或農藝措施）
+        1. 開頭先說明可能的診斷結果（1～3 種，附理由；若使用者有提供學名/描述請優先參考）
+        2. 第二段給出具體的防治建議（用藥請標示臺灣慣用商品名與有效成分，併附農藝防治措施）
         3. 最後提醒：若症狀持續惡化，建議採集樣本至現場診斷站確認
         4. 若使用者已填「是否已採取防治措施及其效果」，表示該防治措施已嘗試或正在
         使用；防治建議須排除與其重複者，改以補充、調整或建議尚未嘗試的替代措施為主
@@ -83,13 +84,12 @@ public class AIService {
   }
 
   private String buildUserPrompt(AnalyzeRequest request) {
-    // 相容舊版 pestDescription 與新版 caseDescription（土壤紀錄）
-    String desc = request.caseDescription() != null ? request.caseDescription() : request.pestDescription();
     return """
         作物名稱：%s
         作物類別：%s
         被害部位：%s
         病蟲害分類（可多選）：%s
+        病蟲害學名/描述（pest_note）：%s
         土壤、栽培、用藥紀錄：%s
         種植面積：%s
         被害面積或植株數：%s
@@ -99,7 +99,8 @@ public class AIService {
             nullToEmpty(request.cropCategory()),
             join(request.damages()),
             join(request.pestCategories()),
-            nullToEmpty(desc),
+            join(request.pestNotes()),
+            nullToEmpty(request.caseDescription()),
             nullToEmpty(request.cropScale()),
             nullToEmpty(request.damageScale()),
             nullToEmpty(request.cultivationMethod()),
