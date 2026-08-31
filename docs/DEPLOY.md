@@ -17,9 +17,10 @@
 
 ```bash
 cd backend
-mvn spring-boot:run          # 已安裝 mise（mise 提供 maven 3.9.16）
-# 或
-./mvnw spring-boot:run       # 無 mise 時 fallback
+mvn spring-boot:run                      # 已安裝 mise（mise 提供 maven 3.9.16）
+# 或（無 mise 時）
+./mvnw spring-boot:run                   # Unix/macOS
+.\mvnw.cmd spring-boot:run               # Windows
 ```
 
 啟動成功後：
@@ -75,7 +76,7 @@ npm run preview          # 本機預覽 http://localhost:4173
 
 ## 5. 區域網路（LAN）部署（5 人）
 
-1. 後端以 `0.0.0.0` 監聽：`mvn spring-boot:run -Dspring-boot.run.arguments=--server.address=0.0.0.0`（或 `./mvnw ...` 無 mise 時）
+1. 後端以 `0.0.0.0` 監聽：`mvn spring-boot:run -Dspring-boot.run.arguments=--server.address=0.0.0.0`（或 `./mvnw ...`（Unix/macOS）/ `.\mvnw.cmd ...`（Windows），無 mise 時）
 2. 前端 build 後以 nginx 服務 `dist/`，並將 `/api` 反向代理至後端 8080
 3. 各用戶端瀏覽器開啟前端位址（例如 `http://伺服器IP/`）
 4. 防火牆需放行前端對外 port 與後端 8080（若代理已設定，用戶端通常只需連前端 port）
@@ -124,7 +125,7 @@ cp backups/phytotrack-YYYYmmdd-HHMMSS.db backend/diagnoses.db
 
 ```bash
 cd backend
-mvn spring-boot:run -Dspring-boot.run.profiles=postgres  # 或 ./mvnw ...
+mvn spring-boot:run -Dspring-boot.run.profiles=postgres  # 或 ./mvnw ...（Unix/macOS）/ .\mvnw.cmd ...（Windows），無 mise 時
 ```
 
 搭配 `application-postgres.yaml` 設定連線資訊，並使用既有 schema 資料（`schema.sql` 的 `INSERT` 語句相容 PostgreSQL）。

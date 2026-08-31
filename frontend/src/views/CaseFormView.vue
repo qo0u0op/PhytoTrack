@@ -67,6 +67,7 @@ const form = reactive({
 
 // 作物級聯：所選分類（null 為全部）
 const selectedCropCategoryId = ref<number | null>(null)
+const selectedSenderCityId = ref<number | null>(null)
 
 // 害物三段式列編輯：每列為一害物（類型→分類→學名：描述），可同分類多筆
 interface PestRow {
@@ -137,6 +138,27 @@ const senderDirty = computed(() => {
     || form.senderAddress !== s.senderAddress
     || form.senderDistrictId !== s.senderDistrictId
     || form.senderTypeId !== s.senderTypeId
+})
+
+const filteredSenderDistricts = computed(() => {
+  if (selectedSenderCityId.value == null) return []
+  const city = cities.value.find((c) => c.id === selectedSenderCityId.value)
+  return city ? city.districts : []
+})
+
+watch(selectedSenderCityId, (newCityId) => {
+  const districts = cities.value.find((c) => c.id === newCityId)?.districts ?? []
+  if (districts.length > 0 && !districts.some((d) => d.id === form.senderDistrictId)) {
+    form.senderDistrictId = districts[0].id
+  }
+})
+
+watch(() => form.senderDistrictId, (districtId) => {
+  if (!districtId) return
+  const city = cities.value.find((c) => c.districts.some((d) => d.id === districtId))
+  if (city && selectedSenderCityId.value !== city.id) {
+    selectedSenderCityId.value = city.id
+  }
 })
 
 // 診斷區段顯示條件：編輯模式先顯示但髒時隱藏；新增模式需已儲存送件人且無髒污
@@ -218,7 +240,8 @@ function applyCandidate(id: number, candidates: any[]) {
 }
 
 async function searchCandidates() {
-  const q = [form.senderName, form.senderPhone, form.senderDisplayName].filter(Boolean).join(' ').trim()
+  // 手動搜尋：以任一非空欄位單獨為查詢（符合 fuzzy 任一欄位相似即提示）
+  const q = form.senderName.trim() || form.senderPhone.trim() || form.senderDisplayName.trim()
   if (!q) {
     Swal.fire({ icon: 'info', title: '請輸入姓名、電話或顯示名稱關鍵字' })
     return
@@ -284,40 +307,71 @@ async function saveSender() {
       form.senderId = (data as any).senderId
     }
     senderSnapshot = snapshotSender()
+    lastFuzzyQuery = ''
     Swal.fire({ icon: 'success', title: '送件人已儲存', timer: 1200, showConfirmButton: false })
   } catch {}
+  finally {
+    savingSender.value = false
+  }
 }
 
-// 取消送件人編輯：還原快照
+// 取消送件人編輯：還原快照並同步縣市
 function cancelSenderEdit() {
   restoreSender()
+  if (form.senderDistrictId) {
+    const city = cities.value.find((c) => c.districts.some((d) => d.id === form.senderDistrictId))
+    if (city) selectedSenderCityId.value = city.id
+  }
 }
 
 async function handleCreateCrop() {
-  const { value: name } = await Swal.fire({
+  const { value: formData } = await Swal.fire({
     title: '新增作物',
+    html: `
+      <input id="swal-crop-name" class="swal2-input" placeholder="作物名稱" />
+      <select id="swal-crop-category" class="swal2-select">
+        ${cropCategories.value.map((c) => `<option value="${c.id}" ${c.id === selectedCropCategoryId.value ? 'selected' : ''}>${c.name}</option>`).join('')}
+      </select>
+    `,
+    showCancelButton: true,
+    confirmButtonText: '新增',
+    cancelButtonText: '取消',
+    preConfirm: () => {
+      const name = (document.getElementById('swal-crop-name') as HTMLInputElement).value.trim()
+      const catId = Number((document.getElementById('swal-crop-category') as HTMLSelectElement).value)
+      if (!name) return Swal.showValidationMessage('名稱不可為空白')
+      if (!catId) return Swal.showValidationMessage('請選擇作物別')
+      return { name, categoryId: catId }
+    },
+  })
+  if (!formData) return
+  try {
+    const { data } = await refAdminApi.createCrop({ name: formData.name, cropCategoryId: formData.categoryId })
+    const cc = await refApi.cropCategories()
+    cropCategories.value = cc.data
+    form.cropId = (data as any).id
+    selectedCropCategoryId.value = formData.categoryId
+    Swal.fire({ icon: 'success', title: '已新增作物', timer: 1200, showConfirmButton: false })
+  } catch {}
+}
+
+async function handleCreateIdentifier() {
+  const { value: name } = await Swal.fire({
+    title: '新增簽名人',
     input: 'text',
-    inputLabel: '作物名稱',
-    inputPlaceholder: '請輸入作物名稱',
+    inputLabel: '簽名人名稱',
+    inputPlaceholder: '請輸入簽名人名稱',
     showCancelButton: true,
     confirmButtonText: '新增',
     cancelButtonText: '取消',
     inputValidator: (v) => (!v?.trim() ? '名稱不可為空白' : null),
   })
   if (!name) return
-  const categoryId = selectedCropCategoryId.value ?? cropCategories.value[0]?.id
-  if (!categoryId) {
-    Swal.fire({ icon: 'warning', title: '請先選擇作物別' })
-    return
-  }
   try {
-    const { data } = await refAdminApi.createCrop({ name: name.trim(), cropCategoryId: categoryId })
-    // 重新載入分類以刷新作物清單
-    const cc = await refApi.cropCategories()
-    cropCategories.value = cc.data
-    form.cropId = (data as any).id
-    selectedCropCategoryId.value = categoryId
-    Swal.fire({ icon: 'success', title: '已新增作物', timer: 1200, showConfirmButton: false })
+    const { data } = await refAdminApi.createIdentifier({ name: name.trim() })
+    identifiers.value.push({ id: (data as any).id, name: (data as any).name })
+    form.identifierIds.push((data as any).id)
+    Swal.fire({ icon: 'success', title: '已新增簽名人', timer: 1200, showConfirmButton: false })
   } catch {}
 }
 
@@ -367,6 +421,15 @@ async function loadRefs() {
   form.deliverId = deliveries.value[0]?.id ?? 0
   form.serviceId = services.value[0]?.id ?? 0
   form.senderTypeId = senderTypes.value[0]?.id ?? 0
+  // 初始化縣市選取（依預設 district 或首個城市）
+  if (cities.value.length > 0) {
+    const initDistrict = form.senderDistrictId
+    const city = cities.value.find((c) => c.districts.some((d) => d.id === initDistrict))
+    selectedSenderCityId.value = city ? city.id : cities.value[0].id
+    if (!initDistrict && city) {
+      form.senderDistrictId = city.districts[0]?.id ?? 0
+    }
+  }
 
   // 新增模式亦初始化快照，確保髒污判定正確
   if (!editId) {
@@ -403,6 +466,11 @@ async function loadCase(id: number) {
   form.senderDistrictId = d.senderDistrictId ?? 0
   form.senderTypeId = d.senderTypeId ?? 0
   form.senderId = (d as any).senderId ?? null
+  // 同步縣市選取
+  if (form.senderDistrictId) {
+    const city = cities.value.find((c) => c.districts.some((d2) => d2.id === form.senderDistrictId))
+    if (city) selectedSenderCityId.value = city.id
+  }
   // 編輯模式快照：用於髒污判定與取消還原，修復編輯時無法更新 sender 的 bug
   senderSnapshot = snapshotSender()
   form.damageIds = d.damages?.map((x) => x.id).filter((x): x is number => x != null) ?? []
@@ -474,10 +542,10 @@ async function submit() {
         .map((r) => ({ pestCategoryId: r.pestCategoryId, pestNote: r.pestNote?.trim() || undefined }))
       await caseApi.update(editId, {
         receiveDate: form.receiveDate,
-        cropScale: form.cropScale || undefined,
-        damageScale: form.damageScale || undefined,
-        caseDescription: form.caseDescription || undefined,
-        hintDescription: form.hintDescription || undefined,
+        cropScale: form.cropScale ?? undefined,
+        damageScale: form.damageScale ?? undefined,
+        caseDescription: form.caseDescription,
+        hintDescription: form.hintDescription,
         status: form.status || undefined,
         senderId: form.senderId ?? undefined,
         methodId: form.methodId,
@@ -486,20 +554,22 @@ async function submit() {
         deliverId: form.deliverId,
         damageIds: form.damageIds,
         hintIds: form.hintIds,
-        pestCategoryIds: form.pestCategoryIds,
-        pestCategoryWithNotes: pestWithNotes.length > 0 ? pestWithNotes : undefined,
+        pestCategoryWithNotes: pestWithNotes,
         identifierIds: form.identifierIds,
       } as any)
+      Swal.fire({ icon: 'success', title: '儲存成功', timer: 1200, showConfirmButton: false }).then(() => {
+        router.push(`/cases/${editId}`)
+      })
     } else {
       const pestWithNotes2 = pestRows.value
         .filter((r) => r.pestCategoryId)
         .map((r) => ({ pestCategoryId: r.pestCategoryId, pestNote: r.pestNote?.trim() || undefined }))
-      await caseApi.create({
+      const { data } = await caseApi.create({
         receiveDate: form.receiveDate,
-        cropScale: form.cropScale || undefined,
-        damageScale: form.damageScale || undefined,
-        caseDescription: form.caseDescription || undefined,
-        hintDescription: form.hintDescription || undefined,
+        cropScale: form.cropScale ?? undefined,
+        damageScale: form.damageScale ?? undefined,
+        caseDescription: form.caseDescription,
+        hintDescription: form.hintDescription,
         senderId: form.senderId ?? undefined,
         senderAddress: form.senderAddress,
         senderDistrictId: form.senderDistrictId,
@@ -510,14 +580,15 @@ async function submit() {
         deliverId: form.deliverId,
         damageIds: form.damageIds,
         hintIds: form.hintIds,
-        pestCategoryIds: form.pestCategoryIds,
-        pestCategoryWithNotes: pestWithNotes2.length > 0 ? pestWithNotes2 : undefined,
+        pestCategoryWithNotes: pestWithNotes2,
         identifierIds: form.identifierIds,
       } as any)
+      const newId = (data as any)?.caseId
+      Swal.fire({ icon: 'success', title: '儲存成功', timer: 1200, showConfirmButton: false }).then(() => {
+        if (newId) router.push(`/cases/${newId}`)
+        else router.push('/cases')
+      })
     }
-    Swal.fire({ icon: 'success', title: '儲存成功', timer: 1200, showConfirmButton: false }).then(() => {
-      router.push('/cases')
-    })
   } catch {
     // 錯誤由攔截器處理
   } finally {
@@ -537,20 +608,22 @@ async function runAi() {
   }
   analyzing.value = true
   try {
+    const pestCategoryNames = pestRows.value
+      .map((r) => pestTypes.value.flatMap((p) => p.categories).find((c) => c.id === r.pestCategoryId)?.name)
+      .filter((n): n is string => !!n)
+    const pestNotes = pestRows.value.map((r) => r.pestNote?.trim()).filter((n): n is string => !!n && n.length > 0)
     const { data } = await aiApi.analyze({
       cropName: crop.name,
       cropCategory: category,
       damages: damages.value.filter((d) => form.damageIds.includes(d.id)).map((d) => d.name),
-      pestCategories: pestTypes.value
-        .flatMap((p) => p.categories)
-        .filter((c) => form.pestCategoryIds.includes(c.id))
-        .map((c) => c.name),
+      pestCategories: pestCategoryNames,
+      pestNotes: pestNotes.length > 0 ? pestNotes : undefined,
       caseDescription: form.caseDescription,
       cropScale: form.cropScale,
       damageScale: form.damageScale,
       cultivationMethod: methods.value.find((m) => m.id === form.methodId)?.name,
       hintDescription: form.hintDescription,
-    })
+    } as any)
     Swal.fire({
       icon: 'info',
       title: `AI 診斷建議（${(data.elapsedMs / 1000).toFixed(1)} 秒）`,
@@ -627,15 +700,20 @@ async function runAi() {
             </select>
           </div>
           <div class="col-md-4">
-            <label class="form-label">縣市／鄉鎮市區</label>
-            <select v-model.number="form.senderDistrictId" class="form-select">
-              <option value="0" disabled>請選擇鄉鎮市區</option>
-              <optgroup v-for="c in cities" :key="c.id" :label="c.name">
-                <option v-for="d in c.districts" :key="d.id" :value="d.id">{{ d.name }}</option>
-              </optgroup>
+            <label class="form-label">縣市</label>
+            <select v-model.number="selectedSenderCityId" class="form-select">
+              <option :value="null" disabled>請選擇縣市</option>
+              <option v-for="c in cities" :key="c.id" :value="c.id">{{ c.name }}</option>
             </select>
           </div>
-          <div class="col-md-8">
+          <div class="col-md-3">
+            <label class="form-label">鄉鎮市區</label>
+            <select v-model.number="form.senderDistrictId" class="form-select">
+              <option value="0" disabled>請選擇鄉鎮市區</option>
+              <option v-for="d in filteredSenderDistricts" :key="d.id" :value="d.id">{{ d.name }}</option>
+            </select>
+          </div>
+          <div class="col-md-5">
             <label class="form-label">地址</label>
             <input v-model.trim="form.senderAddress" class="form-control" required />
           </div>
@@ -789,7 +867,7 @@ async function runAi() {
             </div>
           </div>
           <div class="col-md-6">
-            <label class="form-label">診斷簽名人（可複選）</label>
+            <label class="form-label d-flex justify-content-between">診斷簽名人（可複選） <button type="button" class="btn btn-sm btn-outline-success py-0" @click="handleCreateIdentifier">＋新增</button></label>
             <div v-for="i in identifiers" :key="i.id" class="form-check">
               <input
                 class="form-check-input"

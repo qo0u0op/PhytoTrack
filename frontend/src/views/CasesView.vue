@@ -25,11 +25,9 @@ interface CaseSummary {
 }
 
 function senderLabel(c: CaseSummary) {
-  // VIEWER 時後端已遮蔽為 null，前端僅顯示縣市鄉鎮
+  // VIEWER 時後端已遮蔽為 null，顯示已遮蔽(已遮蔽) 與預覽一致
   if (auth.isViewer) {
-    const city = (c as any).senderCityName ?? ''
-    const district = c.senderDistrictName ?? ''
-    return city && district ? `${city}${district}` : district || city || '—'
+    return '已遮蔽(已遮蔽)'
   }
   const name = c.senderName
   const display = c.senderDisplayName
@@ -76,7 +74,7 @@ async function load() {
     const params: Record<string, string | number> = { page: page.value, size }
     if (filters.cropId) params.cropId = filters.cropId
     if (filters.serviceId) params.serviceId = filters.serviceId
-    if (filters.senderName.trim()) params.senderName = filters.senderName.trim()
+    if (!auth.isViewer && filters.senderName.trim()) params.senderName = filters.senderName.trim()
     if (filters.receiveDateFrom) params.receiveDateFrom = filters.receiveDateFrom
     if (filters.receiveDateTo) params.receiveDateTo = filters.receiveDateTo
     if (filters.status) params.status = filters.status
@@ -188,7 +186,7 @@ async function exportCsv() {
     const params: Record<string, string | number> = {}
     if (filters.cropId) params.cropId = filters.cropId
     if (filters.serviceId) params.serviceId = filters.serviceId
-    if (filters.senderName.trim()) params.senderName = filters.senderName.trim()
+    if (!auth.isViewer && filters.senderName.trim()) params.senderName = filters.senderName.trim()
     if (filters.receiveDateFrom) params.receiveDateFrom = filters.receiveDateFrom
     if (filters.receiveDateTo) params.receiveDateTo = filters.receiveDateTo
     if (filters.status) params.status = filters.status
@@ -263,7 +261,7 @@ async function confirmDelete(id: number) {
           </div>
           <div class="col-md-3">
             <label class="form-label small text-muted mb-1">送件人（部分比對）</label>
-            <input v-model="filters.senderName" type="text" class="form-control form-control-sm" />
+            <input v-model="filters.senderName" type="text" class="form-control form-control-sm" :disabled="auth.isViewer" :placeholder="auth.isViewer ? '檢視者無權限篩選' : ''" :title="auth.isViewer ? '檢視者無權限篩選送件人' : ''" />
           </div>
           <div class="col-md-3">
             <label class="form-label small text-muted mb-1">狀態</label>

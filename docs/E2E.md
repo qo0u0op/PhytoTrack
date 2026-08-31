@@ -69,8 +69,10 @@ E2E 皆以前後端皆就緒為前提：
 mise run dev
 # 等待就緒：後端 http://localhost:8080/api/ai/health、前端 http://localhost:5173
 
-# 或分開啟動
-cd backend && mvn spring-boot:run -Dspring-boot.run.profiles=dev  # 或 ./mvnw ...
+# 或分開啟動（無 mise 時）
+cd backend && mvn spring-boot:run -Dspring-boot.run.profiles=dev  # 已安裝 mise
+# 或 cd backend && ./mvnw spring-boot:run -Dspring-boot.run.profiles=dev  # Unix/macOS，無 mise 時
+# 或 cd backend && .\mvnw.cmd spring-boot:run -Dspring-boot.run.profiles=dev  # Windows，無 mise 時
 cd frontend && npm run dev -- --host 0.0.0.0
 ```
 

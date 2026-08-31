@@ -1,7 +1,7 @@
 # ============================================================
 # PostgreSQL 設定檔（預留的資料庫升級路徑）
 #
-# 啟用方式：./mvnw spring-boot:run -Dspring-boot.run.profiles=postgres
+# 啟用方式：mvn spring-boot:run -Dspring-boot.run.profiles=postgres（已安裝 mise）或 ./mvnw ...（Unix/macOS）/ .\mvnw.cmd ...（Windows），無 mise 時
 #
 # 升級說明：
 #   - SQLite 是檔案型資料庫，無法支援真正的並發寫入，僅適合 5 人內團隊。

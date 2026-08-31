@@ -148,6 +148,51 @@ public class CaseService {
   /** 建立案件 */
   @Transactional
   public CaseResponse create(CaseCreateRequest request) {
+    // 先驗證所有參照，避免 sender 已落庫後才因其他參照不存在而回滾前的非原子中間狀態（ACID）
+    if (request.senderId() != null) {
+      senderRepository.findById(request.senderId())
+          .orElseThrow(() -> new ApiException("SENDER_NOT_FOUND", HttpStatus.NOT_FOUND, "送件人不存在"));
+    } else {
+      // 新建送件人時預檢 district / senderType
+      getRef(districtRepository, request.senderDistrictId(), "鄉鎮市區");
+      getRef(senderTypeRepository, request.senderTypeId(), "身分別");
+      String phone = request.senderPhone();
+      String displayName = request.senderDisplayName();
+      boolean hasPhone = phone != null && !phone.isBlank();
+      boolean hasDisplay = displayName != null && !displayName.isBlank();
+      if (!hasPhone && !hasDisplay) {
+        throw new ApiException("VALIDATION_ERROR", HttpStatus.BAD_REQUEST, "電話與顯示名稱至少需提供一項");
+      }
+    }
+    getRef(methodRepository, request.methodId(), "耕種方式");
+    getRef(cropRepository, request.cropId(), "作物");
+    getRef(serviceRepository, request.serviceId(), "服務類別");
+    getRef(deliveryRepository, request.deliverId(), "送件方式");
+    if (request.damageIds() != null) {
+      for (Long id : new HashSet<>(request.damageIds())) {
+        getRef(damageRepository, id, "被害部位");
+      }
+    }
+    if (request.hintIds() != null) {
+      for (Long id : new HashSet<>(request.hintIds())) {
+        getRef(hintRepository, id, "防治建議");
+      }
+    }
+    if (request.pestCategoryWithNotes() != null) {
+      for (var note : request.pestCategoryWithNotes()) {
+        getRef(pestCategoryRepository, note.pestCategoryId(), "病蟲害分類");
+      }
+    } else if (request.pestCategoryIds() != null) {
+      for (Long id : new HashSet<>(request.pestCategoryIds())) {
+        getRef(pestCategoryRepository, id, "病蟲害分類");
+      }
+    }
+    if (request.identifierIds() != null) {
+      for (Long id : new HashSet<>(request.identifierIds())) {
+        getRef(identifierRepository, id, "診斷簽名人");
+      }
+    }
+
     Case caseEntity = new Case();
     caseEntity.setReceiveDate(request.receiveDate());
     caseEntity.setCropScale(request.cropScale());
@@ -193,6 +238,25 @@ public class CaseService {
           "案件已結案，僅管理者可修改內容");
     }
 
+    // 先驗證所有參照 ID（fail-fast），避免部分欄位已寫入後才因參照不存在而回滾，確保原子性語意清晰
+    if (request.methodId() != null) {
+      getRef(methodRepository, request.methodId(), "耕種方式");
+    }
+    if (request.cropId() != null) {
+      getRef(cropRepository, request.cropId(), "作物");
+    }
+    if (request.serviceId() != null) {
+      getRef(serviceRepository, request.serviceId(), "服務類別");
+    }
+    if (request.deliverId() != null) {
+      getRef(deliveryRepository, request.deliverId(), "送件方式");
+    }
+    if (request.senderId() != null) {
+      senderRepository.findById(request.senderId())
+          .orElseThrow(() -> new ApiException("SENDER_NOT_FOUND", HttpStatus.NOT_FOUND, "送件人不存在"));
+    }
+    validateJunctionRefs(request);
+
     if (request.receiveDate() != null) {
       caseEntity.setReceiveDate(request.receiveDate());
     }
@@ -227,6 +291,39 @@ public class CaseService {
     replaceJunctions(caseEntity, request);
 
     return toDetail(caseEntity);
+  }
+
+  private void validateJunctionRefs(CaseUpdateRequest request) {
+    if (request.damageIds() != null) {
+      for (Long id : new HashSet<>(request.damageIds())) {
+        getRef(damageRepository, id, "被害部位");
+      }
+    }
+    if (request.hintIds() != null) {
+      for (Long id : new HashSet<>(request.hintIds())) {
+        getRef(hintRepository, id, "防治建議");
+      }
+    }
+    if (request.pestCategoryWithNotes() != null) {
+      for (var note : request.pestCategoryWithNotes()) {
+        getRef(pestCategoryRepository, note.pestCategoryId(), "病蟲害分類");
+      }
+    } else if (request.pestCategoryIds() != null) {
+      for (Long id : new HashSet<>(request.pestCategoryIds())) {
+        getRef(pestCategoryRepository, id, "病蟲害分類");
+      }
+    }
+    if (request.identifierIds() != null) {
+      for (Long id : new HashSet<>(request.identifierIds())) {
+        getRef(identifierRepository, id, "診斷簽名人");
+      }
+    }
+    if (request.senderDistrictId() != null) {
+      getRef(districtRepository, request.senderDistrictId(), "鄉鎮市區");
+    }
+    if (request.senderTypeId() != null) {
+      getRef(senderTypeRepository, request.senderTypeId(), "身分別");
+    }
   }
 
   /** 依轉移規則更新狀態；非法轉移拋 400 且狀態不變 */
