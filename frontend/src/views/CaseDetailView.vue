@@ -179,8 +179,8 @@ function showAiTip () {
               <strong>案件編號：</strong>#{{ detail.caseId }}
             </div>
             <div class="col-12">
-              <strong>病蟲害發生地點：</strong>{{ (detail as any).fieldCityName ?? '' }}{{ (detail as any).fieldDistrictName ?? '無' }}
-              <span v-if="(detail as any).fieldDistrictId && (detail as any).fieldDistrictId === detail.senderDistrictId" class="text-muted"> (同寄件人)</span>
+              <strong>病蟲害發生地點：</strong>{{ detail.fieldCityName ?? '' }}{{ detail.fieldDistrictName ?? '無' }}
+              <span v-if="detail.fieldDistrictId && detail.fieldDistrictId === detail.senderDistrictId" class="text-muted"> (同寄件人)</span>
             </div>
             <div class="col-md-6">
               <strong>送件人：</strong>{{ senderLabel (detail) }}
@@ -189,7 +189,7 @@ function showAiTip () {
               <strong>電話：</strong>{{ auth.isViewer ? '***' : (detail.senderPhone ?? '—') }}
             </div>
             <div class="col-md-6">
-              <strong>身分別：</strong>{{ (detail as any).senderTypeName ?? '—' }}
+              <strong>身分別：</strong>{{ detail.senderTypeName ?? '—' }}
             </div>
             <div class="col-12">
               <strong>地址：</strong>{{ detail.senderCityName ?? '' }}{{ detail.senderDistrictName ?? '' }}{{ auth.isViewer ? '***' : (detail.senderAddress ?? '') }}
@@ -199,7 +199,7 @@ function showAiTip () {
               <strong>耕種方式：</strong>{{ detail.methodName ?? '無' }}
             </div>
             <div class="col-md-6">
-              <strong>作物種類：</strong>{{ (detail as any).cropCategoryName ?? '—' }}
+              <strong>作物種類：</strong>{{ detail.cropCategoryName ?? '—' }}
             </div>
             <div class="col-12">
               <strong>作物名稱：</strong>{{ detail.cropName ?? '無' }}
@@ -233,7 +233,7 @@ function showAiTip () {
               </div>
               <div class="col-12 ms-3" style="font-size:14px">
                 <div v-for="p in detail.pestCategories" :key="p.id">
-                  • {{ (p as any).pestTypeName }}-{{ p.name }}<span v-if="p.pestNote"> ({{ p.pestNote }})</span>
+                  • {{ p.pestTypeName }}-{{ p.name }}<span v-if="p.pestNote"> ({{ p.pestNote }})</span>
                 </div>
               </div>
             </template>

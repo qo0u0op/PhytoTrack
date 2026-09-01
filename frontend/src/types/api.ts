@@ -802,6 +802,8 @@ export interface components {
             /** Format: int64 */
             deliverId?: number;
             /** Format: int64 */
+            fieldDistrictId?: number;
+            /** Format: int64 */
             senderId?: number;
             senderName?: string;
             senderDisplayName?: string;
@@ -848,6 +850,12 @@ export interface components {
             senderCityName?: string;
             /** Format: int64 */
             senderTypeId?: number;
+            senderTypeName?: string;
+            /** Format: int64 */
+            fieldDistrictId?: number;
+            fieldDistrictName?: string;
+            fieldCityName?: string;
+            cropCategoryName?: string;
             cropName?: string;
             methodName?: string;
             serviceName?: string;
@@ -868,6 +876,9 @@ export interface components {
             id?: number;
             name?: string;
             pestNote?: string;
+            /** Format: int64 */
+            pestTypeId?: number;
+            pestTypeName?: string;
         };
         IdNameUpdateRequest: {
             name: string;
@@ -918,6 +929,8 @@ export interface components {
             serviceId: number;
             /** Format: int64 */
             deliverId: number;
+            /** Format: int64 */
+            fieldDistrictId: number;
             damageIds?: number[];
             hintIds?: number[];
             pestCategoryIds?: number[];
@@ -953,6 +966,7 @@ export interface components {
             cropCategory?: string;
             damages?: string[];
             pestCategories?: string[];
+            pestNotes?: string[];
             caseDescription?: string;
             pestDescription?: string;
             cropScale?: string;
@@ -1055,9 +1069,14 @@ export interface components {
             senderDistrictName?: string;
             senderCityName?: string;
             serviceName?: string;
+            deliveryName?: string;
             status?: string;
             /** Format: date-time */
             createdAt?: string;
+            /** Format: int32 */
+            pestCategoryCount?: number;
+            pestCategoryNames?: string;
+            pestTypeNames?: string;
         };
         PageCaseSummaryResponse: {
             /** Format: int32 */
@@ -1106,6 +1125,26 @@ export interface components {
             topPestCategories?: components["schemas"]["CountName"][];
             statusRatio?: components["schemas"]["StatusCount"][];
             monthlyTrend?: components["schemas"]["MonthCount"][];
+            /** Format: int64 */
+            compositeCases?: number;
+            cropCategoryBreakdown?: components["schemas"]["CountName"][];
+            pestTypeBreakdown?: components["schemas"]["CountName"][];
+            deliveryBreakdown?: components["schemas"]["CountName"][];
+            methodBreakdown?: components["schemas"]["CountName"][];
+            hintBreakdown?: components["schemas"]["CountName"][];
+            /** Format: int64 */
+            compositeFactorCases?: number;
+            /** Format: int64 */
+            compositeHintCases?: number;
+            availableYears?: number[];
+            period?: string;
+            /** Format: int32 */
+            periodYear?: number;
+            /** Format: int32 */
+            periodMonth?: number;
+            /** Format: int64 */
+            periodTotal?: number;
+            fieldCityBreakdown?: components["schemas"]["CountName"][];
         };
         CountName: {
             name?: string;
@@ -1777,9 +1816,18 @@ export interface operations {
                 cropId?: number;
                 serviceId?: number;
                 senderName?: string;
+                senderQuery?: string;
                 receiveDateFrom?: string;
                 receiveDateTo?: string;
                 status?: string;
+                cityId?: number;
+                districtId?: number;
+                cropCategoryId?: number;
+                pestTypeId?: number;
+                pestCategoryId?: number;
+                hintId?: number;
+                deliveryId?: number;
+                damageId?: number;
                 pageable: components["schemas"]["Pageable"];
             };
             header?: never;
@@ -2473,7 +2521,11 @@ export interface operations {
     };
     statistics: {
         parameters: {
-            query?: never;
+            query?: {
+                period?: string;
+                year?: number;
+                month?: number;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -2497,9 +2549,18 @@ export interface operations {
                 cropId?: number;
                 serviceId?: number;
                 senderName?: string;
+                senderQuery?: string;
                 receiveDateFrom?: string;
                 receiveDateTo?: string;
                 status?: string;
+                cityId?: number;
+                districtId?: number;
+                cropCategoryId?: number;
+                pestTypeId?: number;
+                pestCategoryId?: number;
+                hintId?: number;
+                deliveryId?: number;
+                damageId?: number;
             };
             header?: never;
             path?: never;

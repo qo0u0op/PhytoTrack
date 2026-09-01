@@ -44,13 +44,13 @@ function senderLabel (c: CaseSummary) {
 }
 
 function pestLabel (c: CaseSummary) {
-  const names = (c as any).pestTypeNames as string | null
+  const names = c.pestTypeNames as string | null
   if (!names) return '—'
   return names
 }
 
 function isComposite (c: CaseSummary) {
-  const names = (c as any).pestTypeNames as string | null
+  const names = c.pestTypeNames as string | null
   return names ? names.split ('、').length > 1 : false
 }
 
@@ -289,14 +289,14 @@ async function viewDetail (id: number) {
   // 輔助：hints 更名 其他→其他回覆 (Q4)
   const joinHints = (items?: { id?: number; name?: string }[]) =>
     items?.map ((i) => esc (i.name === '其他' ? '其他回覆' : i.name)).join ('、') ?? '無'
-  const fieldCity = (data as any).fieldCityName ?? ''
-  const fieldDistrict = (data as any).fieldDistrictName ?? ''
-  const fieldSame = (data as any).fieldDistrictId && (data as any).fieldDistrictId === data.senderDistrictId
-  const cropCategory = (data as any).cropCategoryName ?? '—'
-  const senderTypeName = (data as any).senderTypeName ?? '—'
+  const fieldCity = data.fieldCityName ?? ''
+  const fieldDistrict = data.fieldDistrictName ?? ''
+  const fieldSame = data.fieldDistrictId && data.fieldDistrictId === data.senderDistrictId
+  const cropCategory = data.cropCategoryName ?? '—'
+  const senderTypeName = data.senderTypeName ?? '—'
   const pestPreviewHtml = (items?: { id?: number; name?: string; pestNote?: string | null; pestTypeName?: string | null }[]) => {
     if (!items || items.length === 0) return '<p class="ms-3">無</p>'
-    return items.map (p => `<p class="ms-3">• ${esc ((p as any).pestTypeName ?? '')}-${esc (p.name ?? '')}</p>`).join ('')
+    return items.map (p => `<p class="ms-3">• ${esc (p.pestTypeName ?? '')}-${esc (p.name ?? '')}</p>`).join ('')
   }
 
   const result = await Swal.fire ({
@@ -569,7 +569,7 @@ async function confirmDelete (id: number) {
               <td>{{ c.receiveDate }}</td>
               <td>{{ c.cropName }}</td>
               <td>{{ senderLabel (c) }}</td>
-              <td>{{ (c as any).deliveryName ?? '—' }}</td>
+              <td>{{ c.deliveryName ?? '—' }}</td>
               <td><span>{{ pestLabel (c) }}</span> <span v-if="isComposite (c)" class="badge bg-warning text-dark ms-1">複合因素</span></td>
               <td>
                 <span class="badge" :class="statusBadgeClass (c.status)">{{ statusLabel (c.status) }}</span>
