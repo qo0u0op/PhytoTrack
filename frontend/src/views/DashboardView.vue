@@ -136,7 +136,7 @@ const barClass = (status?: string) =>
       <div class="col-md-3">
         <div class="card shadow-sm">
           <div class="card-body">
-            <h6 class="text-muted">AI 連線情況</h6>
+            <h6 class="text-muted">模型狀態</h6>
             <div class="fs-1 fw-bold">
               <span v-if="modelHealthy === null" class="text-warning">…</span>
               <span v-else-if="modelHealthy" class="text-success">已連線</span>
