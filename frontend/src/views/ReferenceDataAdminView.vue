@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import Swal from 'sweetalert2'
 import { refApi, refAdminApi } from '../api'
 
@@ -359,9 +359,7 @@ const tabs: { key: TabKey; label: string }[] = [
   { key: 'services', label: '服務類別' },
   { key: 'identifiers', label: '簽名人' },
   { key: 'senderTypes', label: '身分別' },
-  { key: 'crops', label: '作物' },
   { key: 'cropCategories', label: '作物分類' },
-  { key: 'pestCategories', label: '病蟲害分類' },
 ]
 
 const currentList = computed<any[]>(() => {
@@ -394,6 +392,42 @@ const currentList = computed<any[]>(() => {
     }
   }
 })
+
+// 分頁（>20 顯示，與 CasesView 同款）
+const page = ref (0)
+const size = ref (10)
+const sizeOptions = [10, 20, 50, 100]
+const pageInput = ref (1)
+const total = computed (() => currentList.value.length)
+const totalPages = computed (() => Math.max (1, Math.ceil (total.value / size.value)))
+watch (page, (v) => { pageInput.value = v + 1 })
+function goToPage (p: number) {
+  const clamped = Math.max (0, Math.min (p, totalPages.value - 1))
+  if (clamped !== page.value) {
+    page.value = clamped
+    pageInput.value = clamped + 1
+  } else {
+    pageInput.value = clamped + 1
+  }
+}
+function onSizeChange () {
+  page.value = 0
+  pageInput.value = 1
+}
+function onPageInputConfirm () {
+  let num = Number (pageInput.value)
+  if (!Number.isFinite (num) || num < 1) num = 1
+  if (num > totalPages.value) num = totalPages.value
+  goToPage (num - 1)
+}
+watch ([currentTab, filterQ, filterPestTypeId], () => {
+  page.value = 0
+  pageInput.value = 1
+})
+const pagedList = computed (() => {
+  const start = page.value * size.value
+  return currentList.value.slice (start, start + size.value)
+})
 </script>
 
 <template>
@@ -419,7 +453,7 @@ const currentList = computed<any[]>(() => {
               v-model="filterQ"
               type="text"
               class="form-control form-control-sm"
-              placeholder="篩選名稱／代碼"
+              placeholder="篩選名稱"
             />
           </div>
           <div v-if="currentTab === 'pestCategories'" class="col-md-4">
@@ -454,7 +488,7 @@ const currentList = computed<any[]>(() => {
             <tr v-if="currentList.length === 0">
               <td colspan="7" class="text-center text-muted py-4">尚無資料</td>
             </tr>
-            <tr v-for="item in currentList" :key="item.id">
+            <tr v-for="item in pagedList" :key="item.id">
               <td>{{ item.id }}</td>
               <td>{{ item.name }}</td>
               <td v-if="currentTab === 'crops'">{{ cropCategories.find ((c) => c.id === (item as any).cropCategoryId)?.name ?? '—' }}</td>
@@ -468,7 +502,22 @@ const currentList = computed<any[]>(() => {
             </tr>
           </tbody>
         </table>
+        </div>
+      </div>
+      <!-- 分頁（>20 才顯示） -->
+      <div v-if="total > 20" class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-3">
+        <div class="d-flex align-items-center gap-2">
+          <label class="form-label small text-muted mb-0 text-nowrap">每頁筆數</label>
+          <select v-model="size" class="form-select form-select-sm" style="width: 80px" @change="onSizeChange">
+            <option v-for="opt in sizeOptions" :key="opt" :value="opt">{{ opt }}</option>
+          </select>
+          <span class="small text-muted">共 {{ total }} 筆</span>
+        </div>
+        <div class="d-flex align-items-center gap-1">
+          <button class="btn btn-sm btn-outline-secondary border-0 text-secondary" :disabled="page === 0" @click="goToPage(page - 1)"><</button>
+          <span class="small text-muted"><input v-model.number="pageInput" type="number" class="form-control form-control-sm d-inline-block" style="width: 64px; height: 24px" :min="1" :max="totalPages" @keyup.enter="onPageInputConfirm" @blur="onPageInputConfirm" /> / {{ totalPages }}</span>
+          <button class="btn btn-sm btn-outline-secondary border-0 text-secondary" :disabled="page >= totalPages - 1" @click="goToPage(page + 1)">></button>
+        </div>
       </div>
     </div>
-  </div>
 </template>

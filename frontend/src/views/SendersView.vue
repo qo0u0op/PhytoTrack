@@ -115,7 +115,51 @@ function clearFilters () {
   appliedSenderTypeId.value = undefined
   appliedCityId.value = undefined
   appliedDistrictId.value = undefined
+  page.value = 0
+  pageInput.value = 1
 }
+
+// 分頁（與 CasesView 同款，>20 才顯示）
+const page = ref (0)
+const size = ref (10)
+const sizeOptions = [10, 20, 50, 100]
+const pageInput = ref (1)
+const total = computed (() => filteredSenders.value.length)
+const totalPages = computed (() => Math.max (1, Math.ceil (total.value / size.value)))
+
+watch (page, (v) => { pageInput.value = v + 1 })
+
+function goToPage (p: number) {
+  const clamped = Math.max (0, Math.min (p, totalPages.value - 1))
+  if (clamped !== page.value) {
+    page.value = clamped
+    pageInput.value = clamped + 1
+  } else {
+    pageInput.value = clamped + 1
+  }
+}
+
+function onSizeChange () {
+  page.value = 0
+  pageInput.value = 1
+}
+
+function onPageInputConfirm () {
+  let num = Number (pageInput.value)
+  if (!Number.isFinite (num) || num < 1) num = 1
+  if (num > totalPages.value) num = totalPages.value
+  goToPage (num - 1)
+}
+
+watch ([appliedQ, appliedSenderTypeId, appliedCityId, appliedDistrictId], () => {
+  page.value = 0
+  pageInput.value = 1
+})
+
+const pagedSenders = computed (() => {
+  const start = page.value * size.value
+  return filteredSenders.value.slice (start, start + size.value)
+})
 
 onMounted (async () => {
   await Promise.all ([load (), loadRefs ()])
@@ -254,10 +298,30 @@ async function handleEdit (s: SenderRow) {
           </div>
           <div class="col-md-3">
             <button class="btn btn-sm btn-primary me-1" @click="applyFilters">篩選</button>
-            <button class="btn btn-sm btn-outline-secondary" @click="clearFilters">清除</button>
+            <button class="btn btn-sm btn-outline-secondary border-0 text-secondary" @click="clearFilters">清除</button>
           </div>
         </div>
       </div>
+    </div>
+
+    <!-- 分頁（篩選卡下方，>20 才顯示） -->
+    <div v-if="total > 20" class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-3 mb-3">
+      <div class="d-flex align-items-center gap-2">
+        <label class="form-label small text-muted mb-0 text-nowrap">每頁筆數</label>
+        <select v-model.number="size" class="form-select form-select-sm" style="width:auto" @change="onSizeChange">
+          <option v-for="opt in sizeOptions" :key="opt" :value="opt">{{ opt }} 筆/頁</option>
+        </select>
+        <span class="small text-muted text-nowrap">共 {{ total }} 筆，{{ totalPages }} 頁</span>
+      </div>
+      <nav aria-label="送件人分頁">
+        <ul class="pagination pagination-sm mb-0 justify-content-center">
+          <li class="page-item" :class="{ disabled: page === 0 }"><button class="page-link border-0 text-secondary" :disabled="page === 0" @click="goToPage(0)" style="height:31px"><<</button></li>
+          <li class="page-item" :class="{ disabled: page === 0 }"><button class="page-link border-0 text-secondary" :disabled="page === 0" @click="goToPage(page - 1)" style="height:31px"><</button></li>
+          <li class="page-item"><span class="page-link border-0 text-secondary d-flex align-items-center gap-1" style="height:31px;padding:0 0.5rem"><input v-model.number="pageInput" type="number" class="form-control form-control-sm text-center p-0" style="width:64px;height:24px;font-size:0.875rem;line-height:1.5" :min="1" :max="totalPages" @keyup.enter="onPageInputConfirm" @blur="onPageInputConfirm" /> / {{ totalPages }}</span></li>
+          <li class="page-item" :class="{ disabled: page >= totalPages - 1 }"><button class="page-link border-0 text-secondary" :disabled="page >= totalPages - 1" @click="goToPage(page + 1)" style="height:31px">></button></li>
+          <li class="page-item" :class="{ disabled: page >= totalPages - 1 }"><button class="page-link border-0 text-secondary" :disabled="page >= totalPages - 1" @click="goToPage(totalPages - 1)" style="height:31px">>></button></li>
+        </ul>
+      </nav>
     </div>
 
     <div class="card shadow-sm">
@@ -282,7 +346,7 @@ async function handleEdit (s: SenderRow) {
             <tr v-else-if="filteredSenders.length === 0">
               <td colspan="8" class="text-center text-muted py-4">尚無資料</td>
             </tr>
-            <tr v-for="s in filteredSenders" :key="s.senderId">
+            <tr v-for="s in pagedSenders" :key="s.senderId">
               <td>{{ s.senderId }}</td>
               <td>{{ displayLabel (s) }}</td>
               <td>{{ s.phone ?? '—' }}</td>
@@ -298,6 +362,26 @@ async function handleEdit (s: SenderRow) {
           </tbody>
         </table>
       </div>
+    </div>
+
+    <!-- 分頁（表格下方，>20 才顯示） -->
+    <div v-if="total > 20" class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-3">
+      <div class="d-flex align-items-center gap-2">
+        <label class="form-label small text-muted mb-0 text-nowrap">每頁筆數</label>
+        <select v-model.number="size" class="form-select form-select-sm" style="width:auto" @change="onSizeChange">
+          <option v-for="opt in sizeOptions" :key="opt" :value="opt">{{ opt }} 筆/頁</option>
+        </select>
+        <span class="small text-muted text-nowrap">共 {{ total }} 筆，{{ totalPages }} 頁</span>
+      </div>
+      <nav aria-label="送件人分頁">
+        <ul class="pagination pagination-sm mb-0 justify-content-center">
+          <li class="page-item" :class="{ disabled: page === 0 }"><button class="page-link border-0 text-secondary" :disabled="page === 0" @click="goToPage(0)" style="height:31px"><<</button></li>
+          <li class="page-item" :class="{ disabled: page === 0 }"><button class="page-link border-0 text-secondary" :disabled="page === 0" @click="goToPage(page - 1)" style="height:31px"><</button></li>
+          <li class="page-item"><span class="page-link border-0 text-secondary d-flex align-items-center gap-1" style="height:31px;padding:0 0.5rem"><input v-model.number="pageInput" type="number" class="form-control form-control-sm text-center p-0" style="width:64px;height:24px;font-size:0.875rem;line-height:1.5" :min="1" :max="totalPages" @keyup.enter="onPageInputConfirm" @blur="onPageInputConfirm" /> / {{ totalPages }}</span></li>
+          <li class="page-item" :class="{ disabled: page >= totalPages - 1 }"><button class="page-link border-0 text-secondary" :disabled="page >= totalPages - 1" @click="goToPage(page + 1)" style="height:31px">></button></li>
+          <li class="page-item" :class="{ disabled: page >= totalPages - 1 }"><button class="page-link border-0 text-secondary" :disabled="page >= totalPages - 1" @click="goToPage(totalPages - 1)" style="height:31px">>></button></li>
+        </ul>
+      </nav>
     </div>
   </div>
 </template>
