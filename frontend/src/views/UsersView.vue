@@ -3,7 +3,7 @@ import { onMounted, ref } from 'vue'
 import Swal from 'sweetalert2'
 import { userApi } from '../api'
 
-// 使用者資料（對應後端 UserResponse）
+// 使用者資料 (對應後端 UserResponse)
 interface UserRow {
   userId: number
   username: string
@@ -14,12 +14,12 @@ interface UserRow {
 }
 
 const users = ref<UserRow[]>([])
-const loading = ref(true)
+const loading = ref (true)
 
-async function load() {
+async function load () {
   loading.value = true
   try {
-    const { data } = await userApi.list()
+    const { data } = await userApi.list ()
     users.value = data
   } catch {
     // 錯誤由攔截器處理
@@ -28,7 +28,7 @@ async function load() {
   }
 }
 
-onMounted(load)
+onMounted (load)
 
 const ROLE_OPTIONS = [
   { value: 'ROLE_VIEWER', label: '檢視者' },
@@ -36,36 +36,36 @@ const ROLE_OPTIONS = [
   { value: 'ROLE_ADMIN', label: '管理者' },
 ]
 
-async function changeRole(u: UserRow, newRole: string) {
+async function changeRole (u: UserRow, newRole: string) {
   if (newRole === u.role) return
-  const result = await Swal.fire({
+  const result = await Swal.fire ({
     icon: 'question',
     title: '變更角色？',
-    text: `確定將 ${u.username} 的角色從 ${ROLE_OPTIONS.find((o) => o.value === u.role)?.label} 變更為 ${ROLE_OPTIONS.find((o) => o.value === newRole)?.label}？`,
+    text: `確定將 ${u.username} 的角色從 ${ROLE_OPTIONS.find ((o) => o.value === u.role)?.label} 變更為 ${ROLE_OPTIONS.find ((o) => o.value === newRole)?.label}？`,
     showCancelButton: true,
     confirmButtonText: '確認變更',
     cancelButtonText: '取消',
   })
   if (!result.isConfirmed) {
-    // 還原下拉顯示（避免停留在未確認的新值）
-    const sel = document.querySelector(`select[data-user-id="${u.userId}"]`) as HTMLSelectElement | null
+    // 還原下拉顯示 (避免停留在未確認的新值)
+    const sel = document.querySelector (`select[data-user-id="${u.userId}"]`) as HTMLSelectElement | null
     if (sel) sel.value = u.role
     return
   }
   try {
-    await userApi.updateRole(u.userId, newRole)
+    await userApi.updateRole (u.userId, newRole)
     u.role = newRole
-    Swal.fire({ icon: 'success', title: '角色已更新', timer: 1200, showConfirmButton: false })
+    Swal.fire ({ icon: 'success', title: '角色已更新', timer: 1200, showConfirmButton: false })
   } catch {
     // 失敗時還原下拉
-    const sel = document.querySelector(`select[data-user-id="${u.userId}"]`) as HTMLSelectElement | null
+    const sel = document.querySelector (`select[data-user-id="${u.userId}"]`) as HTMLSelectElement | null
     if (sel) sel.value = u.role
   }
 }
 
-async function toggleActive(u: UserRow) {
+async function toggleActive (u: UserRow) {
   const next = !u.active
-  const result = await Swal.fire({
+  const result = await Swal.fire ({
     icon: 'warning',
     title: next ? '啟用帳號？' : '停用帳號？',
     text: next ? `確定啟用 ${u.username}？` : `停用後 ${u.username} 將無法登入，既有 token 立即失效`,
@@ -75,19 +75,19 @@ async function toggleActive(u: UserRow) {
   })
   if (!result.isConfirmed) return
   try {
-    await userApi.updateActive(u.userId, next)
+    await userApi.updateActive (u.userId, next)
     u.active = next
-    Swal.fire({ icon: 'success', title: next ? '已啟用' : '已停用', timer: 1200, showConfirmButton: false })
+    Swal.fire ({ icon: 'success', title: next ? '已啟用' : '已停用', timer: 1200, showConfirmButton: false })
   } catch {
     // 錯誤由攔截器處理
   }
 }
 
-async function resetPassword(u: UserRow) {
-  const { value: newPassword } = await Swal.fire({
+async function resetPassword (u: UserRow) {
+  const { value: newPassword } = await Swal.fire ({
     title: `重設密碼 — ${u.username}`,
     input: 'password',
-    inputLabel: '新密碼（6–72 字元）',
+    inputLabel: '新密碼 (6–72 字元)',
     inputPlaceholder: '請輸入新密碼',
     showCancelButton: true,
     confirmButtonText: '重設',
@@ -100,8 +100,8 @@ async function resetPassword(u: UserRow) {
   })
   if (!newPassword) return
   try {
-    await userApi.resetPassword(u.userId, newPassword)
-    Swal.fire({ icon: 'success', title: '密碼已重設', text: `${u.username} 可使用新密碼登入`, timer: 2000, showConfirmButton: false })
+    await userApi.resetPassword (u.userId, newPassword)
+    Swal.fire ({ icon: 'success', title: '密碼已重設', text: `${u.username} 可使用新密碼登入`, timer: 2000, showConfirmButton: false })
   } catch {
     // 錯誤由攔截器處理
   }
@@ -143,7 +143,7 @@ async function resetPassword(u: UserRow) {
                   :data-user-id="u.userId"
                   class="form-select form-select-sm"
                   style="width: 130px"
-                  @change="changeRole(u, ($event.target as HTMLSelectElement).value)"
+                  @change="changeRole (u, ($event.target as HTMLSelectElement).value)"
                 >
                   <option v-for="opt in ROLE_OPTIONS" :key="opt.value" :value="opt.value">
                     {{ opt.label }}
@@ -159,11 +159,11 @@ async function resetPassword(u: UserRow) {
                 <button
                   class="btn btn-sm me-1"
                   :class="u.active ? 'btn-outline-warning' : 'btn-outline-success'"
-                  @click="toggleActive(u)"
+                  @click="toggleActive (u)"
                 >
                   {{ u.active ? '停用' : '啟用' }}
                 </button>
-                <button class="btn btn-sm btn-outline-primary" @click="resetPassword(u)">
+                <button class="btn btn-sm btn-outline-primary" @click="resetPassword (u)">
                   重設密碼
                 </button>
               </td>

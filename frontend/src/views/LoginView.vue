@@ -5,24 +5,24 @@ import Swal from 'sweetalert2'
 import { authApi } from '../api'
 import { useAuthStore } from '../stores/auth'
 
-const auth = useAuthStore()
-const router = useRouter()
-const route = useRoute()
+const auth = useAuthStore ()
+const router = useRouter ()
+const route = useRoute ()
 
-const form = reactive({ username: '', password: '' })
-const loading = ref(false)
+const form = reactive ({ username: '', password: '' })
+const loading = ref (false)
 
-async function submit() {
+async function submit () {
   loading.value = true
   try {
-    const { data } = await authApi.login({ ...form })
-    // 登入成功：寫入狀態並跳回原本想去的頁面（或儀表板）
-    auth.setAuth(data.token!, data.user!)
-    Swal.fire({ icon: 'success', title: '登入成功', timer: 1200, showConfirmButton: false })
-    router.push(String(route.query.redirect ?? '/dashboard'))
+    const { data } = await authApi.login ({ ...form })
+    // 登入成功：寫入狀態並跳回原本想去的頁面 (或儀表板)
+    auth.setAuth (data.token!, data.user!)
+    Swal.fire ({ icon: 'success', title: '登入成功', timer: 1200, showConfirmButton: false })
+    router.push (String (route.query.redirect ?? '/dashboard'))
   } catch (e: any) {
     // 401 等錯誤由攔截器處理；在此補充顯示登入失敗訊息
-    Swal.fire({ icon: 'error', title: '登入失敗', text: e.response?.data?.error?.message ?? '帳號或密碼錯誤' })
+    Swal.fire ({ icon: 'error', title: '登入失敗', text: e.response?.data?.error?.message ?? '帳號或密碼錯誤' })
   } finally {
     loading.value = false
   }

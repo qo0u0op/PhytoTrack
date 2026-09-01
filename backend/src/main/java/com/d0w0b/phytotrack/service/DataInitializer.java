@@ -11,10 +11,10 @@ import com.d0w0b.phytotrack.repository.IdentifierRepository;
 import com.d0w0b.phytotrack.repository.UserRepository;
 
 /**
- * 啟動時資料初始化（Data Initializer）
+ * 啟動時資料初始化 (Data Initializer)
  *
  * 若資料庫沒有管理者/員工帳號，則依 application.yaml 的 app.bootstrap
- * 建立預設帳號（可覆寫），方便首次登入。
+ * 建立預設帳號 (可覆寫)，方便首次登入。
  */
 @Configuration
 public class DataInitializer implements CommandLineRunner {
@@ -29,15 +29,15 @@ public class DataInitializer implements CommandLineRunner {
   private final String viewerUsername;
   private final String viewerPassword;
 
-  public DataInitializer(UserRepository userRepository,
+  public DataInitializer (UserRepository userRepository,
                          IdentifierRepository identifierRepository,
                          PasswordEncoder passwordEncoder,
-                         @Value("${app.bootstrap.admin-username}") String adminUsername,
-                         @Value("${app.bootstrap.admin-password}") String adminPassword,
-                         @Value("${app.bootstrap.staff-username}") String staffUsername,
-                         @Value("${app.bootstrap.staff-password}") String staffPassword,
-                         @Value("${app.bootstrap.viewer-username}") String viewerUsername,
-                         @Value("${app.bootstrap.viewer-password}") String viewerPassword) {
+                         @Value ("${app.bootstrap.admin-username}") String adminUsername,
+                         @Value ("${app.bootstrap.admin-password}") String adminPassword,
+                         @Value ("${app.bootstrap.staff-username}") String staffUsername,
+                         @Value ("${app.bootstrap.staff-password}") String staffPassword,
+                         @Value ("${app.bootstrap.viewer-username}") String viewerUsername,
+                         @Value ("${app.bootstrap.viewer-password}") String viewerPassword) {
     this.userRepository = userRepository;
     this.identifierRepository = identifierRepository;
     this.passwordEncoder = passwordEncoder;
@@ -50,38 +50,38 @@ public class DataInitializer implements CommandLineRunner {
   }
 
   @Override
-  public void run(String... args) {
+  public void run (String... args) {
     // 僅在使用者不存在時建立，避免覆寫或重複
-    User admin = getOrCreateUser(adminUsername, "管理員", adminPassword, User.Role.ROLE_ADMIN);
-    User staff = getOrCreateUser(staffUsername, "診斷員", staffPassword, User.Role.ROLE_STAFF);
-    // 檢視者帳號：供開發環境驗證 VIEWER 角色的遮蔽行為（如送件人個人資料）
-    getOrCreateUser(viewerUsername, "檢視員", viewerPassword, User.Role.ROLE_VIEWER);
+    User admin = getOrCreateUser (adminUsername, "管理員", adminPassword, User.Role.ROLE_ADMIN);
+    User staff = getOrCreateUser (staffUsername, "診斷員", staffPassword, User.Role.ROLE_STAFF);
+    // 檢視者帳號：供開發環境驗證 VIEWER 角色的遮蔽行為 (如送件人個人資料)
+    getOrCreateUser (viewerUsername, "檢視員", viewerPassword, User.Role.ROLE_VIEWER);
 
-    // 診斷簽名人（Identifier）需關聯系統使用者，故無法於 schema.sql 預填，
+    // 診斷簽名人 (Identifier) 需關聯系統使用者，故無法於 schema.sql 預填，
     // 改在此處建立；僅在完全沒有簽名人時才建立。
-    if (identifierRepository.count() == 0) {
-      createIdentifier("張志明", staff);
-      createIdentifier("林雅惠", staff);
-      createIdentifier("陳建宏", admin);
+    if (identifierRepository.count () == 0) {
+      createIdentifier ("張志明", staff);
+      createIdentifier ("林雅惠", staff);
+      createIdentifier ("陳建宏", admin);
     }
   }
 
-  private User getOrCreateUser(String username, String displayName, String password, User.Role role) {
-    return userRepository.findByUsername(username).orElseGet(() -> {
-      User user = new User();
-      user.setUsername(username);
-      user.setDisplayName(displayName);
-      user.setPassword(passwordEncoder.encode(password));
-      user.setRole(role);
-      user.setActive(true);
-      return userRepository.save(user);
+  private User getOrCreateUser (String username, String displayName, String password, User.Role role) {
+    return userRepository.findByUsername (username).orElseGet (() -> {
+      User user = new User ();
+      user.setUsername (username);
+      user.setDisplayName (displayName);
+      user.setPassword (passwordEncoder.encode (password));
+      user.setRole (role);
+      user.setActive (true);
+      return userRepository.save (user);
     });
   }
 
-  private void createIdentifier(String name, User user) {
-    Identifier identifier = new Identifier();
-    identifier.setIdentifier(name);
-    identifier.setUser(user);
-    identifierRepository.save(identifier);
+  private void createIdentifier (String name, User user) {
+    Identifier identifier = new Identifier ();
+    identifier.setIdentifier (name);
+    identifier.setUser (user);
+    identifierRepository.save (identifier);
   }
 }

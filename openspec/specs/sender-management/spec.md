@@ -2,17 +2,17 @@
 
 ## Purpose
 
-送件人資料的獨立管理與權限控管：支援多來源送件人（現場、Line、Facebook、Email）的顯示、去重與合併，VIEWER 角色遮蔽個資但保留縣市鄉鎮，並提供統計用的一致去重鍵。設計決策見 ADR-011。
+送件人資料的獨立管理與權限控管：支援多來源送件人 (現場、Line、Facebook、Email) 的顯示、去重與合併，VIEWER 角色遮蔽個資但保留縣市鄉鎮，並提供統計用的一致去重鍵。設計決策見 ADR-011。
 
 ## Requirements
 
 ### Requirement: 送件人欄位規則
 
-送件人 SHALL 支援 `name`、`displayName`、`phone`、`address`、`district`（含所屬 `city`）與 `senderType`；`name` MAY 為空，`phone` 與 `displayName` 之間 SHALL 至少一項有值；`displayName` 用於標記來源顯示名稱（Line/Facebook/Email 暱稱）。
+送件人 SHALL 支援 `name`、`displayName`、`phone`、`address`、`district` (含所屬 `city`) 與 `senderType`；`name` MAY 為空，`phone` 與 `displayName` 之間 SHALL 至少一項有值；`displayName` 用於標記來源顯示名稱 (Line/Facebook/Email 暱稱)。
 
 #### Scenario: 有姓名且有顯示名稱
 - **WHEN** 送件人同時有 `name` 與 `displayName`
-- **THEN** 顯示為 `name(displayName)`
+- **THEN** 顯示為 `name (displayName)`
 
 #### Scenario: 只有顯示名稱
 - **WHEN** 送件人只有 `displayName`、無 `name`
@@ -24,7 +24,7 @@
 
 ### Requirement: 送件人去重與合併
 
-送件人辨識 SHALL 以多個弱識別符（name / phone / displayName）組合進行，建立案件時列出候選送件人並由使用者人工確認是否沿用或建立新送件人；系統 SHALL NOT 以 DB 唯一鍵強制合併。
+送件人辨識 SHALL 以多個弱識別符 (name / phone / displayName) 組合進行，建立案件時列出候選送件人並由使用者人工確認是否沿用或建立新送件人；系統 SHALL NOT 以 DB 唯一鍵強制合併。
 
 #### Scenario: 同識別符候選
 - **WHEN** 輸入的姓名或電話與既有送件人部分相符
@@ -60,7 +60,7 @@ VIEWER 角色 SHALL NOT 取得送件人姓名、電話與地址，但 SHALL 可�
 
 ### Requirement: 統計去重鍵
 
-案件統計的「不重複送件人」SHALL 以 `COALESCE(phone, displayName)` 為鍵計算。
+案件統計的「不重複送件人」SHALL 以 `COALESCE (phone, displayName)` 為鍵計算。
 
 #### Scenario: 依電話去重
 - **WHEN** 統計不重複送件人

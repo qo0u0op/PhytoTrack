@@ -19,8 +19,8 @@
 
 **決策**:
 
-- 加 `@EnableJpaAuditing` + `@EntityListeners(AuditingEntityListener.class)`
-- `Case` 改用 `@CreatedDate`、`@LastModifiedDate`，`@CreatedBy` 由 **`AuditorAware`** 從 `SecurityContext`（JWT 登入者）取出自動填入
+- 加 `@EnableJpaAuditing` + `@EntityListeners (AuditingEntityListener.class)`
+- `Case` 改用 `@CreatedDate`、`@LastModifiedDate`，`@CreatedBy` 由 **`AuditorAware`** 從 `SecurityContext` (JWT 登入者) 取出自動填入
 - 移除手寫的 `@PrePersist` / `@PreUpdate`
 
 **原因**:
@@ -31,6 +31,6 @@
 
 **取捨**:
 
-- 依賴 Spring Data 的機制，換框架（若未來改 MyBatis）需重做
-- 特殊情境（系統批次匯入、無登入者）要自己提供 fallback auditor
-- 接受：本專案不會有無登入者的寫入路徑，故不處理 fallback（YAGNI）
+- 依賴 Spring Data 的機制，換框架 (若未來改 MyBatis) 需重做
+- 特殊情境 (系統批次匯入、無登入者) 要自己提供 fallback auditor
+- 接受：本專案不會有無登入者的寫入路徑，故不處理 fallback (YAGNI)

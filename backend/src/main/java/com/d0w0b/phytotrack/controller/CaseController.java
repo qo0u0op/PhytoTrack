@@ -32,125 +32,122 @@ import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 
 /**
- * 案件控制器（Case Controller）
+ * 案件控制器 (Case Controller)
  *
- * 權限設計（RBAC，見 ADR-004）：
- *   - 列表 / 詳細：登入即可（VIEWER / STAFF / ADMIN）
- *   - 建立 / 更新：僅診斷員與管理者（STAFF / ADMIN）
- *   - 刪除：僅管理者（ADMIN）
+ * 權限設計 (RBAC，見 ADR-004)：
+ *   - 列表 / 詳細：登入即可 (VIEWER / STAFF / ADMIN)
+ *   - 建立 / 更新：僅診斷員與管理者 (STAFF / ADMIN)
+ *   - 刪除：僅管理者 (ADMIN)
  */
 @RestController
-@RequestMapping("/api/cases")
+@RequestMapping ("/api/cases")
 public class CaseController {
 
   private final CaseService caseService;
 
-  public CaseController(CaseService caseService) {
+  public CaseController (CaseService caseService) {
     this.caseService = caseService;
   }
 
   /**
    * 分頁查詢案件列表，預設依收件日期遞減。
    *
-   * 篩選參數皆可選：cropId、serviceId、senderName（部分比對）、
-   * receiveDateFrom、receiveDateTo、status（PENDING/RESOLVED/CLOSED）；
+   * 篩選參數皆可選：cropId、serviceId、senderName (部分比對)、
+   * receiveDateFrom、receiveDateTo、status (PENDING/RESOLVED/CLOSED)；
    * 多個參數同時存在時以 AND 組合。
    */
   @GetMapping
-  @PreAuthorize("isAuthenticated()")
-  public ResponseEntity<Page<CaseSummaryResponse>> list(
-      @RequestParam(required = false) Long cropId,
-      @RequestParam(required = false) Long serviceId,
-      @RequestParam(required = false) String senderName,
-      @RequestParam(required = false) String senderQuery,
-      @RequestParam(required = false) LocalDate receiveDateFrom,
-      @RequestParam(required = false) LocalDate receiveDateTo,
-      @RequestParam(required = false) String status,
-      @RequestParam(required = false) Long cityId,
-      @RequestParam(required = false) Long districtId,
-      @RequestParam(required = false) Long cropCategoryId,
-      @RequestParam(required = false) Long pestTypeId,
-      @RequestParam(required = false) Long pestCategoryId,
-      @RequestParam(required = false) Long hintId,
-      @RequestParam(required = false) Long deliveryId,
-      @RequestParam(required = false) Long damageId,
-      @PageableDefault(size = 20, sort = "receiveDate", direction = Sort.Direction.DESC) Pageable pageable) {
+  @PreAuthorize ("isAuthenticated ()")
+  public ResponseEntity<Page<CaseSummaryResponse>> list (@RequestParam (required = false) Long cropId,
+      @RequestParam (required = false) Long serviceId,
+      @RequestParam (required = false) String senderName,
+      @RequestParam (required = false) String senderQuery,
+      @RequestParam (required = false) LocalDate receiveDateFrom,
+      @RequestParam (required = false) LocalDate receiveDateTo,
+      @RequestParam (required = false) String status,
+      @RequestParam (required = false) Long cityId,
+      @RequestParam (required = false) Long districtId,
+      @RequestParam (required = false) Long cropCategoryId,
+      @RequestParam (required = false) Long pestTypeId,
+      @RequestParam (required = false) Long pestCategoryId,
+      @RequestParam (required = false) Long hintId,
+      @RequestParam (required = false) Long deliveryId,
+      @RequestParam (required = false) Long damageId,
+      @PageableDefault (size = 20, sort = "receiveDate", direction = Sort.Direction.DESC) Pageable pageable) {
     String effectiveSenderQuery = senderQuery != null ? senderQuery : senderName;
-    CaseFilter filter = new CaseFilter(cropId, serviceId, senderName, effectiveSenderQuery,
+    CaseFilter filter = new CaseFilter (cropId, serviceId, senderName, effectiveSenderQuery,
         receiveDateFrom, receiveDateTo, status, cityId, districtId, cropCategoryId, pestTypeId, pestCategoryId, hintId, deliveryId, damageId);
-    return ResponseEntity.ok(caseService.list(filter, pageable));
+    return ResponseEntity.ok (caseService.list (filter, pageable));
   }
 
-  /** 案件統計總覽（登入即可，見 spec case-statistics），支援期別：HISTORICAL/ANNUAL/MONTHLY */
-  @GetMapping("/statistics")
-  @PreAuthorize("isAuthenticated()")
-  public ResponseEntity<CaseStatisticsResponse> statistics(
-      @RequestParam(required = false) String period,
-      @RequestParam(required = false) Integer year,
-      @RequestParam(required = false) Integer month) {
-    return ResponseEntity.ok(caseService.statistics(period, year, month));
+  /** 案件統計總覽 (登入即可，見 spec case-statistics)，支援期別：HISTORICAL/ANNUAL/MONTHLY */
+  @GetMapping ("/statistics")
+  @PreAuthorize ("isAuthenticated ()")
+  public ResponseEntity<CaseStatisticsResponse> statistics (@RequestParam (required = false) String period,
+      @RequestParam (required = false) Integer year,
+      @RequestParam (required = false) Integer month) {
+    return ResponseEntity.ok (caseService.statistics (period, year, month));
   }
 
   /**
-   * CSV 匯出（登入即可，見 spec case-report）：依與列表相同的篩選參數全量匯出，
-   * 收件日期升序；以 attachment 下載（含 UTF-8 BOM，Excel 開啟中文正常）。
+   * CSV 匯出 (僅 STAFF/ADMIN，VIEWER 禁用，見 spec case-report)：依與列表相同的篩選參數全量匯出，
+   * 收件日期升序；以 attachment 下載 (含 UTF-8 BOM，Excel 開啟中文正常)。
    */
-  @GetMapping(value = "/export", produces = "text/csv")
-  @PreAuthorize("isAuthenticated()")
-  public ResponseEntity<byte[]> export(
-      @RequestParam(required = false) Long cropId,
-      @RequestParam(required = false) Long serviceId,
-      @RequestParam(required = false) String senderName,
-      @RequestParam(required = false) String senderQuery,
-      @RequestParam(required = false) LocalDate receiveDateFrom,
-      @RequestParam(required = false) LocalDate receiveDateTo,
-      @RequestParam(required = false) String status,
-      @RequestParam(required = false) Long cityId,
-      @RequestParam(required = false) Long districtId,
-      @RequestParam(required = false) Long cropCategoryId,
-      @RequestParam(required = false) Long pestTypeId,
-      @RequestParam(required = false) Long pestCategoryId,
-      @RequestParam(required = false) Long hintId,
-      @RequestParam(required = false) Long deliveryId,
-      @RequestParam(required = false) Long damageId) {
+  @GetMapping (value = "/export", produces = "text/csv")
+  @PreAuthorize ("hasAnyRole ('STAFF','ADMIN')")
+  public ResponseEntity<byte[]> export (@RequestParam (required = false) Long cropId,
+      @RequestParam (required = false) Long serviceId,
+      @RequestParam (required = false) String senderName,
+      @RequestParam (required = false) String senderQuery,
+      @RequestParam (required = false) LocalDate receiveDateFrom,
+      @RequestParam (required = false) LocalDate receiveDateTo,
+      @RequestParam (required = false) String status,
+      @RequestParam (required = false) Long cityId,
+      @RequestParam (required = false) Long districtId,
+      @RequestParam (required = false) Long cropCategoryId,
+      @RequestParam (required = false) Long pestTypeId,
+      @RequestParam (required = false) Long pestCategoryId,
+      @RequestParam (required = false) Long hintId,
+      @RequestParam (required = false) Long deliveryId,
+      @RequestParam (required = false) Long damageId) {
     String effectiveSenderQuery = senderQuery != null ? senderQuery : senderName;
-    CaseFilter filter = new CaseFilter(cropId, serviceId, senderName, effectiveSenderQuery,
+    CaseFilter filter = new CaseFilter (cropId, serviceId, senderName, effectiveSenderQuery,
         receiveDateFrom, receiveDateTo, status, cityId, districtId, cropCategoryId, pestTypeId, pestCategoryId, hintId, deliveryId, damageId);
-    byte[] body = caseService.exportCsv(filter).getBytes(StandardCharsets.UTF_8);
-    String filename = "case-export-" + LocalDate.now() + ".csv";
-    return ResponseEntity.ok()
-        .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
-        .contentType(new MediaType("text", "csv", StandardCharsets.UTF_8))
-        .body(body);
+    byte[] body = caseService.exportCsv (filter).getBytes (StandardCharsets.UTF_8);
+    String filename = "case-export-" + LocalDate.now () + ".csv";
+    return ResponseEntity.ok ()
+        .header (HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+        .contentType (new MediaType ("text", "csv", StandardCharsets.UTF_8))
+        .body (body);
   }
 
   /** 查詢案件詳細 */
-  @GetMapping("/{id}")
-  @PreAuthorize("isAuthenticated()")
-  public ResponseEntity<CaseResponse> detail(@PathVariable Long id) {
-    return ResponseEntity.ok(caseService.detail(id));
+  @GetMapping ("/{id}")
+  @PreAuthorize ("isAuthenticated ()")
+  public ResponseEntity<CaseResponse> detail (@PathVariable Long id) {
+    return ResponseEntity.ok (caseService.detail (id));
   }
 
   /** 建立案件 */
   @PostMapping
-  @PreAuthorize("hasAnyRole('STAFF', 'ADMIN')")
-  public ResponseEntity<CaseResponse> create(@Valid @RequestBody CaseCreateRequest request) {
-    return ResponseEntity.status(HttpStatus.CREATED).body(caseService.create(request));
+  @PreAuthorize ("hasAnyRole ('STAFF', 'ADMIN')")
+  public ResponseEntity<CaseResponse> create (@Valid @RequestBody CaseCreateRequest request) {
+    return ResponseEntity.status (HttpStatus.CREATED).body (caseService.create (request));
   }
 
   /** 更新案件 */
-  @PutMapping("/{id}")
-  @PreAuthorize("hasAnyRole('STAFF', 'ADMIN')")
-  public ResponseEntity<CaseResponse> update(@PathVariable Long id,
+  @PutMapping ("/{id}")
+  @PreAuthorize ("hasAnyRole ('STAFF', 'ADMIN')")
+  public ResponseEntity<CaseResponse> update (@PathVariable Long id,
                                              @Valid @RequestBody CaseUpdateRequest request) {
-    return ResponseEntity.ok(caseService.update(id, request));
+    return ResponseEntity.ok (caseService.update (id, request));
   }
 
-  /** 刪除案件（限管理者） */
-  @DeleteMapping("/{id}")
-  @PreAuthorize("hasRole('ADMIN')")
-  public ResponseEntity<Void> delete(@PathVariable Long id) {
-    caseService.delete(id);
-    return ResponseEntity.noContent().build();
+  /** 刪除案件 (限管理者) */
+  @DeleteMapping ("/{id}")
+  @PreAuthorize ("hasRole ('ADMIN')")
+  public ResponseEntity<Void> delete (@PathVariable Long id) {
+    caseService.delete (id);
+    return ResponseEntity.noContent ().build ();
   }
 }

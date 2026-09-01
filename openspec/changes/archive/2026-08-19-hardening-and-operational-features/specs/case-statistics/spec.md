@@ -18,7 +18,7 @@
 
 ### Requirement: Dashboard 統計視圖
 
-前端 Dashboard SHALL 以純 Bootstrap（卡片、進度條、表格）呈現統計資料，不依賴第三方圖表庫。
+前端 Dashboard SHALL 以純 Bootstrap (卡片、進度條、表格) 呈現統計資料，不依賴第三方圖表庫。
 
 #### Scenario: 檢視 Dashboard
 - **WHEN** 登入使用者進入 Dashboard

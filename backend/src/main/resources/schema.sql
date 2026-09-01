@@ -706,7 +706,8 @@ INSERT OR IGNORE INTO hints (hint_id, hint) VALUES
   (3, '生物防治'),
   (4, '化學防治'),
   (5, '友善資材'),
-  (6, '其他');
+  (6, '其他回覆');
+UPDATE hints SET hint='其他回覆' WHERE hint_id=6 AND hint='其他';
 
 -- ============================================================
 -- methods（耕種方式）

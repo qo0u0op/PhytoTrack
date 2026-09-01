@@ -4,33 +4,33 @@ import { useRouter } from 'vue-router'
 import Swal from 'sweetalert2'
 import { authApi } from '../api'
 
-const router = useRouter()
+const router = useRouter ()
 
-const form = reactive({
+const form = reactive ({
   username: '',
   displayName: '',
   password: '',
   confirmPassword: '',
   email: '',
 })
-const loading = ref(false)
+const loading = ref (false)
 
-async function submit() {
-  // 前端先做一次確認密碼檢查（後端仍會做正式驗證）
+async function submit () {
+  // 前端先做一次確認密碼檢查 (後端仍會做正式驗證)
   if (form.password !== form.confirmPassword) {
-    Swal.fire({ icon: 'warning', title: '密碼不一致', text: '請確認兩次輸入的密碼相同' })
+    Swal.fire ({ icon: 'warning', title: '密碼不一致', text: '請確認兩次輸入的密碼相同' })
     return
   }
   loading.value = true
   try {
-    await authApi.register({
+    await authApi.register ({
       username: form.username,
       displayName: form.displayName,
       password: form.password,
       email: form.email || undefined,
     })
-    Swal.fire({ icon: 'success', title: '註冊成功', text: '請使用新帳號登入' }).then(() => {
-      router.push('/login')
+    Swal.fire ({ icon: 'success', title: '註冊成功', text: '請使用新帳號登入' }).then (() => {
+      router.push ('/login')
     })
   } catch {
     // 錯誤訊息由攔截器統一彈出
@@ -55,7 +55,7 @@ async function submit() {
             <input v-model.trim="form.displayName" type="text" class="form-control" required />
           </div>
           <div class="mb-3">
-            <label class="form-label">電子信箱（選填）</label>
+            <label class="form-label">電子信箱 (選填)</label>
             <input v-model.trim="form.email" type="email" class="form-control" />
           </div>
           <div class="mb-3">

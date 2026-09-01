@@ -4,7 +4,7 @@ import Swal from 'sweetalert2'
 import { senderApi, refApi } from '../api'
 import { useAuthStore } from '../stores/auth'
 
-const auth = useAuthStore()
+const auth = useAuthStore ()
 
 interface SenderRow {
   senderId: number
@@ -20,28 +20,28 @@ interface SenderRow {
 }
 
 const senders = ref<SenderRow[]>([])
-const loading = ref(true)
-const searchQ = ref('')
+const loading = ref (true)
+const searchQ = ref ('')
 const cities = ref<{ id: number; name: string; districts: { id: number; name: string }[] }[]>([])
 const senderTypes = ref<{ id: number; name: string }[]>([])
 
-function displayLabel(s: SenderRow) {
-  const hasName = s.name && s.name.trim()
-  const hasDisplay = s.displayName && s.displayName.trim()
+function displayLabel (s: SenderRow) {
+  const hasName = s.name && s.name.trim ()
+  const hasDisplay = s.displayName && s.displayName.trim ()
   if (hasName && hasDisplay) return `${s.name}(${s.displayName})`
   if (hasDisplay) return s.displayName!
   if (hasName) return s.name!
   return s.phone ?? ''
 }
 
-async function load() {
+async function load () {
   loading.value = true
   try {
-    if (searchQ.value.trim()) {
-      const { data } = await senderApi.search(searchQ.value.trim())
+    if (searchQ.value.trim ()) {
+      const { data } = await senderApi.search (searchQ.value.trim ())
       senders.value = data
     } else {
-      const { data } = await senderApi.list()
+      const { data } = await senderApi.list ()
       senders.value = data
     }
   } catch {
@@ -51,24 +51,24 @@ async function load() {
   }
 }
 
-onMounted(async () => {
-  await Promise.all([load(), loadRefs()])
+onMounted (async () => {
+  await Promise.all ([load (), loadRefs ()])
 })
 
-async function loadRefs() {
+async function loadRefs () {
   try {
-    const [cityRes, typeRes] = await Promise.all([refApi.cities(), refApi.senderTypes()])
+    const [cityRes, typeRes] = await Promise.all ([refApi.cities (), refApi.senderTypes ()])
     cities.value = cityRes.data
     senderTypes.value = typeRes.data
   } catch {}
 }
 
-async function handleSearch() {
-  await load()
+async function handleSearch () {
+  await load ()
 }
 
-async function handleDelete(id: number, label: string) {
-  const result = await Swal.fire({
+async function handleDelete (id: number, label: string) {
+  const result = await Swal.fire ({
     icon: 'warning',
     title: `確定刪除「${label}」？`,
     text: '此操作無法復原，若已被案件引用將被拒絕',
@@ -78,49 +78,49 @@ async function handleDelete(id: number, label: string) {
   })
   if (!result.isConfirmed) return
   try {
-    await senderApi.remove(id)
-    Swal.fire({ icon: 'success', title: '已刪除', timer: 1200, showConfirmButton: false })
-    await load()
+    await senderApi.remove (id)
+    Swal.fire ({ icon: 'success', title: '已刪除', timer: 1200, showConfirmButton: false })
+    await load ()
   } catch {}
 }
 
-async function handleEdit(s: SenderRow) {
+async function handleEdit (s: SenderRow) {
   // 先取完整資料以補齊 districtId / senderTypeId
   let detailData: any = s
   try {
-    const { data } = await senderApi.detail(s.senderId)
+    const { data } = await senderApi.detail (s.senderId)
     detailData = data
   } catch {}
-  // 計算當前縣市 id（由 district 反查）
-  const currentCity = cities.value.find((c) => c.districts.some((d) => d.id === detailData.districtId))
+  // 計算當前縣市 id (由 district 反查)
+  const currentCity = cities.value.find ((c) => c.districts.some ((d) => d.id === detailData.districtId))
   const currentCityId = currentCity?.id ?? cities.value[0]?.id ?? 1
   const districtOptionsForCity = (cityId: number) => {
-    const city = cities.value.find((c) => c.id === cityId)
+    const city = cities.value.find ((c) => c.id === cityId)
     return city ? city.districts : []
   }
   // 預設縣市/鄉鎮選項
-  const cityOptionsHtml = cities.value.map((c) => `<option value="${c.id}" ${c.id === currentCityId ? 'selected' : ''}>${c.name}</option>`).join('')
-  const districtOptionsHtml = districtOptionsForCity(currentCityId).map((d) => `<option value="${d.id}" ${d.id === detailData.districtId ? 'selected' : ''}>${d.name}</option>`).join('')
-  const typeOptionsHtml = senderTypes.value.map((t) => `<option value="${t.id}" ${t.id === detailData.senderTypeId ? 'selected' : ''}>${t.name}</option>`).join('')
-  const { value: form } = await Swal.fire({
+  const cityOptionsHtml = cities.value.map ((c) => `<option value="${c.id}" ${c.id === currentCityId ? 'selected' : ''}>${c.name}</option>`).join ('')
+  const districtOptionsHtml = districtOptionsForCity (currentCityId).map ((d) => `<option value="${d.id}" ${d.id === detailData.districtId ? 'selected' : ''}>${d.name}</option>`).join ('')
+  const typeOptionsHtml = senderTypes.value.map ((t) => `<option value="${t.id}" ${t.id === detailData.senderTypeId ? 'selected' : ''}>${t.name}</option>`).join ('')
+  const { value: form } = await Swal.fire ({
     title: `編輯送件人 #${s.senderId}`,
     html: `
-      <input id="swal-sender-name" class="swal2-input" placeholder="姓名" value="${(detailData.name ?? '').replace(/"/g, '&quot;')}" />
-      <input id="swal-sender-displayName" class="swal2-input" placeholder="顯示名稱" value="${(detailData.displayName ?? '').replace(/"/g, '&quot;')}" />
-      <input id="swal-sender-phone" class="swal2-input" placeholder="電話" value="${(detailData.phone ?? '').replace(/"/g, '&quot;')}" />
-      <input id="swal-sender-address" class="swal2-input" placeholder="地址" value="${(detailData.address ?? '').replace(/"/g, '&quot;')}" />
+      <input id="swal-sender-name" class="swal2-input" placeholder="姓名" value="${(detailData.name ?? '').replace (/"/g, '&quot;')}" />
+      <input id="swal-sender-displayName" class="swal2-input" placeholder="顯示名稱" value="${(detailData.displayName ?? '').replace (/"/g, '&quot;')}" />
+      <input id="swal-sender-phone" class="swal2-input" placeholder="電話" value="${(detailData.phone ?? '').replace (/"/g, '&quot;')}" />
+      <input id="swal-sender-address" class="swal2-input" placeholder="地址" value="${(detailData.address ?? '').replace (/"/g, '&quot;')}" />
       <select id="swal-sender-city" class="swal2-select"><option value="">請選擇縣市</option>${cityOptionsHtml}</select>
       <select id="swal-sender-district" class="swal2-select">${districtOptionsHtml}</select>
       <select id="swal-sender-type" class="swal2-select">${typeOptionsHtml}</select>
     `,
     didOpen: () => {
-      const cityEl = document.getElementById('swal-sender-city') as HTMLSelectElement
-      const districtEl = document.getElementById('swal-sender-district') as HTMLSelectElement
+      const cityEl = document.getElementById ('swal-sender-city') as HTMLSelectElement
+      const districtEl = document.getElementById ('swal-sender-district') as HTMLSelectElement
       if (cityEl && districtEl) {
-        cityEl.addEventListener('change', () => {
-          const cid = Number(cityEl.value)
-          const city = cities.value.find((c) => c.id === cid)
-          districtEl.innerHTML = city ? city.districts.map((d) => `<option value="${d.id}">${d.name}</option>`).join('') : ''
+        cityEl.addEventListener ('change', () => {
+          const cid = Number (cityEl.value)
+          const city = cities.value.find ((c) => c.id === cid)
+          districtEl.innerHTML = city ? city.districts.map ((d) => `<option value="${d.id}">${d.name}</option>`).join ('') : ''
         })
       }
     },
@@ -128,22 +128,22 @@ async function handleEdit(s: SenderRow) {
     confirmButtonText: '儲存',
     cancelButtonText: '取消',
     preConfirm: () => {
-      const name = (document.getElementById('swal-sender-name') as HTMLInputElement).value.trim()
-      const displayName = (document.getElementById('swal-sender-displayName') as HTMLInputElement).value.trim()
-      const phone = (document.getElementById('swal-sender-phone') as HTMLInputElement).value.trim()
-      const address = (document.getElementById('swal-sender-address') as HTMLInputElement).value.trim()
-      const districtId = Number((document.getElementById('swal-sender-district') as HTMLSelectElement).value)
-      const senderTypeId = Number((document.getElementById('swal-sender-type') as HTMLSelectElement).value)
-      if (!phone && !displayName) return Swal.showValidationMessage('電話與顯示名稱至少需提供一項')
-      if (!address) return Swal.showValidationMessage('地址不可為空白')
-      if (!districtId) return Swal.showValidationMessage('請選擇鄉鎮市區')
-      if (!senderTypeId) return Swal.showValidationMessage('請選擇身分別')
+      const name = (document.getElementById ('swal-sender-name') as HTMLInputElement).value.trim ()
+      const displayName = (document.getElementById ('swal-sender-displayName') as HTMLInputElement).value.trim ()
+      const phone = (document.getElementById ('swal-sender-phone') as HTMLInputElement).value.trim ()
+      const address = (document.getElementById ('swal-sender-address') as HTMLInputElement).value.trim ()
+      const districtId = Number ((document.getElementById ('swal-sender-district') as HTMLSelectElement).value)
+      const senderTypeId = Number ((document.getElementById ('swal-sender-type') as HTMLSelectElement).value)
+      if (!phone && !displayName) return Swal.showValidationMessage ('電話與顯示名稱至少需提供一項')
+      if (!address) return Swal.showValidationMessage ('地址不可為空白')
+      if (!districtId) return Swal.showValidationMessage ('請選擇鄉鎮市區')
+      if (!senderTypeId) return Swal.showValidationMessage ('請選擇身分別')
       return { name: name || undefined, displayName: displayName || undefined, phone: phone || undefined, address, districtId, senderTypeId }
     },
   })
   if (!form) return
   try {
-    await senderApi.update(s.senderId, {
+    await senderApi.update (s.senderId, {
       name: form.name,
       displayName: form.displayName,
       phone: form.phone,
@@ -151,8 +151,8 @@ async function handleEdit(s: SenderRow) {
       districtId: form.districtId,
       senderTypeId: form.senderTypeId,
     } as any)
-    Swal.fire({ icon: 'success', title: '已更新', timer: 1200, showConfirmButton: false })
-    await load()
+    Swal.fire ({ icon: 'success', title: '已更新', timer: 1200, showConfirmButton: false })
+    await load ()
   } catch {}
 }
 </script>
@@ -164,12 +164,12 @@ async function handleEdit(s: SenderRow) {
       <div class="card-body">
         <div class="row g-2 align-items-end">
           <div class="col-md-6">
-            <label class="form-label small text-muted mb-1">搜尋（姓名/電話/顯示名稱）</label>
+            <label class="form-label small text-muted mb-1">搜尋 (姓名/電話/顯示名稱)</label>
             <input v-model="searchQ" type="text" class="form-control form-control-sm" placeholder="輸入關鍵字" @keyup.enter="handleSearch" />
           </div>
           <div class="col-md-3">
             <button class="btn btn-sm btn-primary me-1" @click="handleSearch">搜尋</button>
-            <button class="btn btn-sm btn-outline-secondary" @click="searchQ = ''; load()">清除</button>
+            <button class="btn btn-sm btn-outline-secondary" @click="searchQ = ''; load ()">清除</button>
           </div>
         </div>
       </div>
@@ -199,15 +199,15 @@ async function handleEdit(s: SenderRow) {
             </tr>
             <tr v-for="s in senders" :key="s.senderId">
               <td>{{ s.senderId }}</td>
-              <td>{{ displayLabel(s) }}</td>
+              <td>{{ displayLabel (s) }}</td>
               <td>{{ s.phone ?? '—' }}</td>
               <td>{{ s.senderTypeName }}</td>
               <td>{{ s.cityName }}</td>
               <td>{{ s.districtName }}</td>
               <td>{{ s.address }}</td>
               <td class="text-end">
-                <button v-if="auth.isStaff" class="btn btn-sm btn-outline-primary me-1" @click="handleEdit(s)">編輯</button>
-                <button v-if="auth.isAdmin" class="btn btn-sm btn-outline-danger" @click="handleDelete(s.senderId, displayLabel(s))">刪除</button>
+                <button v-if="auth.isStaff" class="btn btn-sm btn-outline-primary me-1" @click="handleEdit (s)">編輯</button>
+                <button v-if="auth.isAdmin" class="btn btn-sm btn-outline-danger" @click="handleDelete (s.senderId, displayLabel (s))">刪除</button>
               </td>
             </tr>
           </tbody>
