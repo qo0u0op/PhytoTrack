@@ -25,8 +25,9 @@ public class CorsConfig {
     CorsConfiguration config = new CorsConfiguration();
     // 允許所有來源（區域網路內部工具可接受；正式部署應縮小範圍）
     config.setAllowedOriginPatterns(List.of("*"));
-    config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+    config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
     config.setAllowedHeaders(List.of("*"));
+    config.setExposedHeaders(List.of("Authorization", "Content-Disposition", "X-Request-Id"));
     config.setAllowCredentials(false);
 
     UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
