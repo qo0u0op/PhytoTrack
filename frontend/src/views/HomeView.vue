@@ -2,12 +2,12 @@
 import { onMounted, ref } from 'vue'
 import { aiApi } from '../api'
 
-// llama.cpp 模型健康狀態（後端代理檢查，公開端點）
+// llama.cpp 模型健康狀態 (後端代理檢查，公開端點)
 const modelHealthy = ref<boolean | null>(null)
 
-onMounted(async () => {
+onMounted (async () => {
   try {
-    const { data } = await aiApi.health()
+    const { data } = await aiApi.health ()
     modelHealthy.value = data.healthy
   } catch {
     modelHealthy.value = false
@@ -16,13 +16,13 @@ onMounted(async () => {
 </script>
 
 <template>
-  <!-- Hero 首頁（Landing Page） -->
+  <!-- Hero 首頁 (Landing Page) -->
   <section class="hero-section py-5">
     <div class="container py-5 text-center text-white">
       <h1 class="display-4 fw-bold">PhytoTrack</h1>
       <p class="lead mb-4">農作物病蟲害診斷諮詢服務系統</p>
       <p class="mb-4">
-        協助農友辨識病蟲害、記錄診斷案件，並以本機 AI 模型（llama.cpp）提供初步防治建議。
+        協助農友辨識病蟲害、記錄診斷案件，並以本機 AI 模型 (llama.cpp) 提供初步防治建議。
       </p>
       <div class="d-flex justify-content-center gap-2">
         <router-link class="btn btn-light btn-lg" to="/login">立即登入</router-link>
@@ -65,7 +65,7 @@ onMounted(async () => {
           <div class="card-body">
             <h5 class="card-title">角色權限</h5>
             <p class="card-text text-muted">
-              檢視者（Viewer）、診斷員（Staff）、管理者（Admin）三種角色分層管理。
+              檢視者 (Viewer)、診斷員 (Staff)、管理者 (Admin) 三種角色分層管理。
             </p>
           </div>
         </div>

@@ -4,7 +4,7 @@ import { aiApi, caseApi } from '../api'
 import { useAuthStore } from '../stores/auth'
 import type { components } from '../types/api'
 
-const auth = useAuthStore()
+const auth = useAuthStore ()
 
 type CaseStatistics = components['schemas']['CaseStatisticsResponse'] & {
   availableYears?: number[]
@@ -21,16 +21,19 @@ type CaseStatistics = components['schemas']['CaseStatisticsResponse'] & {
   compositeHintCases?: number
 }
 
-// 統計總覽（由 GET /cases/statistics 提供）＋AI 連線狀態
+// 統計總覽 (由 GET /cases/statistics 提供)＋AI 連線狀態
 const stats = ref<CaseStatistics | null>(null)
 const modelHealthy = ref<boolean | null>(null)
 const period = ref<'HISTORICAL' | 'ANNUAL' | 'MONTHLY'>('HISTORICAL')
 const selectedYear = ref<number | null>(null)
-const selectedMonth = ref<number | null>(new Date().getMonth() + 1)
+const selectedMonth = ref<number | null>(new Date ().getMonth () + 1)
 
-const availableYears = computed(() => (stats.value as any)?.availableYears ?? [])
 
-async function loadStats() {
+const availableYears = computed (() => (stats.value as any)?.availableYears ?? [])
+
+
+
+async function loadStats () {
   try {
     const params: Record<string, string | number> = {}
     params.period = period.value
@@ -38,7 +41,7 @@ async function loadStats() {
       if (selectedYear.value) params.year = selectedYear.value
     }
     if (period.value === 'MONTHLY' && selectedMonth.value) params.month = selectedMonth.value
-    const { data } = await caseApi.statistics(params as any)
+    const { data } = await caseApi.statistics (params as any)
     stats.value = data as CaseStatistics
     // 若尚未選年且有可用年份，預設最新年
     if (!selectedYear.value && availableYears.value.length > 0) {
@@ -49,25 +52,25 @@ async function loadStats() {
   }
 }
 
-onMounted(async () => {
-  await loadStats()
+onMounted (async () => {
+  await loadStats ()
   try {
-    const { data } = await aiApi.health()
+    const { data } = await aiApi.health ()
     modelHealthy.value = (data as any).healthy
   } catch {
     modelHealthy.value = false
   }
 })
 
-watch([period, selectedYear, selectedMonth], () => {
-  loadStats()
+watch ([period, selectedYear, selectedMonth], () => {
+  loadStats ()
 })
 
 const total = () => (stats.value as any)?.periodTotal ?? stats.value?.totalCases ?? 0
 
 const percent = (count?: number) => {
-  const t = total()
-  return t === 0 ? 0 : Math.round(((count ?? 0) / t) * 100)
+  const t = total ()
+  return t === 0 ? 0 : Math.round (((count ?? 0) / t) * 100)
 }
 
 const statusLabel = (status?: string) =>
@@ -108,7 +111,7 @@ const barClass = (status?: string) =>
             </select>
           </div>
           <div class="col-md-3">
-            <div class="small text-muted">期別案件數：<strong>{{ total() }}</strong> 件</div>
+            <div class="small text-muted">期別案件數：<strong>{{ total () }}</strong> 件</div>
             <div class="small text-muted">期間：{{ (stats as any)?.period ?? 'HISTORICAL' }} {{ selectedYear ?? '' }} {{ period === 'MONTHLY' ? (selectedMonth + '月') : '' }}</div>
           </div>
         </div>
@@ -144,7 +147,7 @@ const barClass = (status?: string) =>
       <div class="col-md-3">
         <div class="card shadow-sm">
           <div class="card-body">
-            <h6 class="text-muted">AI 模型（llama.cpp）</h6>
+            <h6 class="text-muted">AI 模型 (llama.cpp)</h6>
             <div class="fs-1 fw-bold">
               <span v-if="modelHealthy === null" class="text-warning">…</span>
               <span v-else-if="modelHealthy" class="text-success">已連線</span>
@@ -155,7 +158,7 @@ const barClass = (status?: string) =>
       </div>
     </div>
 
-    <!-- 複合因素 / 複合建議（獨立新卡，複合案件已合併至複合因素） -->
+    <!-- 複合因素 / 複合建議 (獨立新卡，複合案件已合併至複合因素) -->
     <div class="row g-4 mb-4">
       <div class="col-md-4">
         <div class="card shadow-sm border-warning">
@@ -179,7 +182,7 @@ const barClass = (status?: string) =>
         <div class="card shadow-sm">
           <div class="card-body">
             <h6 class="text-muted">期別案件數</h6>
-            <div class="fs-1 fw-bold">{{ total() }}</div>
+            <div class="fs-1 fw-bold">{{ total () }}</div>
             <div class="small text-muted">{{ period === 'HISTORICAL' ? '歷史' : period === 'ANNUAL' ? `${selectedYear} 年` : `${selectedYear} 年 ${selectedMonth} 月` }}</div>
           </div>
         </div>
@@ -189,27 +192,27 @@ const barClass = (status?: string) =>
     <!-- 狀態比例 -->
     <div class="card shadow-sm mb-4">
       <div class="card-body">
-        <h6 class="card-title text-muted">案件狀態比例（期別內）</h6>
+        <h6 class="card-title text-muted">案件狀態比例 (期別內)</h6>
         <div v-if="!stats" class="text-muted">載入中…</div>
         <div v-for="sc in stats?.statusRatio ?? []" v-else :key="sc.status" class="mb-2">
           <div class="d-flex justify-content-between small mb-1">
-            <span>{{ statusLabel(sc.status) }}</span>
-            <span>{{ sc.count }} 件（{{ percent(sc.count) }}%）</span>
+            <span>{{ statusLabel (sc.status) }}</span>
+            <span>{{ sc.count }} 件 ({{ percent (sc.count) }}%)</span>
           </div>
-          <div class="progress" role="progressbar" :aria-valuenow="percent(sc.count)"
+          <div class="progress" role="progressbar" :aria-valuenow="percent (sc.count)"
             aria-valuemin="0" aria-valuemax="100">
-            <div class="progress-bar" :class="barClass(sc.status)"
-              :style="{ width: percent(sc.count) + '%' }"></div>
+            <div class="progress-bar" :class="barClass (sc.status)"
+              :style="{ width: percent (sc.count) + '%' }"></div>
           </div>
         </div>
       </div>
     </div>
 
-    <div class="row g-4 mb-4">
-      <div class="col-md-6">
+        <div class="row g-4 mb-4">
+      <div class="col-md-4">
         <div class="card shadow-sm h-100">
           <div class="card-body">
-            <h6 class="card-title text-muted">常見作物（Top 10）</h6>
+            <h6 class="card-title text-muted">常見作物 (Top 10)</h6>
             <table class="table table-sm mb-0">
               <thead>
                 <tr><th>作物</th><th class="text-end">件數</th></tr>
@@ -226,10 +229,10 @@ const barClass = (status?: string) =>
           </div>
         </div>
       </div>
-      <div class="col-md-6">
+      <div class="col-md-4">
         <div class="card shadow-sm h-100">
           <div class="card-body">
-            <h6 class="card-title text-muted">常見因素（Top 10）</h6>
+            <h6 class="card-title text-muted">常見因素 (Top 10)</h6>
             <table class="table table-sm mb-0">
               <thead>
                 <tr><th>因素</th><th class="text-end">件數</th></tr>
@@ -246,6 +249,22 @@ const barClass = (status?: string) =>
           </div>
         </div>
       </div>
+      <div class="col-md-4">
+        <div class="card shadow-sm h-100">
+          <div class="card-body">
+            <h6 class="card-title text-muted">田區位置 (Top 10)</h6>
+            <table class="table table-sm mb-0">
+              <thead><tr><th>縣市</th><th class="text-end">件數</th></tr></thead>
+              <tbody>
+                <tr v-for="c in ((stats as any)?.fieldCityBreakdown ?? []).slice(0, 10)" :key="c.name">
+                  <td>{{ c.name }}</td><td class="text-end">{{ c.count }}</td>
+                </tr>
+                <tr v-if="!(stats as any)?.fieldCityBreakdown?.length"><td colspan="2" class="text-muted">尚無資料</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- 期別 Breakdown -->
@@ -255,10 +274,10 @@ const barClass = (status?: string) =>
           <div class="card-body">
             <h6 class="card-title text-muted">作物類別</h6>
             <table class="table table-sm mb-0">
-              <thead><tr><th>類別</th><th class="text-end">件數</th><th class="text-end">占比</th></tr></thead>
+              <thead><tr><th>類別</th><th class="text-end">件數</th><th class="text-end">佔比</th></tr></thead>
               <tbody>
                 <tr v-for="c in (stats as any)?.cropCategoryBreakdown ?? []" :key="c.name">
-                  <td>{{ c.name }}</td><td class="text-end">{{ c.count }}</td><td class="text-end">{{ percent(c.count) }}%</td>
+                  <td>{{ c.name }}</td><td class="text-end">{{ c.count }}</td><td class="text-end">{{ percent (c.count) }}%</td>
                 </tr>
                 <tr v-if="!(stats as any)?.cropCategoryBreakdown?.length"><td colspan="3" class="text-muted">尚無資料</td></tr>
               </tbody>
@@ -269,12 +288,12 @@ const barClass = (status?: string) =>
       <div class="col-md-4">
         <div class="card shadow-sm h-100">
           <div class="card-body">
-            <h6 class="card-title text-muted">害物（大分類）</h6>
+            <h6 class="card-title text-muted">害物</h6>
             <table class="table table-sm mb-0">
-              <thead><tr><th>害物</th><th class="text-end">件數</th><th class="text-end">占比</th></tr></thead>
+              <thead><tr><th>害物</th><th class="text-end">件數</th><th class="text-end">佔比</th></tr></thead>
               <tbody>
                 <tr v-for="c in (stats as any)?.pestTypeBreakdown ?? []" :key="c.name">
-                  <td><span :class="c.name === '複合因素' ? 'badge bg-warning text-dark' : ''">{{ c.name }}</span></td><td class="text-end">{{ c.count }}</td><td class="text-end">{{ percent(c.count) }}%</td>
+                  <td><span :class="c.name === '複合因素' ? 'badge bg-warning text-dark' : ''">{{ c.name }}</span></td><td class="text-end">{{ c.count }}</td><td class="text-end">{{ percent (c.count) }}%</td>
                 </tr>
                 <tr v-if="!(stats as any)?.pestTypeBreakdown?.length"><td colspan="3" class="text-muted">尚無資料</td></tr>
               </tbody>
@@ -287,10 +306,10 @@ const barClass = (status?: string) =>
           <div class="card-body">
             <h6 class="card-title text-muted">防治建議</h6>
             <table class="table table-sm mb-0">
-              <thead><tr><th>建議</th><th class="text-end">件數</th><th class="text-end">占比</th></tr></thead>
+              <thead><tr><th>建議</th><th class="text-end">件數</th><th class="text-end">佔比</th></tr></thead>
               <tbody>
                 <tr v-for="c in (stats as any)?.hintBreakdown ?? []" :key="c.name">
-                  <td><span :class="c.name === '複合建議' ? 'badge bg-warning text-dark' : ''">{{ c.name }}</span></td><td class="text-end">{{ c.count }}</td><td class="text-end">{{ percent(c.count) }}%</td>
+                  <td><span :class="c.name === '複合建議' ? 'badge bg-warning text-dark' : ''">{{ c.name }}</span></td><td class="text-end">{{ c.count }}</td><td class="text-end">{{ percent (c.count) }}%</td>
                 </tr>
                 <tr v-if="!(stats as any)?.hintBreakdown?.length"><td colspan="3" class="text-muted">尚無資料</td></tr>
               </tbody>
@@ -299,16 +318,17 @@ const barClass = (status?: string) =>
         </div>
       </div>
     </div>
+
     <div class="row g-4 mb-4">
       <div class="col-md-6">
         <div class="card shadow-sm h-100">
           <div class="card-body">
             <h6 class="card-title text-muted">交付方式</h6>
             <table class="table table-sm mb-0">
-              <thead><tr><th>方式</th><th class="text-end">件數</th><th class="text-end">占比</th></tr></thead>
+              <thead><tr><th>方式</th><th class="text-end">件數</th><th class="text-end">佔比</th></tr></thead>
               <tbody>
                 <tr v-for="c in (stats as any)?.deliveryBreakdown ?? []" :key="c.name">
-                  <td>{{ c.name }}</td><td class="text-end">{{ c.count }}</td><td class="text-end">{{ percent(c.count) }}%</td>
+                  <td>{{ c.name }}</td><td class="text-end">{{ c.count }}</td><td class="text-end">{{ percent (c.count) }}%</td>
                 </tr>
                 <tr v-if="!(stats as any)?.deliveryBreakdown?.length"><td colspan="3" class="text-muted">尚無資料</td></tr>
               </tbody>
@@ -321,10 +341,10 @@ const barClass = (status?: string) =>
           <div class="card-body">
             <h6 class="card-title text-muted">耕種方式</h6>
             <table class="table table-sm mb-0">
-              <thead><tr><th>方式</th><th class="text-end">件數</th><th class="text-end">占比</th></tr></thead>
+              <thead><tr><th>方式</th><th class="text-end">件數</th><th class="text-end">佔比</th></tr></thead>
               <tbody>
                 <tr v-for="c in (stats as any)?.methodBreakdown ?? []" :key="c.name">
-                  <td>{{ c.name }}</td><td class="text-end">{{ c.count }}</td><td class="text-end">{{ percent(c.count) }}%</td>
+                  <td>{{ c.name }}</td><td class="text-end">{{ c.count }}</td><td class="text-end">{{ percent (c.count) }}%</td>
                 </tr>
                 <tr v-if="!(stats as any)?.methodBreakdown?.length"><td colspan="3" class="text-muted">尚無資料</td></tr>
               </tbody>

@@ -3,15 +3,15 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from './stores/auth'
 import { authApi } from './api'
 
-// 取得登入狀態與路由（用於登出後跳轉）
-const auth = useAuthStore()
-const router = useRouter()
+// 取得登入狀態與路由 (用於登出後跳轉)
+const auth = useAuthStore ()
+const router = useRouter ()
 
-async function handleLogout() {
-  // 通知後端（JWT 無狀態，主要清除前端 token）
-  await authApi.logout()
-  auth.logout()
-  router.push('/')
+async function handleLogout () {
+  // 通知後端 (JWT 無狀態，主要清除前端 token)
+  await authApi.logout ()
+  auth.logout ()
+  router.push ('/')
 }
 </script>
 
@@ -35,14 +35,14 @@ async function handleLogout() {
           <li class="nav-item">
             <router-link class="nav-link" to="/cases">案件管理</router-link>
           </li>
-          <li v-if="auth.isAdmin" class="nav-item">
-            <router-link class="nav-link" to="/users">使用者管理</router-link>
+          <li v-if="auth.isStaff" class="nav-item">
+            <router-link class="nav-link" to="/admin/senders">送件人管理</router-link>
           </li>
           <li v-if="auth.isAdmin" class="nav-item">
             <router-link class="nav-link" to="/admin/reference-data">參照資料管理</router-link>
           </li>
-          <li v-if="auth.isStaff" class="nav-item">
-            <router-link class="nav-link" to="/admin/senders">送件人管理</router-link>
+          <li v-if="auth.isAdmin" class="nav-item">
+            <router-link class="nav-link" to="/users">使用者管理</router-link>
           </li>
         </ul>
         <ul class="navbar-nav ms-auto">
