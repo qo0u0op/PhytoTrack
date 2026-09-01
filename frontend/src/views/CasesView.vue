@@ -189,7 +189,7 @@ async function load () {
     const { data } = await caseApi.list (params as unknown as Record<string, string | number>)
     cases.value = data.content
     total.value = data.totalElements
-    // 若篩選後總頁數縮小導致當前頁越界，自動回到末頁
+    // 若篩選後總頁數縮小導致當前頁越界，自動回到>>
     if (total.value > 0 && page.value >= totalPages.value) {
       page.value = totalPages.value - 1
       pageInput.value = page.value + 1
@@ -504,7 +504,7 @@ async function confirmDelete (id: number) {
           </div>
           <div class="col-md-2 text-md-end">
             <button class="btn btn-sm btn-primary me-1" @click="applyFilters">篩選</button>
-            <button class="btn btn-sm btn-outline-secondary" @click="clearFilters">清除</button>
+            <button class="btn btn-sm btn-outline-secondary border-0 text-secondary" @click="clearFilters">清除</button>
           </div>
         </div>
       </div>
@@ -522,21 +522,21 @@ async function confirmDelete (id: number) {
       <nav aria-label="案件分頁">
         <ul class="pagination pagination-sm mb-0 justify-content-center">
           <li class="page-item" :class="{ disabled: page === 0 }">
-            <button class="page-link" :disabled="page === 0" @click="goToPage (0)" style="height:31px">首頁</button>
+            <button class="page-link border-0 text-secondary" :disabled="page === 0" @click="goToPage (0)" style="height:31px"><<</button>
           </li>
           <li class="page-item" :class="{ disabled: page === 0 }">
-            <button class="page-link" :disabled="page === 0" @click="goToPage (page - 1)" style="height:31px">上一頁</button>
+            <button class="page-link border-0 text-secondary" :disabled="page === 0" @click="goToPage (page - 1)" style="height:31px"><</button>
           </li>
           <li class="page-item">
-            <span class="page-link d-flex align-items-center gap-1" style="height:31px;padding:0 0.5rem">
-              第 <input v-model.number="pageInput" type="number" class="form-control form-control-sm text-center p-0" style="width:64px;height:24px;font-size:0.875rem;line-height:1.5" :min="1" :max="totalPages" @keyup.enter="onPageInputConfirm" @blur="onPageInputConfirm" /> / {{ totalPages }} 頁
+            <span class="page-link border-0 text-secondary d-flex align-items-center gap-1" style="height:31px;padding:0 0.5rem">
+              <input v-model.number="pageInput" type="number" class="form-control form-control-sm text-center p-0" style="width:64px;height:24px;font-size:0.875rem;line-height:1.5" :min="1" :max="totalPages" @keyup.enter="onPageInputConfirm" @blur="onPageInputConfirm" /> / {{ totalPages }}
             </span>
           </li>
           <li class="page-item" :class="{ disabled: page >= totalPages - 1 }">
-            <button class="page-link" :disabled="page >= totalPages - 1" @click="goToPage (page + 1)" style="height:31px">下一頁</button>
+            <button class="page-link border-0 text-secondary" :disabled="page >= totalPages - 1" @click="goToPage (page + 1)" style="height:31px">></button>
           </li>
           <li class="page-item" :class="{ disabled: page >= totalPages - 1 }">
-            <button class="page-link" :disabled="page >= totalPages - 1" @click="goToPage (totalPages - 1)" style="height:31px">末頁</button>
+            <button class="page-link border-0 text-secondary" :disabled="page >= totalPages - 1" @click="goToPage (totalPages - 1)" style="height:31px">>></button>
           </li>
         </ul>
       </nav>
@@ -622,21 +622,21 @@ async function confirmDelete (id: number) {
       <nav aria-label="案件分頁">
         <ul class="pagination pagination-sm mb-0 justify-content-center">
           <li class="page-item" :class="{ disabled: page === 0 }">
-            <button class="page-link" :disabled="page === 0" @click="goToPage (0)" style="height:31px">首頁</button>
+            <button class="page-link border-0 text-secondary" :disabled="page === 0" @click="goToPage (0)" style="height:31px"><<</button>
           </li>
           <li class="page-item" :class="{ disabled: page === 0 }">
-            <button class="page-link" :disabled="page === 0" @click="goToPage (page - 1)" style="height:31px">上一頁</button>
+            <button class="page-link border-0 text-secondary" :disabled="page === 0" @click="goToPage (page - 1)" style="height:31px"><</button>
           </li>
           <li class="page-item">
-            <span class="page-link d-flex align-items-center gap-1" style="height:31px;padding:0 0.5rem">
-              第 <input v-model.number="pageInput" type="number" class="form-control form-control-sm text-center p-0" style="width:64px;height:24px;font-size:0.875rem;line-height:1.5" :min="1" :max="totalPages" @keyup.enter="onPageInputConfirm" @blur="onPageInputConfirm" /> / {{ totalPages }} 頁
+            <span class="page-link border-0 text-secondary d-flex align-items-center gap-1" style="height:31px;padding:0 0.5rem">
+              <input v-model.number="pageInput" type="number" class="form-control form-control-sm text-center p-0" style="width:64px;height:24px;font-size:0.875rem;line-height:1.5" :min="1" :max="totalPages" @keyup.enter="onPageInputConfirm" @blur="onPageInputConfirm" /> / {{ totalPages }}
             </span>
           </li>
           <li class="page-item" :class="{ disabled: page >= totalPages - 1 }">
-            <button class="page-link" :disabled="page >= totalPages - 1" @click="goToPage (page + 1)" style="height:31px">下一頁</button>
+            <button class="page-link border-0 text-secondary" :disabled="page >= totalPages - 1" @click="goToPage (page + 1)" style="height:31px">></button>
           </li>
           <li class="page-item" :class="{ disabled: page >= totalPages - 1 }">
-            <button class="page-link" :disabled="page >= totalPages - 1" @click="goToPage (totalPages - 1)" style="height:31px">末頁</button>
+            <button class="page-link border-0 text-secondary" :disabled="page >= totalPages - 1" @click="goToPage (totalPages - 1)" style="height:31px">>></button>
           </li>
         </ul>
       </nav>
