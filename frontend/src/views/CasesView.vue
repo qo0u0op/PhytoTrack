@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import Swal from 'sweetalert2'
 import { caseApi, refApi } from '../api'
@@ -39,14 +39,23 @@ function senderLabel(c: CaseSummary) {
   return c.senderPhone ?? '—'
 }
 
-// 篩選條件（對應後端 GET /api/cases 查詢參數）
+// 篩選條件（對應後端 GET /api/cases 查詢參數，經 v_case_search 15 欄）
 interface CaseFilters {
   cropId?: number
   serviceId?: number
   senderName: string
+  senderQuery?: string
   receiveDateFrom: string
   receiveDateTo: string
   status: string
+  cityId?: number
+  districtId?: number
+  cropCategoryId?: number
+  pestTypeId?: number
+  pestCategoryId?: number
+  hintId?: number
+  deliveryId?: number
+  damageId?: number
 }
 
 const auth = useAuthStore()
@@ -55,8 +64,37 @@ const router = useRouter()
 const cases = ref<CaseSummary[]>([])
 const total = ref(0)
 const page = ref(0)
-const size = 10
+const size = ref(10)
+const sizeOptions = [10, 20, 50, 100]
+const pageInput = ref(1)
+const totalPages = computed(() => Math.max(1, Math.ceil(total.value / size.value)))
 const loading = ref(false)
+
+watch(page, (v) => { pageInput.value = v + 1 })
+
+function goToPage(p: number) {
+  const clamped = Math.max(0, Math.min(p, totalPages.value - 1))
+  if (clamped !== page.value) {
+    page.value = clamped
+    pageInput.value = clamped + 1
+    load()
+  } else {
+    pageInput.value = clamped + 1
+  }
+}
+
+function onSizeChange() {
+  page.value = 0
+  pageInput.value = 1
+  load()
+}
+
+function onPageInputConfirm() {
+  let num = Number(pageInput.value)
+  if (!Number.isFinite(num) || num < 1) num = 1
+  if (num > totalPages.value) num = totalPages.value
+  goToPage(num - 1)
+}
 
 // 篩選工具列狀態與選單資料
 const filters = reactive<CaseFilters>({
@@ -67,20 +105,84 @@ const filters = reactive<CaseFilters>({
 })
 const cropOptions = ref<{ id?: number; name?: string }[]>([])
 const serviceOptions = ref<{ id?: number; name?: string }[]>([])
+const cityOptions = ref<{ id: number; name: string; districts: { id: number; name: string }[] }[]>([])
+const cropCategoryOptions = ref<{ id: number; name: string }[]>([])
+const pestTypeOptions = ref<{ id: number; name: string; categories: { id: number; name: string }[] }[]>([])
+const hintOptions = ref<{ id: number; name: string }[]>([])
+const deliveryOptions = ref<{ id: number; name: string }[]>([])
+const damageOptions = ref<{ id: number; name: string }[]>([])
+const allCropCategories = ref<components['schemas']['CropCategoryResponse'][]>([])
+
+const filteredDistricts = computed(() => {
+  if (!filters.cityId) return []
+  const city = cityOptions.value.find((c) => c.id === filters.cityId)
+  return city ? city.districts : []
+})
+const filteredPestCategories = computed(() => {
+  if (!filters.pestTypeId) return pestTypeOptions.value.flatMap((p) => p.categories)
+  const pt = pestTypeOptions.value.find((p) => p.id === filters.pestTypeId)
+  return pt ? pt.categories : []
+})
+const filteredCrops = computed(() => {
+  if (!filters.cropCategoryId) return cropOptions.value
+  const cat = allCropCategories.value.find((c) => c.id === filters.cropCategoryId)
+  return (cat?.crops ?? []) as { id?: number; name?: string }[]
+})
+watch(() => filters.cityId, (newCityId) => {
+  if (!newCityId) {
+    filters.districtId = undefined
+    return
+  }
+  const districts = cityOptions.value.find((c) => c.id === newCityId)?.districts ?? []
+  if (districts.length > 0 && !districts.some((d) => d.id === filters.districtId)) {
+    filters.districtId = undefined
+  }
+})
+watch(() => filters.pestTypeId, (newTypeId) => {
+  if (!newTypeId) return
+  const cats = pestTypeOptions.value.find((p) => p.id === newTypeId)?.categories ?? []
+  if (cats.length > 0 && filters.pestCategoryId && !cats.some((c) => c.id === filters.pestCategoryId)) {
+    filters.pestCategoryId = undefined
+  }
+})
+watch(() => filters.cropCategoryId, (newCatId) => {
+  if (!newCatId) return
+  const crops = allCropCategories.value.find((c) => c.id === newCatId)?.crops ?? []
+  if (crops.length > 0 && filters.cropId && !crops.some((c) => c.id === filters.cropId)) {
+    filters.cropId = undefined
+  }
+})
 
 async function load() {
   loading.value = true
   try {
-    const params: Record<string, string | number> = { page: page.value, size }
+    const params: Record<string, string | number> = { page: page.value, size: size.value }
     if (filters.cropId) params.cropId = filters.cropId
     if (filters.serviceId) params.serviceId = filters.serviceId
-    if (!auth.isViewer && filters.senderName.trim()) params.senderName = filters.senderName.trim()
+    if (filters.deliveryId) params.deliveryId = filters.deliveryId
+    if (filters.cropCategoryId) params.cropCategoryId = filters.cropCategoryId
+    if (filters.cityId) params.cityId = filters.cityId
+    if (filters.districtId) params.districtId = filters.districtId
+    if (filters.pestTypeId) params.pestTypeId = filters.pestTypeId
+    if (filters.pestCategoryId) params.pestCategoryId = filters.pestCategoryId
+    if (filters.hintId) params.hintId = filters.hintId
+    if (filters.damageId) params.damageId = filters.damageId
+    if (!auth.isViewer && filters.senderName.trim()) params.senderQuery = filters.senderName.trim()
     if (filters.receiveDateFrom) params.receiveDateFrom = filters.receiveDateFrom
     if (filters.receiveDateTo) params.receiveDateTo = filters.receiveDateTo
     if (filters.status) params.status = filters.status
-    const { data } = await caseApi.list(params)
+    const { data } = await caseApi.list(params as unknown as Record<string, string | number>)
     cases.value = data.content
     total.value = data.totalElements
+    // 若篩選後總頁數縮小導致當前頁越界，自動回到末頁
+    if (total.value > 0 && page.value >= totalPages.value) {
+      page.value = totalPages.value - 1
+      pageInput.value = page.value + 1
+      const retryParams = { ...params, page: page.value }
+      const { data: retryData } = await caseApi.list(retryParams as unknown as Record<string, string | number>)
+      cases.value = retryData.content
+      total.value = retryData.totalElements
+    }
   } catch {
     // 錯誤由攔截器處理
   } finally {
@@ -88,14 +190,29 @@ async function load() {
   }
 }
 
-// 載入作物（由分類攤平）與服務類別做為下拉選單
+// 載入篩選下拉選單（LEFT JOIN 視圖 15 欄所需參照）
 async function loadFilterOptions() {
   try {
-    const [cropRes, serviceRes] = await Promise.all([refApi.cropCategories(), refApi.services()])
+    const [cropRes, serviceRes, cityRes, pestRes, hintRes, deliveryRes, damageRes] = await Promise.all([
+      refApi.cropCategories(),
+      refApi.services(),
+      refApi.cities(),
+      refApi.pestTypes(),
+      refApi.hints(),
+      refApi.deliveries(),
+      refApi.damages(),
+    ])
+    allCropCategories.value = cropRes.data as any
     cropOptions.value = (cropRes.data as components['schemas']['CropCategoryResponse'][]).flatMap(
       (cat) => cat.crops ?? [],
     )
     serviceOptions.value = serviceRes.data as components['schemas']['IdNameResponse'][]
+    cityOptions.value = cityRes.data as any
+    cropCategoryOptions.value = (cropRes.data as any).map((c: any) => ({ id: c.id, name: c.name }))
+    pestTypeOptions.value = pestRes.data as any
+    hintOptions.value = hintRes.data as any
+    deliveryOptions.value = deliveryRes.data as any
+    damageOptions.value = damageRes.data as any
   } catch {
     // 錯誤由攔截器處理
   }
@@ -109,6 +226,14 @@ function applyFilters() {
 function clearFilters() {
   filters.cropId = undefined
   filters.serviceId = undefined
+  filters.deliveryId = undefined
+  filters.cropCategoryId = undefined
+  filters.cityId = undefined
+  filters.districtId = undefined
+  filters.pestTypeId = undefined
+  filters.pestCategoryId = undefined
+  filters.hintId = undefined
+  filters.damageId = undefined
   filters.senderName = ''
   filters.receiveDateFrom = ''
   filters.receiveDateTo = ''
@@ -137,18 +262,18 @@ async function viewDetail(id: number) {
     items?.map((i) => esc(i.name)).join('、') ?? '無'
 
   // 送件人顯示：支援 name(displayName) 與 VIEWER 遮蔽
-  const hasName = (data as any).senderName && String((data as any).senderName).trim()
-  const hasDisplay = (data as any).senderDisplayName && String((data as any).senderDisplayName).trim()
+  const hasName = data.senderName && String(data.senderName).trim()
+  const hasDisplay = data.senderDisplayName && String(data.senderDisplayName).trim()
   let senderLabel = ''
-  if (hasName && hasDisplay) senderLabel = `${(data as any).senderName}(${(data as any).senderDisplayName})`
-  else if (hasDisplay) senderLabel = (data as any).senderDisplayName
-  else if (hasName) senderLabel = (data as any).senderName
-  else senderLabel = (data as any).senderPhone ?? '—'
+  if (hasName && hasDisplay) senderLabel = `${data.senderName}(${data.senderDisplayName})`
+  else if (hasDisplay) senderLabel = data.senderDisplayName!
+  else if (hasName) senderLabel = data.senderName!
+  else senderLabel = data.senderPhone ?? '—'
   // VIEWER 時後端已遮蔽，僅保留縣市鄉鎮
   const isViewer = auth.isViewer
   const displaySender = isViewer ? '已遮蔽' : esc(senderLabel)
-  const displayPhone = isViewer ? '已遮蔽' : esc((data as any).senderPhone ?? '')
-  const displayAddress = isViewer ? '已遮蔽' : esc((data as any).senderAddress ?? '無')
+  const displayPhone = isViewer ? '已遮蔽' : esc(data.senderPhone ?? '')
+  const displayAddress = isViewer ? '已遮蔽' : esc(data.senderAddress ?? '無')
 
   const result = await Swal.fire({
     title: `案件 #${data.caseId} 預覽`,
@@ -159,7 +284,7 @@ async function viewDetail(id: number) {
         <p><strong>作物：</strong>${esc(data.cropName)}</p>
         <p><strong>送件人：</strong>${displaySender}${displayPhone ? `（${displayPhone}）` : ''}</p>
         <p><strong>地址：</strong>${displayAddress}</p>
-        <p><strong>縣市鄉鎮：</strong>${esc((data as any).senderCityName ?? '')}${esc((data as any).senderDistrictName ?? '')}</p>
+        <p><strong>縣市鄉鎮：</strong>${esc(data.senderCityName ?? '')}${esc(data.senderDistrictName ?? '')}</p>
         <p><strong>耕種方式：</strong>${esc(data.methodName)}</p>
         <p><strong>被害部位：</strong>${join(data.damages)}</p>
         <p><strong>病蟲害分類：</strong>${join(data.pestCategories)}</p>
@@ -186,11 +311,18 @@ async function exportCsv() {
     const params: Record<string, string | number> = {}
     if (filters.cropId) params.cropId = filters.cropId
     if (filters.serviceId) params.serviceId = filters.serviceId
-    if (!auth.isViewer && filters.senderName.trim()) params.senderName = filters.senderName.trim()
+    if (filters.deliveryId) params.deliveryId = filters.deliveryId
+    if (filters.cropCategoryId) params.cropCategoryId = filters.cropCategoryId
+    if (filters.cityId) params.cityId = filters.cityId
+    if (filters.districtId) params.districtId = filters.districtId
+    if (filters.pestTypeId) params.pestTypeId = filters.pestTypeId
+    if (filters.pestCategoryId) params.pestCategoryId = filters.pestCategoryId
+    if (filters.hintId) params.hintId = filters.hintId
+    if (!auth.isViewer && filters.senderName.trim()) params.senderQuery = filters.senderName.trim()
     if (filters.receiveDateFrom) params.receiveDateFrom = filters.receiveDateFrom
     if (filters.receiveDateTo) params.receiveDateTo = filters.receiveDateTo
     if (filters.status) params.status = filters.status
-    const res = await caseApi.exportCsv(params)
+    const res = await caseApi.exportCsv(params as unknown as Record<string, string | number>)
     const url = URL.createObjectURL(res.data as Blob)
     const a = document.createElement('a')
     a.href = url
@@ -237,20 +369,15 @@ async function confirmDelete(id: number) {
       </div>
     </div>
 
-    <!-- 篩選工具列：條件同時存在時為 AND 組合 -->
+    <!-- 篩選工具列：條件同時存在時為 AND 組合（經 v_case_search，LEFT JOIN + 頓號聚合） -->
     <div class="card shadow-sm mb-3">
       <div class="card-body">
         <div class="row g-2 align-items-end">
           <div class="col-md-3">
-            <label class="form-label small text-muted mb-1">作物</label>
-            <select v-model="filters.cropId" class="form-select form-select-sm">
-              <option :value="undefined">全部</option>
-              <option v-for="crop in cropOptions" :key="crop.id" :value="crop.id">
-                {{ crop.name }}
-              </option>
-            </select>
+            <label class="form-label small text-muted mb-1">送件人（姓名/顯示/電話）</label>
+            <input v-model="filters.senderName" type="text" class="form-control form-control-sm" :disabled="auth.isViewer" :placeholder="auth.isViewer ? '檢視者無權限篩選' : '輸入關鍵字'" :title="auth.isViewer ? '檢視者無權限篩選送件人' : ''" />
           </div>
-          <div class="col-md-3">
+          <div class="col-md-2">
             <label class="form-label small text-muted mb-1">服務類別</label>
             <select v-model="filters.serviceId" class="form-select form-select-sm">
               <option :value="undefined">全部</option>
@@ -259,11 +386,84 @@ async function confirmDelete(id: number) {
               </option>
             </select>
           </div>
-          <div class="col-md-3">
-            <label class="form-label small text-muted mb-1">送件人（部分比對）</label>
-            <input v-model="filters.senderName" type="text" class="form-control form-control-sm" :disabled="auth.isViewer" :placeholder="auth.isViewer ? '檢視者無權限篩選' : ''" :title="auth.isViewer ? '檢視者無權限篩選送件人' : ''" />
+          <div class="col-md-2">
+            <label class="form-label small text-muted mb-1">送件方式</label>
+            <select v-model="filters.deliveryId" class="form-select form-select-sm">
+              <option :value="undefined">全部</option>
+              <option v-for="d in deliveryOptions" :key="d.id" :value="d.id">{{ d.name }}</option>
+            </select>
+          </div>
+          <div class="col-md-2">
+            <label class="form-label small text-muted mb-1">作物類別</label>
+            <select v-model="filters.cropCategoryId" class="form-select form-select-sm">
+              <option :value="undefined">全部</option>
+              <option v-for="cc in cropCategoryOptions" :key="cc.id" :value="cc.id">{{ cc.name }}</option>
+            </select>
           </div>
           <div class="col-md-3">
+            <label class="form-label small text-muted mb-1">作物</label>
+            <select v-model="filters.cropId" class="form-select form-select-sm">
+              <option :value="undefined">全部</option>
+              <option v-for="crop in filteredCrops" :key="crop.id" :value="crop.id">
+                {{ crop.name }}
+              </option>
+            </select>
+          </div>
+        </div>
+        <div class="row g-2 align-items-end mt-1">
+          <div class="col-md-3">
+            <label class="form-label small text-muted mb-1">田區縣市</label>
+            <select v-model="filters.cityId" class="form-select form-select-sm">
+              <option :value="undefined">全部</option>
+              <option v-for="city in cityOptions" :key="city.id" :value="city.id">{{ city.name }}</option>
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label small text-muted mb-1">田區鄉鎮</label>
+            <select v-model="filters.districtId" class="form-select form-select-sm" :disabled="!filters.cityId">
+              <option :value="undefined">全部</option>
+              <option v-for="d in filteredDistricts" :key="d.id" :value="d.id">{{ d.name }}</option>
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label small text-muted mb-1">害物</label>
+            <select v-model="filters.pestTypeId" class="form-select form-select-sm">
+              <option :value="undefined">全部</option>
+              <option v-for="pt in pestTypeOptions" :key="pt.id" :value="pt.id">{{ pt.name }}</option>
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label small text-muted mb-1">害物類別</label>
+            <select v-model="filters.pestCategoryId" class="form-select form-select-sm">
+              <option :value="undefined">全部</option>
+              <option v-for="pc in filteredPestCategories" :key="pc.id" :value="pc.id">{{ pc.name }}</option>
+            </select>
+          </div>
+        </div>
+        <div class="row g-2 align-items-end mt-1">
+          <div class="col-md-2">
+            <label class="form-label small text-muted mb-1">被害部位</label>
+            <select v-model="filters.damageId" class="form-select form-select-sm">
+              <option :value="undefined">全部</option>
+              <option v-for="d in damageOptions" :key="d.id" :value="d.id">{{ d.name }}</option>
+            </select>
+          </div>
+          <div class="col-md-2">
+            <label class="form-label small text-muted mb-1">建議類別</label>
+            <select v-model="filters.hintId" class="form-select form-select-sm">
+              <option :value="undefined">全部</option>
+              <option v-for="h in hintOptions" :key="h.id" :value="h.id">{{ h.name }}</option>
+            </select>
+          </div>
+          <div class="col-md-2">
+            <label class="form-label small text-muted mb-1">收件日期起</label>
+            <input v-model="filters.receiveDateFrom" type="date" class="form-control form-control-sm" />
+          </div>
+          <div class="col-md-2">
+            <label class="form-label small text-muted mb-1">收件日期迄</label>
+            <input v-model="filters.receiveDateTo" type="date" class="form-control form-control-sm" />
+          </div>
+          <div class="col-md-2">
             <label class="form-label small text-muted mb-1">狀態</label>
             <select v-model="filters.status" class="form-select form-select-sm">
               <option value="">全部</option>
@@ -272,20 +472,44 @@ async function confirmDelete(id: number) {
               </option>
             </select>
           </div>
-          <div class="col-md-3">
-            <label class="form-label small text-muted mb-1">收件日期起</label>
-            <input v-model="filters.receiveDateFrom" type="date" class="form-control form-control-sm" />
-          </div>
-          <div class="col-md-3">
-            <label class="form-label small text-muted mb-1">收件日期迄</label>
-            <input v-model="filters.receiveDateTo" type="date" class="form-control form-control-sm" />
-          </div>
-          <div class="col-md-6 text-md-end">
+          <div class="col-md-2 text-md-end">
             <button class="btn btn-sm btn-primary me-1" @click="applyFilters">篩選</button>
             <button class="btn btn-sm btn-outline-secondary" @click="clearFilters">清除</button>
           </div>
         </div>
       </div>
+    </div>
+
+    <!-- 分頁控制（篩選卡下方）：可輸入頁碼＋自選每頁筆數，與下方分頁同樣與 card 保持間距 -->
+    <div v-if="total > 0" class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-3 mb-3">
+      <div class="d-flex align-items-center gap-2">
+        <label class="form-label small text-muted mb-0 text-nowrap">每頁筆數</label>
+        <select v-model.number="size" class="form-select form-select-sm" style="width:auto" @change="onSizeChange">
+          <option v-for="opt in sizeOptions" :key="opt" :value="opt">{{ opt }} 筆/頁</option>
+        </select>
+        <span class="small text-muted text-nowrap">共 {{ total }} 筆，{{ totalPages }} 頁</span>
+      </div>
+      <nav aria-label="案件分頁">
+        <ul class="pagination pagination-sm mb-0 justify-content-center">
+          <li class="page-item" :class="{ disabled: page === 0 }">
+            <button class="page-link" :disabled="page === 0" @click="goToPage(0)" style="height:31px">首頁</button>
+          </li>
+          <li class="page-item" :class="{ disabled: page === 0 }">
+            <button class="page-link" :disabled="page === 0" @click="goToPage(page - 1)" style="height:31px">上一頁</button>
+          </li>
+          <li class="page-item">
+            <span class="page-link d-flex align-items-center gap-1" style="height:31px;padding:0 0.5rem">
+              第 <input v-model.number="pageInput" type="number" class="form-control form-control-sm text-center p-0" style="width:64px;height:24px;font-size:0.875rem;line-height:1.5" :min="1" :max="totalPages" @keyup.enter="onPageInputConfirm" @blur="onPageInputConfirm" /> / {{ totalPages }} 頁
+            </span>
+          </li>
+          <li class="page-item" :class="{ disabled: page >= totalPages - 1 }">
+            <button class="page-link" :disabled="page >= totalPages - 1" @click="goToPage(page + 1)" style="height:31px">下一頁</button>
+          </li>
+          <li class="page-item" :class="{ disabled: page >= totalPages - 1 }">
+            <button class="page-link" :disabled="page >= totalPages - 1" @click="goToPage(totalPages - 1)" style="height:31px">末頁</button>
+          </li>
+        </ul>
+      </nav>
     </div>
 
     <div class="card shadow-sm">
@@ -354,27 +578,36 @@ async function confirmDelete(id: number) {
       </div>
     </div>
 
-    <!-- 分頁控制 -->
-    <nav v-if="total > size" class="mt-3">
-      <ul class="pagination justify-content-center">
-        <li class="page-item" :class="{ disabled: page === 0 }">
-          <button class="page-link" :disabled="page === 0" @click="page--; load()">上一頁</button>
-        </li>
-        <li class="page-item disabled">
-          <span class="page-link">
-            第 {{ page + 1 }} 頁（共 {{ Math.ceil(total / size) }} 頁，{{ total }} 筆）
-          </span>
-        </li>
-        <li class="page-item" :class="{ disabled: (page + 1) * size >= total }">
-          <button
-            class="page-link"
-            :disabled="(page + 1) * size >= total"
-            @click="page++; load()"
-          >
-            下一頁
-          </button>
-        </li>
-      </ul>
-    </nav>
+    <!-- 分頁控制（表格下方）：同上方，支援輸入頁碼與自選筆數 -->
+    <div v-if="total > 0" class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-3">
+      <div class="d-flex align-items-center gap-2">
+        <label class="form-label small text-muted mb-0 text-nowrap">每頁筆數</label>
+        <select v-model.number="size" class="form-select form-select-sm" style="width:auto" @change="onSizeChange">
+          <option v-for="opt in sizeOptions" :key="opt" :value="opt">{{ opt }} 筆/頁</option>
+        </select>
+        <span class="small text-muted text-nowrap">共 {{ total }} 筆，{{ totalPages }} 頁</span>
+      </div>
+      <nav aria-label="案件分頁">
+        <ul class="pagination pagination-sm mb-0 justify-content-center">
+          <li class="page-item" :class="{ disabled: page === 0 }">
+            <button class="page-link" :disabled="page === 0" @click="goToPage(0)" style="height:31px">首頁</button>
+          </li>
+          <li class="page-item" :class="{ disabled: page === 0 }">
+            <button class="page-link" :disabled="page === 0" @click="goToPage(page - 1)" style="height:31px">上一頁</button>
+          </li>
+          <li class="page-item">
+            <span class="page-link d-flex align-items-center gap-1" style="height:31px;padding:0 0.5rem">
+              第 <input v-model.number="pageInput" type="number" class="form-control form-control-sm text-center p-0" style="width:64px;height:24px;font-size:0.875rem;line-height:1.5" :min="1" :max="totalPages" @keyup.enter="onPageInputConfirm" @blur="onPageInputConfirm" /> / {{ totalPages }} 頁
+            </span>
+          </li>
+          <li class="page-item" :class="{ disabled: page >= totalPages - 1 }">
+            <button class="page-link" :disabled="page >= totalPages - 1" @click="goToPage(page + 1)" style="height:31px">下一頁</button>
+          </li>
+          <li class="page-item" :class="{ disabled: page >= totalPages - 1 }">
+            <button class="page-link" :disabled="page >= totalPages - 1" @click="goToPage(totalPages - 1)" style="height:31px">末頁</button>
+          </li>
+        </ul>
+      </nav>
+    </div>
   </div>
 </template>

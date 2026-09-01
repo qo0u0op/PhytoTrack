@@ -119,7 +119,22 @@ cp backups/phytotrack-YYYYmmdd-HHMMSS.db backend/diagnoses.db
 
 > 備份目錄未納版控，請自行保留異地或雲端備份。
 
-## 7. 升級到 PostgreSQL（選用）
+## 7. 既有資料庫遷移（田區位置 `field_district_id`）
+
+本版本 `cases.field_district_id` 改為 `NOT NULL` 且篩選視圖 `v_case_search` 改以田區位置為準。`CREATE TABLE IF NOT EXISTS` 不會為既有 `backend/diagnoses.db` 補欄位，需手動遷移：
+
+```bash
+# 1. 備份
+bash scripts/backup.sh
+# 2. 執行遷移（自動：補欄位 → 80% 同送件人、20% 同縣市他鄉鎮 → 重建為 NOT NULL → 重建視圖）
+bash scripts/migrate-field-district.sh
+# 或手動 sqlite3（見腳本內 SQL）
+sqlite3 backend/diagnoses.db "SELECT COUNT(*) FROM cases WHERE field_district_id IS NULL;"
+```
+
+測試庫 `backend/target/phytotrack-test.db` 為產物，刪除 `rm target/phytotrack-test.db` 後 `mvn test` 會依新 `schema.sql` 重建。
+
+## 8. 升級到 PostgreSQL（選用）
 
 現階段使用 SQLite 起步（理由見 ADR-007）。若未來資料量與並發需求增加，切換方式：
 

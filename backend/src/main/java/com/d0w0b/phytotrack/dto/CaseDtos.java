@@ -40,36 +40,14 @@ public final class CaseDtos {
       @NotNull(message = "服務類別不可為空") Long serviceId,
       @NotNull(message = "送件方式不可為空") Long deliverId,
 
+      @NotNull(message = "田區位置不可為空") Long fieldDistrictId,
+
       // 多對多關聯（Junction Table）的 ID 集合
       List<Long> damageIds,
       List<Long> hintIds,
       List<Long> pestCategoryIds,
       List<@Valid PestCategoryNote> pestCategoryWithNotes,
       List<Long> identifierIds) {
-
-    // 相容舊版 18 參數建構（無 senderId/displayName）
-    public CaseCreateRequest(LocalDate receiveDate, String cropScale, String damageScale,
-        String caseDescription, String hintDescription,
-        String senderName, String senderPhone, String senderAddress,
-        Long senderDistrictId, Long senderTypeId,
-        Long methodId, Long cropId, Long serviceId, Long deliverId,
-        List<Long> damageIds, List<Long> hintIds, List<Long> pestCategoryIds, List<Long> identifierIds) {
-      this(receiveDate, cropScale, damageScale, caseDescription, hintDescription,
-          null, senderName, null, senderPhone, senderAddress, senderDistrictId, senderTypeId,
-          methodId, cropId, serviceId, deliverId, damageIds, hintIds, pestCategoryIds, null, identifierIds);
-    }
-
-    // 相容 20 參數（有 senderId/displayName 但無 pestCategoryWithNotes）
-    public CaseCreateRequest(LocalDate receiveDate, String cropScale, String damageScale,
-        String caseDescription, String hintDescription,
-        Long senderId, String senderName, String senderDisplayName, String senderPhone, String senderAddress,
-        Long senderDistrictId, Long senderTypeId,
-        Long methodId, Long cropId, Long serviceId, Long deliverId,
-        List<Long> damageIds, List<Long> hintIds, List<Long> pestCategoryIds, List<Long> identifierIds) {
-      this(receiveDate, cropScale, damageScale, caseDescription, hintDescription,
-          senderId, senderName, senderDisplayName, senderPhone, senderAddress, senderDistrictId, senderTypeId,
-          methodId, cropId, serviceId, deliverId, damageIds, hintIds, pestCategoryIds, null, identifierIds);
-    }
 
     public record PestCategoryNote(
         @NotNull(message = "病蟲害分類不可為空") Long pestCategoryId,
@@ -90,6 +68,8 @@ public final class CaseDtos {
       Long serviceId,
       Long deliverId,
 
+      Long fieldDistrictId,
+
       // 送件人（Sender）欄位：任一提供即更新案件關聯的送件人
       Long senderId,
       String senderName,
@@ -106,7 +86,7 @@ public final class CaseDtos {
       List<@Valid PestCategoryNote> pestCategoryWithNotes,
       List<Long> identifierIds) {
 
-    // 相容舊版 19 參數建構
+    // 相容舊版 19 參數建構（測試仍使用）
     public CaseUpdateRequest(LocalDate receiveDate, String cropScale, String damageScale,
         String caseDescription, String hintDescription, String status,
         Long methodId, Long cropId, Long serviceId, Long deliverId,
@@ -114,12 +94,12 @@ public final class CaseDtos {
         Long senderDistrictId, Long senderTypeId,
         List<Long> damageIds, List<Long> hintIds, List<Long> pestCategoryIds, List<Long> identifierIds) {
       this(receiveDate, cropScale, damageScale, caseDescription, hintDescription, status,
-          methodId, cropId, serviceId, deliverId,
+          methodId, cropId, serviceId, deliverId, null,
           null, senderName, null, senderPhone, senderAddress, senderDistrictId, senderTypeId,
           damageIds, hintIds, pestCategoryIds, null, identifierIds);
     }
 
-    // 相容 20 參數（有 senderId/displayName 但無 pestCategoryWithNotes）
+    // 相容 20 參數（有 senderId/displayName，測試仍使用）
     public CaseUpdateRequest(LocalDate receiveDate, String cropScale, String damageScale,
         String caseDescription, String hintDescription, String status,
         Long methodId, Long cropId, Long serviceId, Long deliverId,
@@ -127,9 +107,23 @@ public final class CaseDtos {
         Long senderDistrictId, Long senderTypeId,
         List<Long> damageIds, List<Long> hintIds, List<Long> pestCategoryIds, List<Long> identifierIds) {
       this(receiveDate, cropScale, damageScale, caseDescription, hintDescription, status,
-          methodId, cropId, serviceId, deliverId,
+          methodId, cropId, serviceId, deliverId, null,
           senderId, senderName, senderDisplayName, senderPhone, senderAddress, senderDistrictId, senderTypeId,
           damageIds, hintIds, pestCategoryIds, null, identifierIds);
+    }
+
+    // 相容 22 參數（無 fieldDistrictId，含 pestCategoryWithNotes，測試仍使用）
+    public CaseUpdateRequest(LocalDate receiveDate, String cropScale, String damageScale,
+        String caseDescription, String hintDescription, String status,
+        Long methodId, Long cropId, Long serviceId, Long deliverId,
+        Long senderId, String senderName, String senderDisplayName, String senderPhone, String senderAddress,
+        Long senderDistrictId, Long senderTypeId,
+        List<Long> damageIds, List<Long> hintIds, List<Long> pestCategoryIds,
+        List<PestCategoryNote> pestCategoryWithNotes, List<Long> identifierIds) {
+      this(receiveDate, cropScale, damageScale, caseDescription, hintDescription, status,
+          methodId, cropId, serviceId, deliverId, null,
+          senderId, senderName, senderDisplayName, senderPhone, senderAddress, senderDistrictId, senderTypeId,
+          damageIds, hintIds, pestCategoryIds, pestCategoryWithNotes, identifierIds);
     }
 
     public record PestCategoryNote(
@@ -138,28 +132,47 @@ public final class CaseDtos {
     }
   }
 
-  /** 案件列表篩選條件（查詢參數，皆可空） */
+  /** 案件列表篩選條件（查詢參數，皆可空，視圖 `v_case_search` 15 欄） */
   public record CaseFilter(
       Long cropId,
       Long serviceId,
       String senderName,
+      String senderQuery,
       LocalDate receiveDateFrom,
       LocalDate receiveDateTo,
-      String status) {
+      String status,
+      Long cityId,
+      Long districtId,
+      Long cropCategoryId,
+      Long pestTypeId,
+      Long pestCategoryId,
+      Long hintId,
+      Long deliveryId,
+      Long damageId) {
 
     /** 空篩選（等同不分條件） */
     public static CaseFilter empty() {
-      return new CaseFilter(null, null, null, null, null, null);
+      return new CaseFilter(null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
     }
 
     /** 是否有任一條件 */
     public boolean isEmpty() {
-      return cropId == null && serviceId == null && senderName == null
-          && receiveDateFrom == null && receiveDateTo == null && status == null;
+      return cropId == null && serviceId == null && senderName == null && senderQuery == null
+          && receiveDateFrom == null && receiveDateTo == null && status == null
+          && cityId == null && districtId == null && cropCategoryId == null
+          && pestTypeId == null && pestCategoryId == null && hintId == null && deliveryId == null
+          && damageId == null;
+    }
+
+    /** 相容舊 6 欄建構 */
+    public CaseFilter(Long cropId, Long serviceId, String senderName,
+        LocalDate receiveDateFrom, LocalDate receiveDateTo, String status) {
+      this(cropId, serviceId, senderName, senderName, receiveDateFrom, receiveDateTo, status,
+          null, null, null, null, null, null, null, null);
     }
   }
 
-  /** 案件列表（摘要）回應：不帶多對多關聯，節省查詢量 */
+  /** 案件列表（摘要）回應：不帶多對多關聯，節省查詢量；pestCategoryCount>1 為複合案件 */
   public record CaseSummaryResponse(
       Long caseId,
       LocalDate receiveDate,
@@ -174,13 +187,16 @@ public final class CaseDtos {
       String senderCityName,
       String serviceName,
       String status,
-      LocalDateTime createdAt) {
+      LocalDateTime createdAt,
+      Integer pestCategoryCount) {
 
-    // 相容舊版 7 參數建構
+    // 相容 14 欄建構（無複合計數，ControllerTest 仍使用）
     public CaseSummaryResponse(Long caseId, LocalDate receiveDate, String cropName,
-        String senderName, String serviceName, String status, LocalDateTime createdAt) {
-      this(caseId, receiveDate, cropName, senderName, null, null, null, null, null, null, null,
-          serviceName, status, createdAt);
+        String senderName, String senderDisplayName, String senderPhone, String senderAddress,
+        Long senderId, Long senderDistrictId, String senderDistrictName, String senderCityName,
+        String serviceName, String status, LocalDateTime createdAt) {
+      this(caseId, receiveDate, cropName, senderName, senderDisplayName, senderPhone, senderAddress,
+          senderId, senderDistrictId, senderDistrictName, senderCityName, serviceName, status, createdAt, 0);
     }
   }
 
@@ -204,6 +220,9 @@ public final class CaseDtos {
       String senderDistrictName,
       String senderCityName,
       Long senderTypeId,
+      Long fieldDistrictId,
+      String fieldDistrictName,
+      String fieldCityName,
       String cropName,
       String methodName,
       String serviceName,
@@ -213,23 +232,6 @@ public final class CaseDtos {
       List<IdName> hints,
       List<IdNameWithNote> pestCategories,
       List<IdName> identifiers) {
-
-    // 相容舊版 24 參數建構（無 senderId/displayName/city）
-    public CaseResponse(Long caseId, LocalDate receiveDate, String cropScale, String damageScale,
-        String caseDescription, String hintDescription, String status,
-        LocalDateTime createdAt, LocalDateTime updatedAt,
-        String senderName, String senderPhone, String senderAddress,
-        Long senderDistrictId, String senderDistrictName, Long senderTypeId,
-        String cropName, String methodName, String serviceName, String deliveryName,
-        String createdByName, List<IdName> damages, List<IdName> hints,
-        List<IdName> pestCategories, List<IdName> identifiers) {
-      this(caseId, receiveDate, cropScale, damageScale, caseDescription, hintDescription, status,
-          createdAt, updatedAt, null, senderName, null, senderPhone, senderAddress,
-          senderDistrictId, senderDistrictName, null, senderTypeId, cropName, methodName,
-          serviceName, deliveryName, createdByName, damages, hints,
-          pestCategories.stream().map(x -> new IdNameWithNote(x.id(), x.name(), null)).toList(),
-          identifiers);
-    }
 
     /** 通用的「ID + 名稱」結構，用於多對多關聯 */
     public record IdName(Long id, String name) {

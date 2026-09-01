@@ -68,7 +68,7 @@ HTTP 請求
 - **Sender**（送件人）：`name` 可空、`displayName`（Line/FB 暱稱）可空，`phone` 與 `displayName` 至少一有值（Service 層檢查）；顯示規則 `name(displayName)` / `displayName` / `name`；`phone` 非空時以部分唯一索引防重；**不以 DB UNIQUE 強制合併**——建案時以前端候選彈窗人工確認沿用（帶 `senderId`）或新建；ADMIN 可硬刪除未被引用的送件人（見 ADR-011）
 - **VIEWER 個資遮蔽**：`CaseService.toDetail/toSummary` 依當前角色判斷，VIEWER 的回應不含送件人姓名/電話/地址，但保留縣市鄉鎮與 `senderId`
 - **統計去重鍵**：不重複送件人以 `COALESCE(phone, displayName)` distinct 計數
-- 案件列表篩選以 **Spring Data JPA `Specification`** 動態組合（`CaseSpecifications`，AND 組合）；`status` 為列舉字串契約，由 `CaseService` 解析為 `CaseStatus` 後傳入查詢（非法值 fail-fast 400 `INVALID_STATUS`）
+- 案件列表篩選以視圖 `v_case_search`（`schema.sql` 以 `LEFT OUTER JOIN` 涵蓋可空關聯，多對多以 `GROUP_CONCAT(DISTINCT name, '、')` 頓號聚合，`CaseSearchView` 以 `@Subselect` 唯讀映射）為基礎，經 `CaseSpecifications.buildView()` 動態組合 14 欄（送件人三欄合一 `name/displayName/phone`、服務/送件方式、縣市/鄉鎮、作物/作物類別、害物/害物類別、建議類別，AND 組合，鄉鎮必先選縣市）；`status` 為列舉字串契約，由 `CaseService` 解析為 `CaseStatus` 後傳入視圖查詢（非法值 fail-fast 400 `INVALID_STATUS`），視圖分頁後回補 `Case` 實體以保留 `VIEWER` 遮蔽
 - 時間戳與建立者由 **JPA Auditing** 自動填寫（`@CreatedDate`/`@LastModifiedDate`/`@CreatedBy`），實作 `AuditorAware` 從 SecurityContext 取值（見 ADR-006）
 - SQLite 日期欄位以 `converter/` 的字串轉換器處理，避免 Hibernate 7 SQLiteDialect 的 epoch 毫秒寫入/嚴格格式讀取不一致問題
 
@@ -113,7 +113,7 @@ types/    openapi-typescript 由 /v3/api-docs 自動生成的 API 型別（與�
 | POST | /api/auth/login | 公開 | 登入並取得 JWT |
 | POST | /api/auth/me | 登入 | 目前使用者 |
 | POST | /api/auth/logout | 登入 | 登出（JWT 無狀態，前端丟棄 token） |
-| GET | /api/cases | 登入 | 分頁案件列表；篩選參數：`cropId`、`serviceId`、`senderName`（LIKE 部分比對）、`receiveDateFrom`、`receiveDateTo`、`status`（`PENDING`/`RESOLVED`/`CLOSED`），多參數為 AND 組合 |
+| GET | /api/cases | 登入 | 分頁案件列表（經 `v_case_search` 視圖）；篩選參數：`cropId`/`cropCategoryId`、`serviceId`/`deliveryId`、`senderName`/`senderQuery`（`name/displayName/phone` 三欄合一 LIKE）、`cityId`/`districtId`（縣市必先選）、`pestTypeId`/`pestCategoryId`、`hintId`、`receiveDateFrom`/`receiveDateTo`、`status`，多參數為 AND 組合 |
 | GET | /api/cases/statistics | 登入 | 案件統計總覽：總數／本月新增／待處理／top 作物與病蟲害（top 5）／狀態比例／近 6 月趨勢；空資料庫回 0 或空清單。月份以收件日期（`receiveDate`）為基礎 |
 | GET | /api/cases/export | 登入 | CSV 匯出（`text/csv`，attachment 下載，UTF-8 BOM）：依與列表相同的篩選參數全量匯出，收件日期升序；欄位含送件人、作物／病蟲害、描述、防治建議等明細 |
 | GET | /api/cases/{id} | 登入 | 案件詳細 |

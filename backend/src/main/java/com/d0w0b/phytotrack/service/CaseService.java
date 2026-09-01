@@ -38,6 +38,7 @@ import com.d0w0b.phytotrack.models.PestCategory;
 import com.d0w0b.phytotrack.models.Sender;
 import com.d0w0b.phytotrack.models.SenderType;
 import com.d0w0b.phytotrack.repository.CaseRepository;
+import com.d0w0b.phytotrack.repository.CaseSearchViewRepository;
 import com.d0w0b.phytotrack.repository.CaseSpecifications;
 import com.d0w0b.phytotrack.repository.CropRepository;
 import com.d0w0b.phytotrack.repository.DamageRepository;
@@ -79,6 +80,7 @@ import java.util.stream.Collectors;
 public class CaseService {
 
   private final CaseRepository caseRepository;
+  private final CaseSearchViewRepository caseSearchViewRepository;
   private final SenderRepository senderRepository;
   private final SenderTypeRepository senderTypeRepository;
   private final DistrictRepository districtRepository;
@@ -92,6 +94,7 @@ public class CaseService {
   private final IdentifierRepository identifierRepository;
 
   public CaseService(CaseRepository caseRepository,
+                     CaseSearchViewRepository caseSearchViewRepository,
                      SenderRepository senderRepository,
                      SenderTypeRepository senderTypeRepository,
                      DistrictRepository districtRepository,
@@ -104,6 +107,7 @@ public class CaseService {
                      PestCategoryRepository pestCategoryRepository,
                      IdentifierRepository identifierRepository) {
     this.caseRepository = caseRepository;
+    this.caseSearchViewRepository = caseSearchViewRepository;
     this.senderRepository = senderRepository;
     this.senderTypeRepository = senderTypeRepository;
     this.districtRepository = districtRepository;
@@ -117,16 +121,24 @@ public class CaseService {
     this.identifierRepository = identifierRepository;
   }
 
-  /** 分頁查詢案件清單（摘要）；無任何條件時行為與現有列表一致 */
+  /** 分頁查詢案件清單（摘要）；經視圖 `v_case_search` 篩選後回補實體以保留遮蔽 */
   @Transactional(readOnly = true)
   public Page<CaseSummaryResponse> list(CaseFilter filter, Pageable pageable) {
-    // 狀態字串先在此解析（fail-fast）：非法值於 Service 層即拋錯，不會進入查詢
     CaseStatus status = filter.status() != null ? parseStatus(filter.status()) : null;
     if (filter.isEmpty()) {
       return caseRepository.findAll(pageable).map(this::toSummary);
     }
-    return caseRepository.findAll(CaseSpecifications.build(filter, status), pageable)
-        .map(this::toSummary);
+    Page<com.d0w0b.phytotrack.models.CaseSearchView> viewPage =
+        caseSearchViewRepository.findAll(CaseSpecifications.buildView(filter, status), pageable);
+    List<Long> ids = viewPage.getContent().stream().map(com.d0w0b.phytotrack.models.CaseSearchView::getCaseId).toList();
+    if (ids.isEmpty()) {
+      return new org.springframework.data.domain.PageImpl<>(List.of(), pageable, viewPage.getTotalElements());
+    }
+    Map<Long, Case> caseMap = caseRepository.findAllById(ids).stream()
+        .collect(Collectors.toMap(Case::getCaseId, Function.identity()));
+    List<CaseSummaryResponse> content = ids.stream()
+        .map(caseMap::get).filter(java.util.Objects::nonNull).map(this::toSummary).toList();
+    return new org.springframework.data.domain.PageImpl<>(content, pageable, viewPage.getTotalElements());
   }
 
   /** 列舉字串解析為 CaseStatus（fail-fast）；非法值拋 400 INVALID_STATUS */
@@ -168,6 +180,10 @@ public class CaseService {
     getRef(cropRepository, request.cropId(), "作物");
     getRef(serviceRepository, request.serviceId(), "服務類別");
     getRef(deliveryRepository, request.deliverId(), "送件方式");
+    if (request.fieldDistrictId() == null) {
+      throw new ApiException("VALIDATION_ERROR", HttpStatus.BAD_REQUEST, "田區位置不可為空");
+    }
+    getRef(districtRepository, request.fieldDistrictId(), "田區位置");
     if (request.damageIds() != null) {
       for (Long id : new HashSet<>(request.damageIds())) {
         getRef(damageRepository, id, "被害部位");
@@ -207,6 +223,7 @@ public class CaseService {
     caseEntity.setCrop(getRef(cropRepository, request.cropId(), "作物"));
     caseEntity.setService(getRef(serviceRepository, request.serviceId(), "服務類別"));
     caseEntity.setDelivery(getRef(deliveryRepository, request.deliverId(), "送件方式"));
+    caseEntity.setFieldDistrict(getRef(districtRepository, request.fieldDistrictId(), "田區位置"));
 
     addDamages(caseEntity, request.damageIds());
     addHints(caseEntity, request.hintIds());
@@ -287,6 +304,9 @@ public class CaseService {
     if (request.deliverId() != null) {
       caseEntity.setDelivery(getRef(deliveryRepository, request.deliverId(), "送件方式"));
     }
+    if (request.fieldDistrictId() != null) {
+      caseEntity.setFieldDistrict(getRef(districtRepository, request.fieldDistrictId(), "田區位置"));
+    }
     applySenderUpdate(caseEntity, request);
     replaceJunctions(caseEntity, request);
 
@@ -323,6 +343,9 @@ public class CaseService {
     }
     if (request.senderTypeId() != null) {
       getRef(senderTypeRepository, request.senderTypeId(), "身分別");
+    }
+    if (request.fieldDistrictId() != null) {
+      getRef(districtRepository, request.fieldDistrictId(), "田區位置");
     }
   }
 
@@ -373,6 +396,7 @@ public class CaseService {
         || request.cropId() != null
         || request.serviceId() != null
         || request.deliverId() != null
+        || request.fieldDistrictId() != null
         || request.senderId() != null
         || request.senderName() != null
         || request.senderDisplayName() != null
@@ -530,19 +554,47 @@ public class CaseService {
    * 案件統計總覽（見 spec case-statistics）。
    *
    * 以「收件日期（receiveDate）」為月份基礎（與 case-search 篩選一致）：
-   * 本月新增＝收件日 ≥ 本月初；趨勢近 6 月逐月計數。top 作物／病蟲害與
+   * 本月新增＝收件日 ≥ 本月初；趨勢近 6 月逐月計數。top 作物／因素與
    * 趨勢以 findAll()（EntityGraph 預抓關聯）Java 聚合，本機資料量小故採
    * 單一查詢；空資料庫時各項為 0 或空清單。
+   * 期別過濾：HISTORICAL 全量、ANNUAL 依年、MONTHLY 依年月；breakdown 以期別內案件為分母，
+   * 害物/防治建議多對多 >1 標為複合因素/複合建議（實例數計數，不去重）。
    */
   @Transactional(readOnly = true)
   public CaseStatisticsResponse statistics() {
+    return statistics("HISTORICAL", null, null);
+  }
+
+  @Transactional(readOnly = true)
+  public CaseStatisticsResponse statistics(String period, Integer year, Integer month) {
+    String normalizedPeriod = period == null || period.isBlank() ? "HISTORICAL" : period.toUpperCase();
+    if (!List.of("HISTORICAL", "ANNUAL", "MONTHLY").contains(normalizedPeriod)) {
+      throw new ApiException("VALIDATION_ERROR", HttpStatus.BAD_REQUEST, "無效的 period：" + period);
+    }
+    if ("ANNUAL".equals(normalizedPeriod) && year == null) {
+      throw new ApiException("VALIDATION_ERROR", HttpStatus.BAD_REQUEST, "年度統計需提供 year");
+    }
+    if ("MONTHLY".equals(normalizedPeriod) && (year == null || month == null)) {
+      throw new ApiException("VALIDATION_ERROR", HttpStatus.BAD_REQUEST, "月度統計需提供 year 與 month");
+    }
+    if (month != null && (month < 1 || month > 12)) {
+      throw new ApiException("VALIDATION_ERROR", HttpStatus.BAD_REQUEST, "無效的 month：" + month);
+    }
+
     long total = caseRepository.count();
     long monthNew = caseRepository.countByReceiveDateGreaterThanEqual(
         LocalDate.now().withDayOfMonth(1));
     long pending = caseRepository.countByStatus(CaseStatus.PENDING);
 
     List<Case> all = caseRepository.findAll();
-    long distinctSenders = all.stream()
+    List<Integer> availableYears = all.stream()
+        .map(c -> c.getReceiveDate().getYear())
+        .distinct().sorted(java.util.Comparator.reverseOrder()).toList();
+
+    List<Case> filtered = filterByPeriod(all, normalizedPeriod, year, month);
+    long periodTotal = filtered.size();
+
+    long distinctSenders = filtered.stream()
         .map(c -> {
           String phone = c.getSender().getPhone();
           String displayName = c.getSender().getDisplayName();
@@ -551,28 +603,99 @@ public class CaseService {
         })
         .filter(s -> s != null && !s.isBlank())
         .collect(Collectors.toSet()).size();
-    List<CountName> topCrops = topN(all.stream()
+    // topN 仍基於期別內
+    List<CountName> topCrops = topN(filtered.stream()
         .collect(Collectors.groupingBy(c -> c.getCrop().getCrop(), Collectors.counting())));
-    List<CountName> topPestCategories = topN(all.stream()
+    List<CountName> topPestCategories = topN(filtered.stream()
         .flatMap(c -> c.getCasePestCategories().stream())
         .collect(Collectors.groupingBy(
             j -> j.getPestCategory().getPestCategory(), Collectors.counting())));
     List<StatusCount> statusRatio = Arrays.stream(CaseStatus.values())
         .map(status -> new StatusCount(status.name(),
-            all.stream().filter(c -> c.getStatus() == status).count()))
+            filtered.stream().filter(c -> c.getStatus() == status).count()))
         .toList();
+    // 近6月趨勢维持歷史期別（不受期別篩選影響）
     List<MonthCount> monthlyTrend = monthlyTrend(all);
+    long compositeCases = filtered.stream()
+        .filter(c -> c.getCasePestCategories().size() > 1)
+        .count();
+    // 期別 breakdown（實例數，不去重）
+    List<CountName> cropCategoryBreakdown = breakdown(filtered.stream()
+        .collect(Collectors.groupingBy(c -> {
+          if (c.getCrop() == null || c.getCrop().getCropCategory() == null) return "未分類";
+          return c.getCrop().getCropCategory().getCropCategory();
+        }, Collectors.counting())));
+    List<CountName> pestTypeBreakdown = pestTypeBreakdown(filtered);
+    List<CountName> deliveryBreakdown = breakdown(filtered.stream()
+        .collect(Collectors.groupingBy(c -> c.getDelivery() != null ? c.getDelivery().getDeliver() : "未知", Collectors.counting())));
+    List<CountName> methodBreakdown = breakdown(filtered.stream()
+        .collect(Collectors.groupingBy(c -> c.getMethod() != null ? c.getMethod().getMethod() : "未知", Collectors.counting())));
+    List<CountName> hintBreakdown = hintBreakdown(filtered);
+    long compositeFactorCases = compositeCases;
+    long compositeHintCases = filtered.stream().filter(c -> c.getCaseHints().size() > 1).count();
 
     return new CaseStatisticsResponse(total, monthNew, pending, distinctSenders,
-        topCrops, topPestCategories, statusRatio, monthlyTrend);
+        topCrops, topPestCategories, statusRatio, monthlyTrend, compositeCases,
+        cropCategoryBreakdown, pestTypeBreakdown, deliveryBreakdown, methodBreakdown, hintBreakdown,
+        compositeFactorCases, compositeHintCases, availableYears, normalizedPeriod, year, month, periodTotal);
   }
 
-  /** topN：依計數遞減排序（同數值再依名稱穩定排序）取前 5 */
+  private List<Case> filterByPeriod(List<Case> all, String period, Integer year, Integer month) {
+    if ("HISTORICAL".equals(period)) return all;
+    if ("ANNUAL".equals(period)) {
+      return all.stream().filter(c -> c.getReceiveDate().getYear() == year).toList();
+    }
+    // MONTHLY
+    YearMonth ym = YearMonth.of(year, month);
+    LocalDate start = ym.atDay(1);
+    LocalDate end = ym.atEndOfMonth();
+    return all.stream().filter(c -> !c.getReceiveDate().isBefore(start) && !c.getReceiveDate().isAfter(end)).toList();
+  }
+
+  private List<CountName> breakdown(Map<String, Long> counts) {
+    return counts.entrySet().stream()
+        .sorted(Map.Entry.<String, Long>comparingByValue().reversed().thenComparing(Map.Entry.comparingByKey()))
+        .map(e -> new CountName(e.getKey(), e.getValue()))
+        .toList();
+  }
+
+  private List<CountName> pestTypeBreakdown(List<Case> filtered) {
+    Map<String, Long> counts = new java.util.LinkedHashMap<>();
+    for (Case c : filtered) {
+      if (c.getCasePestCategories() == null || c.getCasePestCategories().isEmpty()) {
+        counts.merge("無", 1L, Long::sum);
+      } else if (c.getCasePestCategories().size() > 1) {
+        counts.merge("複合因素", 1L, Long::sum);
+      } else {
+        var pc = c.getCasePestCategories().get(0).getPestCategory();
+        String pt = (pc != null && pc.getPestType() != null) ? pc.getPestType().getPestType() : "未知";
+        counts.merge(pt, 1L, Long::sum);
+      }
+    }
+    return breakdown(counts);
+  }
+
+  private List<CountName> hintBreakdown(List<Case> filtered) {
+    Map<String, Long> counts = new java.util.LinkedHashMap<>();
+    for (Case c : filtered) {
+      if (c.getCaseHints() == null || c.getCaseHints().isEmpty()) {
+        counts.merge("無", 1L, Long::sum);
+      } else if (c.getCaseHints().size() > 1) {
+        counts.merge("複合建議", 1L, Long::sum);
+      } else {
+        String h = c.getCaseHints().get(0).getHint() != null ? c.getCaseHints().get(0).getHint().getHint() : "未知";
+        counts.merge(h, 1L, Long::sum);
+      }
+    }
+    return breakdown(counts);
+  }
+
+  /** topN：依計數遞減排序（同數值再依名稱穩定排序）取前 10 */
   private List<CountName> topN(Map<String, Long> counts) {
     return counts.entrySet().stream()
         .sorted(Map.Entry.<String, Long>comparingByValue().reversed()
             .thenComparing(Map.Entry.comparingByKey()))
-        .limit(5)
+        .limit(10)
         .map(e -> new CountName(e.getKey(), e.getValue()))
         .toList();
   }
@@ -598,8 +721,19 @@ public class CaseService {
   @Transactional(readOnly = true)
   public String exportCsv(CaseFilter filter) {
     CaseStatus status = filter.status() != null ? parseStatus(filter.status()) : null;
-    List<Case> cases = caseRepository.findAll(
-        CaseSpecifications.build(filter, status), Sort.by("receiveDate"));
+    if (filter.isEmpty()) {
+      List<Case> cases = caseRepository.findAll(Sort.by("receiveDate"));
+      return toCsv(cases);
+    }
+    List<com.d0w0b.phytotrack.models.CaseSearchView> viewList =
+        caseSearchViewRepository.findAll(CaseSpecifications.buildView(filter, status), Sort.by("receiveDate"));
+    List<Long> ids = viewList.stream().map(com.d0w0b.phytotrack.models.CaseSearchView::getCaseId).toList();
+    if (ids.isEmpty()) {
+      return toCsv(List.of());
+    }
+    List<Case> cases = caseRepository.findAllById(ids);
+    // 保持收件日期升序
+    cases.sort(java.util.Comparator.comparing(Case::getReceiveDate));
     return toCsv(cases);
   }
 
@@ -755,7 +889,7 @@ public class CaseService {
         .orElseThrow(() -> new ApiException("CASE_NOT_FOUND", HttpStatus.NOT_FOUND, "案件不存在"));
   }
 
-  /** 轉換為摘要回應 */
+  /** 轉換為摘要回應；pestCategoryCount>1 標註複合案件 */
   private CaseSummaryResponse toSummary(Case caseEntity) {
     boolean viewer = isViewer();
     String senderName = viewer ? null : caseEntity.getSender().getName();
@@ -766,6 +900,7 @@ public class CaseService {
         .map(District::getDistrictId).orElse(null);
     String senderDistrictName = districtNameOf(caseEntity);
     String senderCityName = cityNameOf(caseEntity);
+    int pestCategoryCount = caseEntity.getCasePestCategories() != null ? caseEntity.getCasePestCategories().size() : 0;
     return new CaseSummaryResponse(
         caseEntity.getCaseId(),
         caseEntity.getReceiveDate(),
@@ -780,7 +915,8 @@ public class CaseService {
         senderCityName,
         caseEntity.getService().getService(),
         caseEntity.getStatus().name(),
-        caseEntity.getCreatedAt());
+        caseEntity.getCreatedAt(),
+        pestCategoryCount);
   }
 
   /** 轉換為詳細回應（於交易內取用 Lazy 關聯） */
@@ -807,6 +943,10 @@ public class CaseService {
     String senderCityName = cityNameOf(caseEntity);
     Long senderTypeId = Optional.ofNullable(caseEntity.getSender().getSenderType())
         .map(SenderType::getSenderTypeId).orElse(null);
+    Long fieldDistrictId = Optional.ofNullable(caseEntity.getFieldDistrict())
+        .map(District::getDistrictId).orElse(null);
+    String fieldDistrictName = Optional.ofNullable(caseEntity.getFieldDistrict()).map(District::getDistrict).orElse(null);
+    String fieldCityName = Optional.ofNullable(caseEntity.getFieldDistrict()).map(District::getCity).map(City::getCity).orElse(null);
     boolean viewer = isViewer();
     String senderName = viewer ? null : caseEntity.getSender().getName();
     String senderDisplayName = viewer ? null : caseEntity.getSender().getDisplayName();
@@ -832,6 +972,9 @@ public class CaseService {
         senderDistrictName,
         senderCityName,
         senderTypeId,
+        fieldDistrictId,
+        fieldDistrictName,
+        fieldCityName,
         caseEntity.getCrop().getCrop(),
         caseEntity.getMethod().getMethod(),
         caseEntity.getService().getService(),
