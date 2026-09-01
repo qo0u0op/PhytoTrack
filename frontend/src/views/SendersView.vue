@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import Swal from 'sweetalert2'
 import { senderApi, refApi } from '../api'
 import { useAuthStore } from '../stores/auth'
@@ -22,6 +22,14 @@ interface SenderRow {
 const senders = ref<SenderRow[]>([])
 const loading = ref (true)
 const searchQ = ref ('')
+const filterSenderTypeId = ref<number | undefined>(undefined)
+const filterCityId = ref<number | undefined>(undefined)
+const filterDistrictId = ref<number | undefined>(undefined)
+// 實際套用的篩選條件（按「篩選」後才更新）
+const appliedQ = ref ('')
+const appliedSenderTypeId = ref<number | undefined>(undefined)
+const appliedCityId = ref<number | undefined>(undefined)
+const appliedDistrictId = ref<number | undefined>(undefined)
 const cities = ref<{ id: number; name: string; districts: { id: number; name: string }[] }[]>([])
 const senderTypes = ref<{ id: number; name: string }[]>([])
 
@@ -37,18 +45,76 @@ function displayLabel (s: SenderRow) {
 async function load () {
   loading.value = true
   try {
-    if (searchQ.value.trim ()) {
-      const { data } = await senderApi.search (searchQ.value.trim ())
-      senders.value = data
-    } else {
-      const { data } = await senderApi.list ()
-      senders.value = data
-    }
+    const { data } = await senderApi.list ()
+    senders.value = data as SenderRow[]
   } catch {
     // 由攔截器處理
   } finally {
     loading.value = false
   }
+}
+
+// 篩選：四欄 AND，前端本地過濾
+const filteredDistricts = computed (() => {
+  if (!filterCityId.value) return []
+  const city = cities.value.find ((c) => c.id === filterCityId.value)
+  return city ? city.districts : []
+})
+
+watch (filterCityId, () => {
+  filterDistrictId.value = undefined
+})
+
+const filteredSenders = computed (() => {
+  const q = appliedQ.value.trim ().toLowerCase ()
+  const senderTypeId = appliedSenderTypeId.value
+  const cityId = appliedCityId.value
+  const districtId = appliedDistrictId.value
+  let cityName: string | undefined
+  let districtName: string | undefined
+  if (cityId) {
+    const city = cities.value.find ((c) => c.id === cityId)
+    cityName = city?.name
+  }
+  if (districtId) {
+    const city = cities.value.find ((c) => c.id === cityId)
+    districtName = city?.districts.find ((d) => d.id === districtId)?.name
+    // 若僅選鄉鎮未選縣市，仍需找對應 district 名稱
+    if (!districtName) {
+      for (const c of cities.value) {
+        const d = c.districts.find ((x) => x.id === districtId)
+        if (d) { districtName = d.name; break }
+      }
+    }
+  }
+  return senders.value.filter ((s) => {
+    if (q) {
+      const hay = `${s.name ?? ''} ${s.displayName ?? ''} ${s.phone ?? ''}`.toLowerCase ()
+      if (!hay.includes (q)) return false
+    }
+    if (senderTypeId && s.senderTypeId !== senderTypeId) return false
+    if (cityName && s.cityName !== cityName) return false
+    if (districtName && s.districtName !== districtName) return false
+    return true
+  })
+})
+
+function applyFilters () {
+  appliedQ.value = searchQ.value
+  appliedSenderTypeId.value = filterSenderTypeId.value
+  appliedCityId.value = filterCityId.value
+  appliedDistrictId.value = filterDistrictId.value
+}
+
+function clearFilters () {
+  searchQ.value = ''
+  filterSenderTypeId.value = undefined
+  filterCityId.value = undefined
+  filterDistrictId.value = undefined
+  appliedQ.value = ''
+  appliedSenderTypeId.value = undefined
+  appliedCityId.value = undefined
+  appliedDistrictId.value = undefined
 }
 
 onMounted (async () => {
@@ -63,9 +129,7 @@ async function loadRefs () {
   } catch {}
 }
 
-async function handleSearch () {
-  await load ()
-}
+
 
 async function handleDelete (id: number, label: string) {
   const result = await Swal.fire ({
@@ -163,13 +227,34 @@ async function handleEdit (s: SenderRow) {
     <div class="card shadow-sm mb-3">
       <div class="card-body">
         <div class="row g-2 align-items-end">
-          <div class="col-md-6">
-            <label class="form-label small text-muted mb-1">搜尋 (姓名/電話/顯示名稱)</label>
-            <input v-model="searchQ" type="text" class="form-control form-control-sm" placeholder="輸入關鍵字" @keyup.enter="handleSearch" />
+          <div class="col-md-3">
+            <label class="form-label small text-muted mb-1">關鍵字 (姓名/電話/顯示名稱)</label>
+            <input v-model="searchQ" type="text" class="form-control form-control-sm" placeholder="輸入關鍵字" />
+          </div>
+          <div class="col-md-2">
+            <label class="form-label small text-muted mb-1">身分別</label>
+            <select v-model="filterSenderTypeId" class="form-select form-select-sm">
+              <option :value="undefined">全部</option>
+              <option v-for="t in senderTypes" :key="t.id" :value="t.id">{{ t.name }}</option>
+            </select>
+          </div>
+          <div class="col-md-2">
+            <label class="form-label small text-muted mb-1">縣市</label>
+            <select v-model="filterCityId" class="form-select form-select-sm">
+              <option :value="undefined">全部</option>
+              <option v-for="c in cities" :key="c.id" :value="c.id">{{ c.name }}</option>
+            </select>
+          </div>
+          <div class="col-md-2">
+            <label class="form-label small text-muted mb-1">鄉鎮市區</label>
+            <select v-model="filterDistrictId" class="form-select form-select-sm" :disabled="!filterCityId">
+              <option :value="undefined">全部</option>
+              <option v-for="d in filteredDistricts" :key="d.id" :value="d.id">{{ d.name }}</option>
+            </select>
           </div>
           <div class="col-md-3">
-            <button class="btn btn-sm btn-primary me-1" @click="handleSearch">搜尋</button>
-            <button class="btn btn-sm btn-outline-secondary" @click="searchQ = ''; load ()">清除</button>
+            <button class="btn btn-sm btn-primary me-1" @click="applyFilters">篩選</button>
+            <button class="btn btn-sm btn-outline-secondary" @click="clearFilters">清除</button>
           </div>
         </div>
       </div>
@@ -185,7 +270,7 @@ async function handleEdit (s: SenderRow) {
               <th>電話</th>
               <th>身分別</th>
               <th>縣市</th>
-              <th>鄉鎮</th>
+              <th>鄉鎮市區</th>
               <th>地址</th>
               <th class="text-end">操作</th>
             </tr>
@@ -194,10 +279,10 @@ async function handleEdit (s: SenderRow) {
             <tr v-if="loading">
               <td colspan="8" class="text-center text-muted py-4">載入中…</td>
             </tr>
-            <tr v-else-if="senders.length === 0">
+            <tr v-else-if="filteredSenders.length === 0">
               <td colspan="8" class="text-center text-muted py-4">尚無資料</td>
             </tr>
-            <tr v-for="s in senders" :key="s.senderId">
+            <tr v-for="s in filteredSenders" :key="s.senderId">
               <td>{{ s.senderId }}</td>
               <td>{{ displayLabel (s) }}</td>
               <td>{{ s.phone ?? '—' }}</td>
