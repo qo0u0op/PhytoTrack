@@ -15,85 +15,85 @@ import java.util.List;
 @Getter
 @Setter
 @Entity
-@Table(name = "cases")
-@EntityListeners(AuditingEntityListener.class)
+@Table (name = "cases")
+@EntityListeners (AuditingEntityListener.class)
 public class Case {
   @Id
-  @GeneratedValue(strategy = GenerationType.IDENTITY)
+  @GeneratedValue (strategy = GenerationType.IDENTITY)
   private Long caseId;
 
-  @Column(nullable = false)
+  @Column (nullable = false)
   private LocalDate receiveDate;
 
   private String cropScale;
 
   private String damageScale;
 
-  @Column(name = "case_description", columnDefinition = "TEXT")
+  @Column (name = "case_description", columnDefinition = "TEXT")
   private String caseDescription;
 
-  @Column(columnDefinition = "TEXT")
+  @Column (columnDefinition = "TEXT")
   private String hintDescription;
 
-  /** 案件狀態：以 ORDINAL 存於 INTEGER 欄位（0/1/2），序數即持久化值（見 CaseStatus） */
-  @Enumerated(EnumType.ORDINAL)
-  @Column(nullable = false)
+  /** 案件狀態：以 ORDINAL 存於 INTEGER 欄位 (0/1/2)，序數即持久化值 (見 CaseStatus) */
+  @Enumerated (EnumType.ORDINAL)
+  @Column (nullable = false)
   private CaseStatus status = CaseStatus.PENDING;
 
-  /** 建立時間：由 JPA 稽核（Auditing）自動填寫 */
+  /** 建立時間：由 JPA 稽核 (Auditing) 自動填寫 */
   @CreatedDate
-  @Column(nullable = false, updatable = false)
+  @Column (nullable = false, updatable = false)
   private LocalDateTime createdAt;
 
-  /** 最後修改時間：由 JPA 稽核（Auditing）自動填寫 */
+  /** 最後修改時間：由 JPA 稽核 (Auditing) 自動填寫 */
   @LastModifiedDate
-  @Column(nullable = false)
+  @Column (nullable = false)
   private LocalDateTime updatedAt;
 
-  /** 建立者：由稽核（Auditing）搭配 AuditorAware 自動填寫 */
+  /** 建立者：由稽核 (Auditing) 搭配 AuditorAware 自動填寫 */
   @CreatedBy
-  @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "created_by", nullable = false)
+  @ManyToOne (fetch = FetchType.LAZY)
+  @JoinColumn (name = "created_by", nullable = false)
   private User createdBy;
 
-  @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "sender_id", nullable = false)
+  @ManyToOne (fetch = FetchType.LAZY)
+  @JoinColumn (name = "sender_id", nullable = false)
   private Sender sender;
 
-  @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "method_id", nullable = false)
+  @ManyToOne (fetch = FetchType.LAZY)
+  @JoinColumn (name = "method_id", nullable = false)
   private Method method;
 
-  @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "crop_id", nullable = false)
+  @ManyToOne (fetch = FetchType.LAZY)
+  @JoinColumn (name = "crop_id", nullable = false)
   private Crop crop;
 
-  @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "service_id", nullable = false)
+  @ManyToOne (fetch = FetchType.LAZY)
+  @JoinColumn (name = "service_id", nullable = false)
   private Service service;
 
-  @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "deliver_id", nullable = false)
+  @ManyToOne (fetch = FetchType.LAZY)
+  @JoinColumn (name = "deliver_id", nullable = false)
   private Delivery delivery;
 
-  /** 田區位置（必填，與診斷卡片同交易原子寫入） */
-  @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "field_district_id", nullable = false)
+  /** 田區位置 (必填，與診斷卡片同交易原子寫入) */
+  @ManyToOne (fetch = FetchType.LAZY)
+  @JoinColumn (name = "field_district_id", nullable = false)
   private District fieldDistrict;
 
-  /** 案件的被害部位關聯（Cascade：隨案件一起新增/刪除） */
-  @OneToMany(mappedBy = "caseEntity", cascade = CascadeType.ALL, orphanRemoval = true)
+  /** 案件的被害部位關聯 (Cascade：隨案件一起新增/刪除) */
+  @OneToMany (mappedBy = "caseEntity", cascade = CascadeType.ALL, orphanRemoval = true)
   private List<CaseDamage> caseDamages = new ArrayList<>();
 
-  /** 案件的防治建議關聯（Cascade：隨案件一起新增/刪除） */
-  @OneToMany(mappedBy = "caseEntity", cascade = CascadeType.ALL, orphanRemoval = true)
+  /** 案件的防治建議關聯 (Cascade：隨案件一起新增/刪除) */
+  @OneToMany (mappedBy = "caseEntity", cascade = CascadeType.ALL, orphanRemoval = true)
   private List<CaseHint> caseHints = new ArrayList<>();
 
-  /** 案件的病蟲害小分類關聯（Cascade：隨案件一起新增/刪除） */
-  @OneToMany(mappedBy = "caseEntity", cascade = CascadeType.ALL, orphanRemoval = true)
+  /** 案件的病蟲害小分類關聯 (Cascade：隨案件一起新增/刪除) */
+  @OneToMany (mappedBy = "caseEntity", cascade = CascadeType.ALL, orphanRemoval = true)
   private List<CasePestCategory> casePestCategories = new ArrayList<>();
 
-  /** 案件的診斷簽名人關聯（Cascade：隨案件一起新增/刪除） */
-  @OneToMany(mappedBy = "caseEntity", cascade = CascadeType.ALL, orphanRemoval = true)
+  /** 案件的診斷簽名人關聯 (Cascade：隨案件一起新增/刪除) */
+  @OneToMany (mappedBy = "caseEntity", cascade = CascadeType.ALL, orphanRemoval = true)
   private List<CaseIdentifier> caseIdentifiers = new ArrayList<>();
 }

@@ -10,17 +10,17 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * 送件人資料存取層（Data Access Layer）
+ * 送件人資料存取層 (Data Access Layer)
  */
 public interface SenderRepository extends JpaRepository<Sender, Long> {
 
   @Deprecated
-  java.util.Optional<Sender> findByNameAndPhone(String name, String phone);
+  java.util.Optional<Sender> findByNameAndPhone (String name, String phone);
 
-  boolean existsBySenderTypeSenderTypeId(Long senderTypeId);
+  boolean existsBySenderTypeSenderTypeId (Long senderTypeId);
 
-  @Query("SELECT s FROM Sender s WHERE LOWER(s.name) LIKE LOWER(CONCAT('%', :q, '%')) "
-      + "OR LOWER(s.phone) LIKE LOWER(CONCAT('%', :q, '%')) "
-      + "OR LOWER(s.displayName) LIKE LOWER(CONCAT('%', :q, '%'))")
-  List<Sender> search(@Param("q") String q);
+  @Query ("SELECT s FROM Sender s WHERE LOWER (s.name) LIKE LOWER (CONCAT ('%', :q, '%')) "
+      + "OR LOWER (s.phone) LIKE LOWER (CONCAT ('%', :q, '%')) "
+      + "OR LOWER (s.displayName) LIKE LOWER (CONCAT ('%', :q, '%'))")
+  List<Sender> search (@Param ("q") String q);
 }
