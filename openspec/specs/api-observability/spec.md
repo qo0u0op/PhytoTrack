@@ -2,7 +2,7 @@
 
 ## Purpose
 
-統一錯誤回應契約並提供伺服器端可追蹤性（requestId 串接日誌），滿足除錯與監控需求。
+統一錯誤回應契約並提供伺服器端可追蹤性 (requestId 串接日誌)，滿足除錯與監控需求。
 
 ## Requirements
 
@@ -16,7 +16,7 @@
 
 ### Requirement: requestId 寫入伺服器日誌
 
-系統 SHALL 為每個錯誤回應產生 requestId，並將相同 requestId 寫入伺服器日誌（含業務錯誤與系統錯誤）。
+系統 SHALL 為每個錯誤回應產生 requestId，並將相同 requestId 寫入伺服器日誌 (含業務錯誤與系統錯誤)。
 
 #### Scenario: 4xx 業務錯誤
 - **WHEN** 服務層拋出業務例外

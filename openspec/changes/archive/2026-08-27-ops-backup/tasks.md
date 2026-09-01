@@ -4,8 +4,8 @@
 
 ## 2. 文件
 
-- [x] 2.1 更新 `docs/DEPLOY.md`：新增「備份與還原」章節（用法、頻率建議、還原步驟、backups 已 gitignore），驗證 `docs/DEPLOY.md` 含備份說明
-- [x] 2.2 確認 `.gitignore` 已含 `backups/` 與 `*.db`（若無則補），驗證 `git status` 不追蹤備份檔
+- [x] 2.1 更新 `docs/DEPLOY.md`：新增「備份與還原」章節 (用法、頻率建議、還原步驟、backups 已 gitignore)，驗證 `docs/DEPLOY.md` 含備份說明
+- [x] 2.2 確認 `.gitignore` 已含 `backups/` 與 `*.db` (若無則補)，驗證 `git status` 不追蹤備份檔
 - [x] 2.3 可選：`README.md` 補一行備份快速參考，驗證文件可見
 
 ## 3. 驗證與文件收尾
