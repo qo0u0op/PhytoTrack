@@ -112,17 +112,17 @@ async function resetPassword (u: UserRow) {
   <div class="container py-4">
     <h4 class="mb-4">使用者管理</h4>
     <div class="card shadow-sm">
-      <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0">
+      <div class="table-responsive position-relative" style="overflow-x:auto;-webkit-overflow-scrolling:touch">
+        <table class="table table-hover align-middle mb-0 text-nowrap" style="min-width:600px;table-layout:fixed">
           <thead class="table-light">
             <tr>
-              <th>ID</th>
-              <th>帳號</th>
-              <th>顯示名稱</th>
-              <th>電子信箱</th>
-              <th>角色</th>
-              <th>狀態</th>
-              <th class="text-end">操作</th>
+              <th style="width:50px;min-width:50px">ID</th>
+              <th style="width:90px;min-width:90px">帳號</th>
+              <th style="width:90px;min-width:90px">顯示名稱</th>
+              <th style="width:120px;min-width:120px">電子信箱</th>
+              <th style="width:70px;min-width:70px">角色</th>
+              <th style="width:70px;min-width:70px">狀態</th>
+              <th class="text-end" style="width:110px;min-width:110px">操作</th>
             </tr>
           </thead>
           <tbody>
@@ -134,9 +134,9 @@ async function resetPassword (u: UserRow) {
             </tr>
             <tr v-for="u in users" :key="u.userId">
               <td>{{ u.userId }}</td>
-              <td>{{ u.username }}</td>
-              <td>{{ u.displayName }}</td>
-              <td>{{ u.email ?? '—' }}</td>
+              <td class="text-truncate" style="max-width:90px" :title="u.username">{{ u.username }}</td>
+              <td class="text-truncate" style="max-width:90px" :title="u.displayName">{{ u.displayName }}</td>
+              <td class="text-truncate" style="max-width:120px" :title="u.email ?? '—'">{{ u.email ?? '—' }}</td>
               <td>
                 <select
                   :value="u.role"

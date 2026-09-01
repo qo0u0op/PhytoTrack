@@ -54,6 +54,13 @@ function onPageInputConfirm () {
   goToPage (num - 1)
 }
 watch ([filterQ, filterPestTypeId], () => { page.value = 0; pageInput.value = 1 })
+const nameColWidth = computed (() => {
+  const longest = '土壤酸鹼度或電導度問題'
+  const maxLen = Math.max (longest.length, ...pestCategories.value.map ((p) => p.name.length), 10)
+  // 12px per char + 20 padding, clamp 150-250
+  return Math.min (250, Math.max (150, maxLen * 12 + 20))
+})
+
 const paged = computed (() => filtered.value.slice (page.value * size.value, page.value * size.value + size.value))
 
 async function handleCreate () {
@@ -146,12 +153,12 @@ async function handleDelete (item: any) {
 
     <div v-if="loading" class="text-center text-muted py-4">載入中…</div>
     <div v-else class="card shadow-sm">
-      <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0">
-          <thead class="table-light"><tr><th>ID</th><th>代碼</th><th>名稱</th><th>類型</th><th>排序</th><th class="text-end">操作</th></tr></thead>
+      <div class="table-responsive" style="overflow-x:auto;-webkit-overflow-scrolling:touch">
+        <table class="table table-hover align-middle mb-0 text-nowrap" style="min-width:750px;table-layout:fixed">
+          <thead class="table-light"><tr><th style="width:60px;min-width:60px">ID</th><th style="width:90px;min-width:90px">代碼</th><th :style="{ width: nameColWidth + 'px', minWidth: nameColWidth + 'px' }">名稱</th><th style="width:100px;min-width:100px">類型</th><th style="width:70px;min-width:70px">排序</th><th class="text-end" style="width:130px;min-width:130px">操作</th></tr></thead>
           <tbody>
             <tr v-if="filtered.length === 0"><td colspan="6" class="text-center text-muted py-4">尚無資料</td></tr>
-            <tr v-for="item in paged" :key="item.id"><td>{{ item.id }}</td><td>{{ item.code }}</td><td>{{ item.name }}</td><td>{{ pestTypes.find ((p) => p.id === item.pestTypeId)?.name ?? '—' }}</td><td>{{ item.sortOrder }}</td><td class="text-end"><button class="btn btn-sm btn-outline-primary me-1" @click="handleEdit (item)">編輯</button><button v-if="auth.isAdmin" class="btn btn-sm btn-outline-danger" @click="handleDelete (item)">刪除</button></td></tr>
+            <tr v-for="item in paged" :key="item.id"><td>{{ item.id }}</td><td class="text-truncate" style="max-width:90px" :title="item.code">{{ item.code }}</td><td class="text-truncate" :style="{ maxWidth: nameColWidth + 'px' }" :title="item.name">{{ item.name }}</td><td>{{ pestTypes.find ((p) => p.id === item.pestTypeId)?.name ?? '—' }}</td><td>{{ item.sortOrder }}</td><td class="text-end"><button class="btn btn-sm btn-outline-primary me-1" @click="handleEdit (item)">編輯</button><button v-if="auth.isAdmin" class="btn btn-sm btn-outline-danger" @click="handleDelete (item)">刪除</button></td></tr>
           </tbody>
         </table>
       </div>

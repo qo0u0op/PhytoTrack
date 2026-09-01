@@ -471,17 +471,17 @@ const pagedList = computed (() => {
 
     <div v-if="loading" class="text-center text-muted py-4">載入中…</div>
     <div v-else class="card shadow-sm">
-      <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0">
+      <div class="table-responsive" style="overflow-x:auto;-webkit-overflow-scrolling:touch">
+        <table class="table table-hover align-middle mb-0 text-nowrap" style="min-width:700px">
           <thead class="table-light">
             <tr>
-              <th>ID</th>
-              <th>名稱</th>
-              <th v-if="currentTab === 'crops'">分類</th>
-              <th v-if="currentTab === 'pestCategories'">代碼</th>
-              <th v-if="currentTab === 'pestCategories'">類型</th>
-              <th v-if="currentTab === 'pestCategories'">排序</th>
-              <th class="text-end">操作</th>
+              <th style="width:60px;min-width:60px">ID</th>
+              <th style="width:160px;min-width:160px">名稱</th>
+              <th v-if="currentTab === 'crops'" style="width:120px;min-width:120px">分類</th>
+              <th v-if="currentTab === 'pestCategories'" style="width:90px;min-width:90px">代碼</th>
+              <th v-if="currentTab === 'pestCategories'" style="width:100px;min-width:100px">類型</th>
+              <th v-if="currentTab === 'pestCategories'" style="width:70px;min-width:70px">排序</th>
+              <th class="text-end" style="width:130px;min-width:130px">操作</th>
             </tr>
           </thead>
           <tbody>
@@ -490,10 +490,10 @@ const pagedList = computed (() => {
             </tr>
             <tr v-for="item in pagedList" :key="item.id">
               <td>{{ item.id }}</td>
-              <td>{{ item.name }}</td>
-              <td v-if="currentTab === 'crops'">{{ cropCategories.find ((c) => c.id === (item as any).cropCategoryId)?.name ?? '—' }}</td>
-              <td v-if="currentTab === 'pestCategories'">{{ (item as any).code }}</td>
-              <td v-if="currentTab === 'pestCategories'">{{ pestTypes.find ((p) => p.id === (item as any).pestTypeId)?.name ?? '—' }}</td>
+              <td class="text-truncate" style="max-width:160px" :title="item.name">{{ item.name }}</td>
+              <td v-if="currentTab === 'crops'" class="text-truncate" style="max-width:120px" :title="cropCategories.find ((c) => c.id === (item as any).cropCategoryId)?.name ?? '—'">{{ cropCategories.find ((c) => c.id === (item as any).cropCategoryId)?.name ?? '—' }}</td>
+              <td v-if="currentTab === 'pestCategories'" class="text-truncate" style="max-width:90px" :title="(item as any).code">{{ (item as any).code }}</td>
+              <td v-if="currentTab === 'pestCategories'" class="text-truncate" style="max-width:100px" :title="pestTypes.find ((p) => p.id === (item as any).pestTypeId)?.name ?? '—'">{{ pestTypes.find ((p) => p.id === (item as any).pestTypeId)?.name ?? '—' }}</td>
               <td v-if="currentTab === 'pestCategories'">{{ (item as any).sortOrder }}</td>
               <td class="text-end">
                 <button class="btn btn-sm btn-outline-primary me-1" @click="handleEdit (item)">編輯</button>

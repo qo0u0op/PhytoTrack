@@ -543,18 +543,18 @@ async function confirmDelete (id: number) {
     </div>
 
     <div class="card shadow-sm">
-      <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0">
+      <div class="table-responsive position-relative" style="overflow-x:auto;-webkit-overflow-scrolling:touch">
+        <table class="table table-hover align-middle mb-0 text-nowrap" style="min-width:1000px;table-layout:fixed">
           <thead class="table-light">
             <tr>
-              <th>編號</th>
-              <th>收件日期</th>
-              <th>作物</th>
-              <th>送件人</th>
-              <th>送件方式</th>
-              <th>害物</th>
-              <th>狀態</th>
-              <th class="text-end">操作</th>
+              <th style="width:70px;min-width:70px">編號</th>
+              <th style="width:110px;min-width:110px">收件日期</th>
+              <th style="width:100px;min-width:100px">送件方式</th>
+              <th style="width:110px;min-width:110px">作物</th>
+              <th style="width:140px;min-width:140px">送件人</th>
+              <th style="width:160px;min-width:160px">害物</th>
+              <th style="width:90px;min-width:90px">狀態</th>
+              <th class="text-end" style="width:130px;min-width:130px">操作</th>
             </tr>
           </thead>
           <tbody>
@@ -565,16 +565,16 @@ async function confirmDelete (id: number) {
               <td colspan="8" class="text-center text-muted py-4">尚無案件</td>
             </tr>
             <tr v-for="c in cases" :key="c.caseId">
-              <td>{{ c.caseId }}</td>
-              <td>{{ c.receiveDate }}</td>
-              <td>{{ c.cropName }}</td>
-              <td>{{ senderLabel (c) }}</td>
-              <td>{{ c.deliveryName ?? '—' }}</td>
-              <td><span>{{ pestLabel (c) }}</span> <span v-if="isComposite (c)" class="badge bg-warning text-dark ms-1">複合因素</span></td>
-              <td>
+              <td style="width:70px">{{ c.caseId }}</td>
+              <td style="width:110px">{{ c.receiveDate }}</td>
+              <td style="width:100px" class="text-truncate" :title="c.deliveryName ?? '—'">{{ c.deliveryName ?? '—' }}</td>
+              <td style="width:110px" class="text-truncate" :title="c.cropName">{{ c.cropName }}</td>
+              <td style="width:140px" class="text-truncate" :title="senderLabel (c)">{{ senderLabel (c) }}</td>
+              <td style="width:160px" class="text-truncate" :title="pestLabel (c)"><span>{{ pestLabel (c) }}</span> <span v-if="isComposite (c)" class="badge bg-warning text-dark ms-1">複合因素</span></td>
+              <td style="width:90px">
                 <span class="badge" :class="statusBadgeClass (c.status)">{{ statusLabel (c.status) }}</span>
               </td>
-              <td class="text-end">
+              <td class="text-end" style="width:130px;min-width:130px;position:sticky;right:0;background:var(--bs-body-bg, white);z-index:1;box-shadow:-6px 0 12px rgba(0,0,0,0.06)">
                 <button class="btn btn-sm btn-outline-success me-1" @click="viewDetail (c.caseId)">
                   預覽
                 </button>
