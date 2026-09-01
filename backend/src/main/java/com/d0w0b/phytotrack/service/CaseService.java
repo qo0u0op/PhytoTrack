@@ -634,15 +634,12 @@ public class CaseService {
     List<CountName> fieldCityBreakdown = topN (filtered.stream ()
         .collect (Collectors.groupingBy (c -> Optional.ofNullable (c.getFieldDistrict ()).map (District::getCity).map (City::getCity).orElse ("未知"),
             Collectors.counting ())));
-    List<CountName> fieldDistrictBreakdown = topN (filtered.stream ()
-        .collect (Collectors.groupingBy (c -> Optional.ofNullable (c.getFieldDistrict ()).map (District::getDistrict).orElse ("未知"),
-            Collectors.counting ())));
 
     return new CaseStatisticsResponse (total, monthNew, pending, distinctSenders,
         topCrops, topPestCategories, statusRatio, monthlyTrend, compositeCases,
         cropCategoryBreakdown, pestTypeBreakdown, deliveryBreakdown, methodBreakdown, hintBreakdown,
         compositeFactorCases, compositeHintCases, availableYears, normalizedPeriod, year, month, periodTotal,
-        fieldCityBreakdown, fieldDistrictBreakdown);
+        fieldCityBreakdown);
   }
 
   private List<Case> filterByPeriod (List<Case> all, String period, Integer year, Integer month) {

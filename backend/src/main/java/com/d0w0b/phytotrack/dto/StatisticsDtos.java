@@ -10,7 +10,7 @@ public final class StatisticsDtos {
   private StatisticsDtos () {
   }
 
-  /** 統計總覽回應：總數、本月新增、待處理、topN、狀態比例與近 N 月趨勢 + 複合案件 + 期別 breakdown + 田區位置 */
+  /** 統計總覽回應：總數、本月新增、待處理、topN、狀態比例與近 N 月趨勢 + 複合案件 + 期別 breakdown + 田區位置縣市 */
   public record CaseStatisticsResponse (long totalCases,
       long monthNewCases,
       long pendingCases,
@@ -32,15 +32,14 @@ public final class StatisticsDtos {
       Integer periodYear,
       Integer periodMonth,
       long periodTotal,
-      List<CountName> fieldCityBreakdown,
-      List<CountName> fieldDistrictBreakdown) {
+      List<CountName> fieldCityBreakdown) {
 
     // 相容 8 參數建構 (無 breakdown，ControllerTest 仍使用)
     public CaseStatisticsResponse (long totalCases, long monthNewCases, long pendingCases, long distinctSenders,
         List<CountName> topCrops, List<CountName> topPestCategories,
         List<StatusCount> statusRatio, List<MonthCount> monthlyTrend) {
       this (totalCases, monthNewCases, pendingCases, distinctSenders, topCrops, topPestCategories, statusRatio, monthlyTrend, 0L,
-          List.of (), List.of (), List.of (), List.of (), List.of (), 0L, 0L, List.of (), "HISTORICAL", null, null, totalCases, List.of (), List.of ());
+          List.of (), List.of (), List.of (), List.of (), List.of (), 0L, 0L, List.of (), "HISTORICAL", null, null, totalCases, List.of ());
     }
   }
 
