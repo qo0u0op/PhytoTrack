@@ -76,6 +76,11 @@ public class Case {
   @JoinColumn(name = "deliver_id", nullable = false)
   private Delivery delivery;
 
+  /** 田區位置（必填，與診斷卡片同交易原子寫入） */
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "field_district_id", nullable = false)
+  private District fieldDistrict;
+
   /** 案件的被害部位關聯（Cascade：隨案件一起新增/刪除） */
   @OneToMany(mappedBy = "caseEntity", cascade = CascadeType.ALL, orphanRemoval = true)
   private List<CaseDamage> caseDamages = new ArrayList<>();

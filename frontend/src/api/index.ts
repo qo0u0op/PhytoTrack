@@ -18,31 +18,49 @@ export const authApi = {
 
 /** 案件（Case）API */
 export const caseApi = {
-  /** 分頁查詢案件列表；篩選參數皆可選，同時存在時為 AND 組合 */
+  /** 分頁查詢案件列表；篩選參數皆可選，同時存在時為 AND 組合（經 v_case_search 視圖） */
   list: (params: {
     page?: number
     size?: number
     cropId?: number
     serviceId?: number
     senderName?: string
+    senderQuery?: string
     receiveDateFrom?: string
     receiveDateTo?: string
     status?: 'PENDING' | 'RESOLVED' | 'CLOSED'
+    cityId?: number
+    districtId?: number
+    cropCategoryId?: number
+    pestTypeId?: number
+    pestCategoryId?: number
+    hintId?: number
+    deliveryId?: number
+    damageId?: number
   }) => http.get('/cases', { params }),
   detail: (id: number) => http.get(`/cases/${id}`),
   create: (data: CaseCreateRequest) => http.post('/cases', data),
   update: (id: number, data: CaseUpdateRequest) => http.put(`/cases/${id}`, data),
   remove: (id: number) => http.delete(`/cases/${id}`),
-  /** 案件統計總覽（登入即可）：總數、本月新增、待處理、topN、狀態比例、近 6 月趨勢 */
-  statistics: () => http.get('/cases/statistics'),
+  /** 案件統計總覽（登入即可）：總數、本月新增、待處理、topN、狀態比例、近 6 月趨勢，支援期別 */
+  statistics: (params?: { period?: string; year?: number; month?: number }) => http.get('/cases/statistics', { params }),
   /** 匯出案件 CSV（登入即可）：以 blob 下載，含 UTF-8 BOM；篩選參數同列表（可省略＝全量） */
   exportCsv: (params?: {
     cropId?: number
     serviceId?: number
     senderName?: string
+    senderQuery?: string
     receiveDateFrom?: string
     receiveDateTo?: string
     status?: 'PENDING' | 'RESOLVED' | 'CLOSED'
+    cityId?: number
+    districtId?: number
+    cropCategoryId?: number
+    pestTypeId?: number
+    pestCategoryId?: number
+    hintId?: number
+    deliveryId?: number
+    damageId?: number
   }) => http.get('/cases/export', { params, responseType: 'blob' }),
 }
 

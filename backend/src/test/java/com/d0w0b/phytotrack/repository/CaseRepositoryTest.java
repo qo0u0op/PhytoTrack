@@ -131,6 +131,7 @@ class CaseRepositoryTest {
     caseEntity.setCrop(crop);
     caseEntity.setService(service);
     caseEntity.setDelivery(delivery);
+    caseEntity.setFieldDistrict(district);
     caseEntity.setCreatedBy(user);
     caseEntity.setCreatedAt(LocalDateTime.of(2026, 8, 18, 10, 30));
     caseEntity.setUpdatedAt(LocalDateTime.of(2026, 8, 18, 10, 30));
@@ -313,11 +314,14 @@ class CaseRepositoryTest {
     Case caseEntity = new Case();
     caseEntity.setReceiveDate(receiveDate);
     caseEntity.setStatus(status);
-    caseEntity.setSender(createSender(senderName));
+    Sender sender = createSender(senderName);
+    caseEntity.setSender(sender);
     caseEntity.setMethod(methodRepository.findAll().stream().findFirst().orElseThrow());
     caseEntity.setCrop(crop);
     caseEntity.setService(service);
     caseEntity.setDelivery(deliveryRepository.findAll().stream().findFirst().orElseThrow());
+    // 田區位置與送件人同縣市（預設同鄉鎮，符合 80% 規則）
+    caseEntity.setFieldDistrict(sender.getDistrict());
     caseEntity.setCreatedBy(user);
     caseEntity.setCreatedAt(LocalDateTime.of(receiveDate, java.time.LocalTime.of(10, 30)));
     caseEntity.setUpdatedAt(LocalDateTime.of(receiveDate, java.time.LocalTime.of(10, 30)));

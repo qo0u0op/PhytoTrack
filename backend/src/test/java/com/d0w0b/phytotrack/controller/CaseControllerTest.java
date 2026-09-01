@@ -112,6 +112,7 @@ class CaseControllerTest {
         "cropId": 1,
         "serviceId": 1,
         "deliverId": 1,
+        "fieldDistrictId": 1,
         "damageIds": [],
         "hintIds": [],
         "pestCategoryIds": [],
@@ -125,6 +126,7 @@ class CaseControllerTest {
         "葉片出現斑點", null, "PENDING",
         LocalDateTime.now(), LocalDateTime.now(),
         1L, "張三", "阿明", "0912345678", "測試路 1 號", 1L, "霧峰區", "臺中市", 1L,
+        1L, "霧峰區", "臺中市",
         "水稻", "露天", "診斷", "送件",
         "管理員", List.of(), List.of(), List.of(), List.of());
   }
@@ -185,7 +187,7 @@ class CaseControllerTest {
   @Test
   @WithMockUser(roles = "VIEWER")
   void statistics_shouldReturnAggregates() throws Exception {
-    when(caseService.statistics()).thenReturn(new CaseStatisticsResponse(
+    when(caseService.statistics(any(), any(), any())).thenReturn(new CaseStatisticsResponse(
         3L, 2L, 1L, 2L,
         List.of(new CountName("柑橘", 2L), new CountName("水稻", 1L)),
         List.of(new CountName("真菌", 3L)),

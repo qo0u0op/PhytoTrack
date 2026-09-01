@@ -72,6 +72,7 @@ class PhytoTrackIntegrationTest {
     caseBody.put("senderPhone", "0912345678");
     caseBody.put("senderAddress", "測試路 1 號");
     caseBody.put("senderDistrictId", districtId);
+    caseBody.put("fieldDistrictId", districtId);
     caseBody.put("senderTypeId", senderTypeId);
     caseBody.put("methodId", methodId);
     caseBody.put("cropId", cropId);
@@ -224,6 +225,7 @@ class PhytoTrackIntegrationTest {
     caseBody.put("senderPhone", "0912000001");
     caseBody.put("senderAddress", "測試路 1 號");
     caseBody.put("senderDistrictId", districtId);
+    caseBody.put("fieldDistrictId", districtId);
     caseBody.put("senderTypeId", senderTypeId);
     caseBody.put("methodId", methodId);
     caseBody.put("cropId", cropId);
@@ -420,6 +422,7 @@ class PhytoTrackIntegrationTest {
     caseBody.put("senderPhone", "0912333" + (System.nanoTime() % 10000));
     caseBody.put("senderAddress", "測試路 1 號");
     caseBody.put("senderDistrictId", districtId);
+    caseBody.put("fieldDistrictId", districtId);
     caseBody.put("senderTypeId", senderTypeId);
     caseBody.put("methodId", methodId);
     caseBody.put("cropId", cropId);
@@ -501,6 +504,7 @@ class PhytoTrackIntegrationTest {
     caseBody.put("senderPhone", uniquePhone);
     caseBody.put("senderAddress", "測試路 1 號");
     caseBody.put("senderDistrictId", districtId);
+    caseBody.put("fieldDistrictId", districtId);
     caseBody.put("senderTypeId", senderTypeId);
     caseBody.put("methodId", methodId);
     caseBody.put("cropId", cropId);

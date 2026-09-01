@@ -79,6 +79,7 @@ import java.util.Optional;
 class CaseServiceTest {
 
   @Mock private CaseRepository caseRepository;
+  @Mock private com.d0w0b.phytotrack.repository.CaseSearchViewRepository caseSearchViewRepository;
   @Mock private SenderRepository senderRepository;
   @Mock private SenderTypeRepository senderTypeRepository;
   @Mock private DistrictRepository districtRepository;
@@ -95,7 +96,7 @@ class CaseServiceTest {
 
   @BeforeEach
   void setUp() {
-    caseService = new CaseService(caseRepository, senderRepository, senderTypeRepository,
+    caseService = new CaseService(caseRepository, caseSearchViewRepository, senderRepository, senderTypeRepository,
         districtRepository, methodRepository, cropRepository, serviceRepository,
         deliveryRepository, damageRepository, hintRepository, pestCategoryRepository,
         identifierRepository);
@@ -126,7 +127,7 @@ class CaseServiceTest {
     return new CaseCreateRequest(
         LocalDate.of(2026, 8, 18), "2分地", "約3成", "葉片褐斑", "未用藥",
         null, "王小明", null, "0912345678", "臺中市霧峰區中正路1號", 1L, 1L,
-        1L, 36L, 1L, 1L,
+        1L, 36L, 1L, 1L, 1L,
         List.of(3L), List.of(1L), List.of(1L), null, List.of(1L));
   }
 
@@ -171,6 +172,7 @@ class CaseServiceTest {
     Sender existing = sender();
     existing.setSenderId(99L);
     when(senderRepository.findById(99L)).thenReturn(Optional.of(existing));
+    when(districtRepository.findById(1L)).thenReturn(Optional.of(district(1L)));
     when(methodRepository.findById(1L)).thenReturn(Optional.of(method(1L)));
     when(cropRepository.findById(36L)).thenReturn(Optional.of(crop(36L)));
     when(serviceRepository.findById(1L)).thenReturn(Optional.of(service(1L)));
@@ -188,7 +190,7 @@ class CaseServiceTest {
     CaseCreateRequest reqWithSenderId = new CaseCreateRequest(
         LocalDate.of(2026, 8, 18), "2分地", "約3成", "葉片褐斑", "未用藥",
         99L, "王小明", null, "0912345678", "臺中市霧峰區中正路1號", 1L, 1L,
-        1L, 36L, 1L, 1L, List.of(3L), List.of(1L), List.of(1L), null, List.of(1L));
+        1L, 36L, 1L, 1L, 1L, List.of(3L), List.of(1L), List.of(1L), null, List.of(1L));
     caseService.create(reqWithSenderId);
 
     // 使用 senderId 沿用既有送件人，不應新建
@@ -200,13 +202,14 @@ class CaseServiceTest {
     Sender existing = sender();
     existing.setSenderId(99L);
     when(senderRepository.findById(99L)).thenReturn(Optional.of(existing));
+    when(districtRepository.findById(1L)).thenReturn(Optional.of(district(1L)));
     when(methodRepository.findById(1L)).thenReturn(Optional.of(method(1L)));
     when(cropRepository.findById(36L)).thenReturn(Optional.empty());
 
     CaseCreateRequest reqWithSenderId2 = new CaseCreateRequest(
         LocalDate.of(2026, 8, 18), "2分地", "約3成", "葉片褐斑", "未用藥",
         99L, "王小明", null, "0912345678", "臺中市霧峰區中正路1號", 1L, 1L,
-        1L, 36L, 1L, 1L, List.of(3L), List.of(1L), List.of(1L), null, List.of(1L));
+        1L, 36L, 1L, 1L, 1L, List.of(3L), List.of(1L), List.of(1L), null, List.of(1L));
     assertThatThrownBy(() -> caseService.create(reqWithSenderId2))
         .isInstanceOf(ApiException.class)
         .satisfies(e -> {
@@ -235,14 +238,17 @@ class CaseServiceTest {
     Case c = caseWithRefs();
     c.setCaseId(1L);
     PageRequest pageable = PageRequest.of(0, 10);
-    when(caseRepository.findAll(any(Specification.class), eq(pageable)))
-        .thenReturn(new PageImpl<>(List.of(c)));
+    com.d0w0b.phytotrack.models.CaseSearchView view = org.mockito.Mockito.mock(com.d0w0b.phytotrack.models.CaseSearchView.class);
+    when(view.getCaseId()).thenReturn(1L);
+    when(caseSearchViewRepository.findAll(any(Specification.class), eq(pageable)))
+        .thenReturn(new PageImpl<>(List.of(view)));
+    when(caseRepository.findAllById(List.of(1L))).thenReturn(List.of(c));
 
     CaseFilter filter = new CaseFilter(36L, 1L, "王", null, null, "RESOLVED");
     Page<CaseSummaryResponse> page = caseService.list(filter, pageable);
 
-    // 非空條件應走 Specification 查詢
-    verify(caseRepository).findAll(any(Specification.class), eq(pageable));
+    // 非空條件應走視圖 Specification 查詢
+    verify(caseSearchViewRepository).findAll(any(Specification.class), eq(pageable));
     assertThat(page.getContent()).hasSize(1);
   }
 
@@ -259,6 +265,7 @@ class CaseServiceTest {
         });
     // 非法狀態不應觸發查詢
     verify(caseRepository, never()).findAll(any(Specification.class), any(Pageable.class));
+    verify(caseSearchViewRepository, never()).findAll(any(Specification.class), any(Pageable.class));
   }
 
   @Test
@@ -651,7 +658,7 @@ class CaseServiceTest {
     c2.setCaseId(2L);
     c2.setCrop(crop(37L));
     c2.getCrop().setCrop("水稻");
-    when(caseRepository.findAll(any(Specification.class), any(Sort.class)))
+    when(caseRepository.findAll(any(Sort.class)))
         .thenReturn(List.of(c1, c2));
 
     String csv = caseService.exportCsv(new CaseFilter(null, null, null, null, null, null));
@@ -668,13 +675,13 @@ class CaseServiceTest {
 
   @Test
   void exportCsv_shouldPassFilterAndSortAscending() {
-    when(caseRepository.findAll(any(Specification.class), any(Sort.class)))
+    when(caseSearchViewRepository.findAll(any(Specification.class), any(Sort.class)))
         .thenReturn(List.of());
 
     caseService.exportCsv(new CaseFilter(36L, null, "王", null, null, "PENDING"));
 
     ArgumentCaptor<Sort> sortCaptor = ArgumentCaptor.forClass(Sort.class);
-    verify(caseRepository).findAll(any(Specification.class), sortCaptor.capture());
+    verify(caseSearchViewRepository).findAll(any(Specification.class), sortCaptor.capture());
     assertThat(sortCaptor.getValue().getOrderFor("receiveDate")).isNotNull();
     assertThat(sortCaptor.getValue().getOrderFor("receiveDate").isAscending()).isTrue();
   }
@@ -788,6 +795,7 @@ class CaseServiceTest {
     c.setCrop(crop(36L));
     c.setService(service(1L));
     c.setDelivery(delivery(1L));
+    c.setFieldDistrict(district(1L));
     c.setCreatedBy(user());
     return c;
   }

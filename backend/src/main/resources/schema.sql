@@ -787,9 +787,11 @@ CREATE TABLE IF NOT EXISTS cases (
   crop_id          INTEGER NOT NULL REFERENCES crops(crop_id),
   service_id       INTEGER NOT NULL REFERENCES services(service_id),
   deliver_id       INTEGER NOT NULL REFERENCES deliveries(deliver_id),
+  field_district_id INTEGER NOT NULL REFERENCES districts(district_id),
   created_by       INTEGER NOT NULL REFERENCES users(user_id)
 );
 CREATE INDEX IF NOT EXISTS idx_cases_sender_id      ON cases(sender_id);
+CREATE INDEX IF NOT EXISTS idx_cases_field_district_id ON cases(field_district_id);
 CREATE INDEX IF NOT EXISTS idx_cases_status         ON cases(status);
 CREATE INDEX IF NOT EXISTS idx_cases_receive_date   ON cases(receive_date);
 
@@ -840,3 +842,42 @@ CREATE TABLE IF NOT EXISTS case_identifiers (
 );
 CREATE INDEX IF NOT EXISTS idx_case_identifiers_case_id       ON case_identifiers(case_id);
 CREATE INDEX IF NOT EXISTS idx_case_identifiers_identifier_id ON case_identifiers(identifier_id);
+
+-- ============================================================
+-- v_case_search（案件篩選視圖，供列表篩選、匯出與 dashboard 共用）
+-- 以 LEFT OUTER JOIN 涵蓋可空關聯，多對多以 GROUP_CONCAT 頓號聚合供顯示，
+-- 篩選仍以 EXISTS 子查詢精確匹配（見 CaseSpecifications.buildView）
+-- ============================================================
+DROP VIEW IF EXISTS v_case_search;
+CREATE VIEW v_case_search AS
+SELECT
+  c.case_id,
+  c.receive_date,
+  c.status,
+  c.created_at,
+  s.name AS sender_name,
+  s.display_name AS sender_display_name,
+  s.phone AS sender_phone,
+  fd.district_id AS district_id,
+  fd.city_id AS city_id,
+  cr.crop_id,
+  cc.crop_category_id,
+  c.service_id,
+  c.deliver_id,
+  c.method_id,
+  CAST(COUNT(DISTINCT cpc.cpc_id) AS INTEGER) AS pest_category_count,
+  CAST(REPLACE(GROUP_CONCAT(DISTINCT pc.pest_category), ',', '、') AS TEXT) AS pest_category_names,
+  CAST(REPLACE(GROUP_CONCAT(DISTINCT h.hint), ',', '、') AS TEXT) AS hint_names,
+  CAST(REPLACE(GROUP_CONCAT(DISTINCT dm.damage), ',', '、') AS TEXT) AS damage_names
+FROM cases c
+LEFT JOIN senders s ON s.sender_id = c.sender_id
+LEFT JOIN districts fd ON fd.district_id = c.field_district_id
+LEFT JOIN crops cr ON cr.crop_id = c.crop_id
+LEFT JOIN crop_categories cc ON cc.crop_category_id = cr.crop_category_id
+LEFT JOIN case_pest_categories cpc ON cpc.case_id = c.case_id
+LEFT JOIN pest_categories pc ON pc.pest_category_id = cpc.pest_category_id
+LEFT JOIN case_hints ch ON ch.case_id = c.case_id
+LEFT JOIN hints h ON h.hint_id = ch.hint_id
+LEFT JOIN case_damages cd ON cd.case_id = c.case_id
+LEFT JOIN damages dm ON dm.damage_id = cd.damage_id
+GROUP BY c.case_id, c.receive_date, c.status, c.created_at, s.name, s.display_name, s.phone, fd.district_id, fd.city_id, cr.crop_id, cc.crop_category_id, c.service_id, c.deliver_id, c.method_id;

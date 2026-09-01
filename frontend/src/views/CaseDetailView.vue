@@ -43,8 +43,8 @@ async function load() {
 
 watch(id, load, { immediate: true })
 
-const joinWithNote = (items?: { id?: number; name?: string; pestNote?: string }[]) =>
-  items?.map((i: any) => (i.pestNote ? `${i.name}(${i.pestNote})` : i.name)).filter(Boolean).join('、') ?? '無'
+const joinWithNote = (items?: { id?: number; name?: string; pestNote?: string | null }[]) =>
+  items?.map((i) => (i.pestNote ? `${i.name}(${i.pestNote})` : i.name)).filter(Boolean).join('、') ?? '無'
 
 const join = (items?: { id?: number; name?: string }[]) =>
   items?.map((i) => i.name).filter(Boolean).join('、') ?? '無'
@@ -55,12 +55,12 @@ function senderLabel(d: CaseResponse) {
     return '已遮蔽(已遮蔽)'
   }
   const name = d.senderName
-  const display = (d as any).senderDisplayName
+  const display = d.senderDisplayName
   const hasName = name && name.trim()
   const hasDisplay = display && display.trim()
   if (hasName && hasDisplay) return `${name}(${display})`
-  if (hasDisplay) return display
-  if (hasName) return name
+  if (hasDisplay) return display!
+  if (hasName) return name!
   return d.senderPhone ?? '—'
 }
 
@@ -77,18 +77,18 @@ async function runAi() {
   aiSuggestion.value = null
   aiError.value = null
   try {
-    const pestNotes = detail.value.pestCategories?.map((p: any) => p.pestNote).filter((x: any) => !!x && String(x).trim().length > 0) as string[] | undefined
+    const pestNotes = detail.value.pestCategories?.map((p) => p.pestNote).filter((x): x is string => !!x && x.trim().length > 0) as string[] | undefined
     const { data } = await aiApi.analyze({
-      cropName: detail.value.cropName,
+      cropName: detail.value.cropName ?? '',
       damages: detail.value.damages?.map((d) => d.name).filter((x): x is string => !!x),
       pestCategories: detail.value.pestCategories?.map((p) => p.name).filter((x): x is string => !!x),
       pestNotes: pestNotes && pestNotes.length > 0 ? pestNotes : undefined,
-      caseDescription: detail.value.caseDescription,
-      cropScale: detail.value.cropScale,
-      damageScale: detail.value.damageScale,
-      cultivationMethod: detail.value.methodName,
-      hintDescription: detail.value.hintDescription,
-    } as any)
+      caseDescription: detail.value.caseDescription ?? undefined,
+      cropScale: detail.value.cropScale ?? undefined,
+      damageScale: detail.value.damageScale ?? undefined,
+      cultivationMethod: detail.value.methodName ?? undefined,
+      hintDescription: detail.value.hintDescription ?? undefined,
+    } as unknown as Record<string, unknown>)
     aiSuggestion.value = data.suggestion ?? ''
     aiElapsed.value = data.elapsedMs
   } catch {
@@ -156,14 +156,18 @@ async function runAi() {
               <strong>被害部位：</strong>{{ join(detail.damages) }}
             </div>
             <div class="col-md-6">
-              <strong>病蟲害分類：</strong>{{ joinWithNote(detail.pestCategories as any) }}
+              <strong>病蟲害分類：</strong>{{ joinWithNote(detail.pestCategories) }}
             </div>
             <div class="col-12">
               <strong>送件人：</strong>{{ senderLabel(detail) }}
             </div>
             <div class="col-12">
-              <strong>縣市鄉鎮：</strong>{{ (detail as any).senderCityName ?? '' }}{{ detail.senderDistrictName ?? '無' }}
+              <strong>縣市鄉鎮：</strong>{{ detail.senderCityName ?? '' }}{{ detail.senderDistrictName ?? '無' }}
               <strong>地址：</strong>{{ auth.isViewer ? '已遮蔽' : detail.senderAddress ?? '無' }}
+            </div>
+            <div class="col-12">
+              <strong>田區位置：</strong>{{ (detail as any).fieldCityName ?? '' }}{{ (detail as any).fieldDistrictName ?? '無' }}
+              <span v-if="(detail as any).fieldDistrictId && (detail as any).fieldDistrictId === detail.senderDistrictId" class="text-muted">（同送件人）</span>
             </div>
             <div class="col-12">
               <strong>服務：</strong>{{ detail.serviceName ?? '無' }}　

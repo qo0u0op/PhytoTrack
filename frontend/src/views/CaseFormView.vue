@@ -55,6 +55,7 @@ const form = reactive({
   senderAddress: '',
   senderDistrictId: 0,
   senderTypeId: 0,
+  fieldDistrictId: null as number | null,
   methodId: 0,
   cropId: 0,
   serviceId: 0,
@@ -68,6 +69,8 @@ const form = reactive({
 // 作物級聯：所選分類（null 為全部）
 const selectedCropCategoryId = ref<number | null>(null)
 const selectedSenderCityId = ref<number | null>(null)
+const selectedFieldCityId = ref<number | null>(null)
+const fieldSameAsSender = ref(false)
 
 // 害物三段式列編輯：每列為一害物（類型→分類→學名：描述），可同分類多筆
 interface PestRow {
@@ -145,6 +148,11 @@ const filteredSenderDistricts = computed(() => {
   const city = cities.value.find((c) => c.id === selectedSenderCityId.value)
   return city ? city.districts : []
 })
+const filteredFieldDistricts = computed(() => {
+  if (selectedFieldCityId.value == null) return []
+  const city = cities.value.find((c) => c.id === selectedFieldCityId.value)
+  return city ? city.districts : []
+})
 
 watch(selectedSenderCityId, (newCityId) => {
   const districts = cities.value.find((c) => c.id === newCityId)?.districts ?? []
@@ -158,6 +166,38 @@ watch(() => form.senderDistrictId, (districtId) => {
   const city = cities.value.find((c) => c.districts.some((d) => d.id === districtId))
   if (city && selectedSenderCityId.value !== city.id) {
     selectedSenderCityId.value = city.id
+  }
+  // 若勾選和送件人相同，同步田區位置
+  if (fieldSameAsSender.value) {
+    form.fieldDistrictId = districtId
+    if (city) selectedFieldCityId.value = city.id
+  }
+})
+
+watch(selectedFieldCityId, (newCityId) => {
+  const districts = cities.value.find((c) => c.id === newCityId)?.districts ?? []
+  if (districts.length > 0 && form.fieldDistrictId && !districts.some((d) => d.id === form.fieldDistrictId)) {
+    form.fieldDistrictId = districts[0].id
+  } else if (districts.length > 0 && !form.fieldDistrictId && !fieldSameAsSender.value) {
+    form.fieldDistrictId = districts[0].id
+  }
+})
+
+watch(() => form.fieldDistrictId, (districtId) => {
+  if (!districtId) return
+  const city = cities.value.find((c) => c.districts.some((d) => d.id === districtId))
+  if (city && selectedFieldCityId.value !== city.id) {
+    selectedFieldCityId.value = city.id
+  }
+})
+
+watch(fieldSameAsSender, (checked) => {
+  if (checked) {
+    form.fieldDistrictId = form.senderDistrictId || null
+    if (form.senderDistrictId) {
+      const city = cities.value.find((c) => c.districts.some((d) => d.id === form.senderDistrictId))
+      if (city) selectedFieldCityId.value = city.id
+    }
   }
 })
 
@@ -429,6 +469,13 @@ async function loadRefs() {
     if (!initDistrict && city) {
       form.senderDistrictId = city.districts[0]?.id ?? 0
     }
+    // 田區位置初始化
+    if (form.fieldDistrictId) {
+      const fCity = cities.value.find((c) => c.districts.some((d) => d.id === form.fieldDistrictId))
+      if (fCity) selectedFieldCityId.value = fCity.id
+    } else {
+      selectedFieldCityId.value = selectedSenderCityId.value
+    }
   }
 
   // 新增模式亦初始化快照，確保髒污判定正確
@@ -466,10 +513,20 @@ async function loadCase(id: number) {
   form.senderDistrictId = d.senderDistrictId ?? 0
   form.senderTypeId = d.senderTypeId ?? 0
   form.senderId = (d as any).senderId ?? null
+  form.fieldDistrictId = (d as any).fieldDistrictId ?? null
   // 同步縣市選取
   if (form.senderDistrictId) {
     const city = cities.value.find((c) => c.districts.some((d2) => d2.id === form.senderDistrictId))
     if (city) selectedSenderCityId.value = city.id
+  }
+  if (form.fieldDistrictId) {
+    const fCity = cities.value.find((c) => c.districts.some((d2) => d2.id === form.fieldDistrictId))
+    if (fCity) selectedFieldCityId.value = fCity.id
+    // 若田區與送件人相同，自動勾選
+    if (form.fieldDistrictId === form.senderDistrictId) fieldSameAsSender.value = true
+  } else {
+    selectedFieldCityId.value = selectedSenderCityId.value
+    fieldSameAsSender.value = false
   }
   // 編輯模式快照：用於髒污判定與取消還原，修復編輯時無法更新 sender 的 bug
   senderSnapshot = snapshotSender()
@@ -534,12 +591,19 @@ async function submit() {
     Swal.fire({ icon: 'warning', title: '欄位不完整', text: '請選擇作物' })
     return
   }
+  // 田區位置必填（與診斷卡片同交易，後端 NOT NULL）
+  const effectiveForValidate = fieldSameAsSender.value ? form.senderDistrictId : form.fieldDistrictId
+  if (!effectiveForValidate) {
+    Swal.fire({ icon: 'warning', title: '欄位不完整', text: '請選擇田區位置' })
+    return
+  }
   saving.value = true
   try {
     if (editId) {
       const pestWithNotes = pestRows.value
         .filter((r) => r.pestCategoryId)
         .map((r) => ({ pestCategoryId: r.pestCategoryId, pestNote: r.pestNote?.trim() || undefined }))
+      const effectiveFieldDistrictId = fieldSameAsSender.value ? form.senderDistrictId : form.fieldDistrictId
       await caseApi.update(editId, {
         receiveDate: form.receiveDate,
         cropScale: form.cropScale ?? undefined,
@@ -552,6 +616,7 @@ async function submit() {
         cropId: form.cropId,
         serviceId: form.serviceId,
         deliverId: form.deliverId,
+        fieldDistrictId: effectiveFieldDistrictId ?? undefined,
         damageIds: form.damageIds,
         hintIds: form.hintIds,
         pestCategoryWithNotes: pestWithNotes,
@@ -564,6 +629,7 @@ async function submit() {
       const pestWithNotes2 = pestRows.value
         .filter((r) => r.pestCategoryId)
         .map((r) => ({ pestCategoryId: r.pestCategoryId, pestNote: r.pestNote?.trim() || undefined }))
+      const effectiveFieldDistrictId2 = fieldSameAsSender.value ? form.senderDistrictId : form.fieldDistrictId
       const { data } = await caseApi.create({
         receiveDate: form.receiveDate,
         cropScale: form.cropScale ?? undefined,
@@ -574,6 +640,7 @@ async function submit() {
         senderAddress: form.senderAddress,
         senderDistrictId: form.senderDistrictId,
         senderTypeId: form.senderTypeId,
+        fieldDistrictId: effectiveFieldDistrictId2 ?? undefined,
         methodId: form.methodId,
         cropId: form.cropId,
         serviceId: form.serviceId,
@@ -719,6 +786,36 @@ async function runAi() {
           </div>
           <div v-if="form.senderId" class="col-12">
             <div class="alert alert-info py-2 mb-0 small">已選用既有送件人 #{{ form.senderId }}，儲存時將沿用該送件人 <button type="button" class="btn btn-sm btn-outline-secondary ms-2" @click="form.senderId = null">取消沿用</button></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 田區位置 -->
+      <div class="card shadow-sm mb-4">
+        <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+          <span>田區位置</span>
+          <div class="form-check mb-0">
+            <input id="fieldSameAsSender" class="form-check-input" type="checkbox" v-model="fieldSameAsSender" />
+            <label for="fieldSameAsSender" class="form-check-label text-white small">和送件人相同</label>
+          </div>
+        </div>
+        <div class="card-body row g-3">
+          <div class="col-md-6">
+            <label class="form-label">縣市</label>
+            <select v-model.number="selectedFieldCityId" class="form-select" :disabled="fieldSameAsSender">
+              <option :value="null" disabled>請選擇縣市</option>
+              <option v-for="c in cities" :key="c.id" :value="c.id">{{ c.name }}</option>
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">鄉鎮市區</label>
+            <select v-model.number="form.fieldDistrictId" class="form-select" :disabled="fieldSameAsSender">
+              <option :value="null" disabled>請選擇鄉鎮市區</option>
+              <option v-for="d in filteredFieldDistricts" :key="d.id" :value="d.id">{{ d.name }}</option>
+            </select>
+          </div>
+          <div v-if="fieldSameAsSender" class="col-12">
+            <div class="alert alert-info py-2 mb-0 small">已勾選和送件人相同，田區位置將與送件人縣市鄉鎮一致</div>
           </div>
         </div>
       </div>

@@ -62,20 +62,33 @@ public class CaseController {
       @RequestParam(required = false) Long cropId,
       @RequestParam(required = false) Long serviceId,
       @RequestParam(required = false) String senderName,
+      @RequestParam(required = false) String senderQuery,
       @RequestParam(required = false) LocalDate receiveDateFrom,
       @RequestParam(required = false) LocalDate receiveDateTo,
       @RequestParam(required = false) String status,
+      @RequestParam(required = false) Long cityId,
+      @RequestParam(required = false) Long districtId,
+      @RequestParam(required = false) Long cropCategoryId,
+      @RequestParam(required = false) Long pestTypeId,
+      @RequestParam(required = false) Long pestCategoryId,
+      @RequestParam(required = false) Long hintId,
+      @RequestParam(required = false) Long deliveryId,
+      @RequestParam(required = false) Long damageId,
       @PageableDefault(size = 20, sort = "receiveDate", direction = Sort.Direction.DESC) Pageable pageable) {
-    CaseFilter filter = new CaseFilter(cropId, serviceId, senderName,
-        receiveDateFrom, receiveDateTo, status);
+    String effectiveSenderQuery = senderQuery != null ? senderQuery : senderName;
+    CaseFilter filter = new CaseFilter(cropId, serviceId, senderName, effectiveSenderQuery,
+        receiveDateFrom, receiveDateTo, status, cityId, districtId, cropCategoryId, pestTypeId, pestCategoryId, hintId, deliveryId, damageId);
     return ResponseEntity.ok(caseService.list(filter, pageable));
   }
 
-  /** 案件統計總覽（登入即可，見 spec case-statistics） */
+  /** 案件統計總覽（登入即可，見 spec case-statistics），支援期別：HISTORICAL/ANNUAL/MONTHLY */
   @GetMapping("/statistics")
   @PreAuthorize("isAuthenticated()")
-  public ResponseEntity<CaseStatisticsResponse> statistics() {
-    return ResponseEntity.ok(caseService.statistics());
+  public ResponseEntity<CaseStatisticsResponse> statistics(
+      @RequestParam(required = false) String period,
+      @RequestParam(required = false) Integer year,
+      @RequestParam(required = false) Integer month) {
+    return ResponseEntity.ok(caseService.statistics(period, year, month));
   }
 
   /**
@@ -88,11 +101,21 @@ public class CaseController {
       @RequestParam(required = false) Long cropId,
       @RequestParam(required = false) Long serviceId,
       @RequestParam(required = false) String senderName,
+      @RequestParam(required = false) String senderQuery,
       @RequestParam(required = false) LocalDate receiveDateFrom,
       @RequestParam(required = false) LocalDate receiveDateTo,
-      @RequestParam(required = false) String status) {
-    CaseFilter filter = new CaseFilter(cropId, serviceId, senderName,
-        receiveDateFrom, receiveDateTo, status);
+      @RequestParam(required = false) String status,
+      @RequestParam(required = false) Long cityId,
+      @RequestParam(required = false) Long districtId,
+      @RequestParam(required = false) Long cropCategoryId,
+      @RequestParam(required = false) Long pestTypeId,
+      @RequestParam(required = false) Long pestCategoryId,
+      @RequestParam(required = false) Long hintId,
+      @RequestParam(required = false) Long deliveryId,
+      @RequestParam(required = false) Long damageId) {
+    String effectiveSenderQuery = senderQuery != null ? senderQuery : senderName;
+    CaseFilter filter = new CaseFilter(cropId, serviceId, senderName, effectiveSenderQuery,
+        receiveDateFrom, receiveDateTo, status, cityId, districtId, cropCategoryId, pestTypeId, pestCategoryId, hintId, deliveryId, damageId);
     byte[] body = caseService.exportCsv(filter).getBytes(StandardCharsets.UTF_8);
     String filename = "case-export-" + LocalDate.now() + ".csv";
     return ResponseEntity.ok()
