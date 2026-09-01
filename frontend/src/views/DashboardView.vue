@@ -63,6 +63,9 @@ const percent = (count?: number) => {
 const statusLabel = (status?: string) =>
   status === 'PENDING' ? '待處理' : status === 'RESOLVED' ? '已診斷' : '已結案'
 
+const periodLabel = (p?: string) =>
+  p === 'ANNUAL' ? '年度' : p === 'MONTHLY' ? '月度' : '歷史'
+
 const barClass = (status?: string) =>
   status === 'PENDING' ? 'bg-warning' : status === 'RESOLVED' ? 'bg-success' : 'bg-secondary'
 </script>
@@ -86,7 +89,6 @@ const barClass = (status?: string) =>
           <div class="col-md-3">
             <label class="form-label small text-muted mb-1">年份</label>
             <select v-model="selectedYear" class="form-select form-select-sm" :disabled="period === 'HISTORICAL'">
-              <option :value="null">請選擇年份</option>
               <option v-for="y in availableYears" :key="y" :value="y">{{ y }} 年</option>
             </select>
             <div v-if="availableYears.length === 0" class="form-text small text-muted">尚無歷史年份</div>
@@ -99,7 +101,7 @@ const barClass = (status?: string) =>
           </div>
           <div class="col-md-3">
             <div class="small text-muted">期別案件數：<strong>{{ total () }}</strong> 件</div>
-            <div class="small text-muted">期間：{{ stats?.period ?? 'HISTORICAL' }} {{ selectedYear ?? '' }} {{ period === 'MONTHLY' ? (selectedMonth + '月') : '' }}</div>
+            <div class="small text-muted">期間：{{ periodLabel (stats?.period) }} {{ selectedYear ?? '' }} {{ period === 'MONTHLY' ? (selectedMonth + '月') : '' }}</div>
           </div>
         </div>
       </div>
@@ -134,7 +136,7 @@ const barClass = (status?: string) =>
       <div class="col-md-3">
         <div class="card shadow-sm">
           <div class="card-body">
-            <h6 class="text-muted">AI 模型 (llama.cpp)</h6>
+            <h6 class="text-muted">AI 連線情況</h6>
             <div class="fs-1 fw-bold">
               <span v-if="modelHealthy === null" class="text-warning">…</span>
               <span v-else-if="modelHealthy" class="text-success">已連線</span>
@@ -307,7 +309,7 @@ const barClass = (status?: string) =>
     </div>
 
     <div class="row g-4 mb-4">
-      <div class="col-md-6">
+      <div class="col-md-4">
         <div class="card shadow-sm h-100">
           <div class="card-body">
             <h6 class="card-title text-muted">交付方式</h6>
@@ -323,7 +325,7 @@ const barClass = (status?: string) =>
           </div>
         </div>
       </div>
-      <div class="col-md-6">
+      <div class="col-md-4">
         <div class="card shadow-sm h-100">
           <div class="card-body">
             <h6 class="card-title text-muted">耕種方式</h6>
@@ -339,37 +341,24 @@ const barClass = (status?: string) =>
           </div>
         </div>
       </div>
+      <div class="col-md-4">
+        <div class="card shadow-sm h-100">
+          <div class="card-body">
+            <h6 class="card-title text-muted">近半年案件趨勢</h6>
+            <table class="table table-sm mb-0">
+              <thead>
+                <tr><th>月份</th><th class="text-end">案件數</th></tr>
+              </thead>
+              <tbody>
+                <tr v-for="m in stats?.monthlyTrend ?? []" :key="m.month">
+                  <td>{{ m.month }}</td><td class="text-end">{{ m.count }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <!-- 近 6 月趨勢 -->
-    <div class="card shadow-sm mb-4">
-      <div class="card-body">
-        <h6 class="card-title text-muted">近 6 月案件趨勢</h6>
-        <table class="table table-sm mb-0">
-          <thead>
-            <tr><th>月份</th><th class="text-end">案件數</th></tr>
-          </thead>
-          <tbody>
-            <tr v-for="m in stats?.monthlyTrend ?? []" :key="m.month">
-              <td>{{ m.month }}</td><td class="text-end">{{ m.count }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <div class="row g-3">
-      <div class="col-md-4">
-        <router-link class="btn btn-success w-100 py-3" :to="auth.isStaff ? '/cases/new' : '/cases'">
-          {{ auth.isStaff ? '建立新診斷案件' : '瀏覽案件列表' }}
-        </router-link>
-      </div>
-      <div class="col-md-4">
-        <router-link class="btn btn-outline-success w-100 py-3" to="/cases">案件管理</router-link>
-      </div>
-      <div v-if="auth.isAdmin" class="col-md-4">
-        <router-link class="btn btn-outline-success w-100 py-3" to="/users">使用者管理</router-link>
-      </div>
-    </div>
   </div>
 </template>
