@@ -136,7 +136,7 @@ class SenderControllerTest {
 
     mockMvc.perform (get ("/api/senders"))
         .andExpect (status ().isOk ())
-        .andExpect (jsonPath ("$.length ()").value (2));
+        .andExpect (jsonPath ("$.length()").value (2));
   }
 
   // 200 詳細

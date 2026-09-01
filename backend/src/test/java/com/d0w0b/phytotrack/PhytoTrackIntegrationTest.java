@@ -139,8 +139,8 @@ class PhytoTrackIntegrationTest {
         .andExpect (jsonPath ("$.pendingCases").isNumber ())
         .andExpect (jsonPath ("$.topCrops").isArray ())
         .andExpect (jsonPath ("$.topPestCategories").isArray ())
-        .andExpect (jsonPath ("$.statusRatio.length ()").value (3))
-        .andExpect (jsonPath ("$.monthlyTrend.length ()").value (6));
+        .andExpect (jsonPath ("$.statusRatio.length()").value (3))
+        .andExpect (jsonPath ("$.monthlyTrend.length()").value (6));
 
     // 7.6 CSV 匯出 (登入即可)：含 UTF-8 BOM 與剛建立的案件編號
     MvcResult export = mockMvc.perform (get ("/api/cases/export")

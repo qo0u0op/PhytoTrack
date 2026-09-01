@@ -472,7 +472,7 @@ public class CaseService {
     if (request.damageIds () != null) {
       replaceJunctionGroup (caseEntity, caseEntity.getCaseDamages (), request.damageIds (),
           j -> j.getDamage ().getDamageId (),
-         (c, id) -> {
+          (c, id) -> {
             CaseDamage junction = new CaseDamage ();
             junction.setCaseEntity (c);
             junction.setDamage (getRef (damageRepository, id, "被害部位"));
@@ -493,7 +493,7 @@ public class CaseService {
     } else if (request.pestCategoryIds () != null) {
       replaceJunctionGroup (caseEntity, caseEntity.getCasePestCategories (),
           request.pestCategoryIds (), j -> j.getPestCategory ().getPestCategoryId (),
-         (c, id) -> {
+          (c, id) -> {
             CasePestCategory junction = new CasePestCategory ();
             junction.setCaseEntity (c);
             junction.setPestCategory (getRef (pestCategoryRepository, id, "病蟲害分類"));
@@ -503,7 +503,7 @@ public class CaseService {
     if (request.hintIds () != null) {
       replaceJunctionGroup (caseEntity, caseEntity.getCaseHints (), request.hintIds (),
           j -> j.getHint ().getHintId (),
-         (c, id) -> {
+          (c, id) -> {
             CaseHint junction = new CaseHint ();
             junction.setCaseEntity (c);
             junction.setHint (getRef (hintRepository, id, "防治建議"));
@@ -513,7 +513,7 @@ public class CaseService {
     if (request.identifierIds () != null) {
       replaceJunctionGroup (caseEntity, caseEntity.getCaseIdentifiers (),
           request.identifierIds (), j -> j.getIdentifier ().getIdentifierId (),
-         (c, id) -> {
+          (c, id) -> {
             CaseIdentifier junction = new CaseIdentifier ();
             junction.setCaseEntity (c);
             junction.setIdentifier (getRef (identifierRepository, id, "診斷簽名人"));
@@ -746,15 +746,16 @@ public class CaseService {
   private String toCsv (List<Case> cases) {
     StringBuilder sb = new StringBuilder ("\uFEFF");
     sb.append (join ("收件編號", "收件日期", "狀態",
-        "病蟲害發生地點", "是否同寄件人",
-        "送件人身分別", "姓名", "顯示名稱", "電話", "地址",
+        "病蟲害發生地點_縣市", "病蟲害發生地點_鄉鎮", "是否同寄件人",
+        "送件人身分別", "姓名", "顯示名稱", "電話", "住址",
         "耕作方式", "作物種類", "作物名稱",
         "被害部位", "土壤栽培用藥紀錄", "栽培面積", "被害面積", "被害描述",
         "服務類別", "送件方式", "鑑定者",
         "病害", "蟲害", "有害動物", "生理因子", "其他",
-        "防治建議", "建議採取措施", "建立者", "建立時間", "更新時間"));
+        "建議事項", "防治描述", "建立者", "建立時間", "更新時間"));
     for (Case c : cases) {
-      String fieldLocation = (Optional.ofNullable (c.getFieldDistrict ()).map (District::getCity).map (City::getCity).orElse ("") + Optional.ofNullable (c.getFieldDistrict ()).map (District::getDistrict).orElse (""));
+      String fieldCity = Optional.ofNullable (c.getFieldDistrict ()).map (District::getCity).map (City::getCity).orElse ("");
+      String fieldDistrict = Optional.ofNullable (c.getFieldDistrict ()).map (District::getDistrict).orElse ("");
       boolean sameAsSender = Optional.ofNullable (c.getFieldDistrict ()).map (District::getDistrictId).orElse (-1L)
           .equals (Optional.ofNullable (c.getSender ().getDistrict ()).map (District::getDistrictId).orElse (-2L));
       String isSame = sameAsSender ? "是" : "否";
@@ -776,7 +777,8 @@ public class CaseService {
       sb.append ('\n').append (join (String.valueOf (c.getCaseId ()),
           String.valueOf (c.getReceiveDate ()),
           c.getStatus ().name (),
-          fieldLocation,
+          fieldCity,
+          fieldDistrict,
           isSame,
           senderTypeNameOf (c),
           c.getSender ().getName (),

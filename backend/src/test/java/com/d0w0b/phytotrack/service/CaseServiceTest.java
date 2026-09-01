@@ -654,10 +654,12 @@ class CaseServiceTest {
     assertThat (csv).startsWith ("\uFEFF收件編號");
     assertThat (csv).contains ("收件日期");
     assertThat (csv).contains ("狀態");
-    assertThat (csv).contains ("病蟲害發生地點");
+    assertThat (csv).contains ("病蟲害發生地點_縣市");
+    assertThat (csv).contains ("病蟲害發生地點_鄉鎮");
+    assertThat (csv).contains ("住址");
     assertThat (csv).contains ("作物種類");
-    assertThat (csv).contains ("防治建議");
-    assertThat (csv).contains ("建議採取措施");
+    assertThat (csv).contains ("建議事項");
+    assertThat (csv).contains ("防治描述");
     // 描述含逗號與引號需轉義 (以引號包覆、內部引號重複)
     assertThat (csv).contains ("\"葉片斑點，含逗號,與\"\"引號\"\"\"");
     assertThat (csv).contains ("王小明");
