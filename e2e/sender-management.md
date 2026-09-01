@@ -1,6 +1,6 @@
-# 送件人管理 E2E 驗證（playwright-cli / terminal-browser）
+# 送件人管理 E2E 驗證 (playwright-cli / terminal-browser)
 
-> 前置：`mise run dev` 已啟動前後端（`http://localhost:5173` / `http://localhost:8080`）
+> 前置：`mise run dev` 已啟動前後端 (`http://localhost:5173` / `http://localhost:8080`)
 
 ## 1. STAFF 可於建案表單 inline 新增簽名人與作物
 
@@ -10,7 +10,7 @@ playwright-cli fill e3 "staff" --submit
 # 假設登入後導向 /cases
 playwright-cli goto http://localhost:5173/cases/new
 playwright-cli snapshot
-# 應可見「＋新增簽名人」與「＋新增作物」按鈕（STAFF 可見）
+# 應可見「＋新增簽名人」與「＋新增作物」按鈕 (STAFF 可見)
 playwright-cli click eXX --label="＋新增簽名人"
 playwright-cli fill eYY "測試簽名人E2E"
 playwright-cli click eZZ --label="新增"
@@ -34,7 +34,7 @@ playwright-cli click eDD --label="更新送件人"
 playwright-cli snapshot --find="土壤、栽培、用藥紀錄"
 ```
 
-## 3. 編輯既有案件時可更新送件人（先前 bug 驗證）
+## 3. 編輯既有案件時可更新送件人 (先前 bug 驗證)
 
 ```bash
 playwright-cli goto http://localhost:5173/cases/1/edit
@@ -46,7 +46,7 @@ playwright-cli snapshot --find="選擇送件人候選"
 # 應可選候選或建立新
 ```
 
-## 4. STAFF 可編輯送件人但不可刪除（漢堡選單）
+## 4. STAFF 可編輯送件人但不可刪除 (漢堡選單)
 
 ```bash
 # STAFF 登入
@@ -72,4 +72,4 @@ terminal-browser action -- snapshot
 terminal-browser action -- fill @e3 "staff"
 ```
 
-> 以上 ref（eXX）皆為範例，實務上每次 snapshot 後以 find 定位正確 ref。
+> 以上 ref (eXX) 皆為範例，實務上每次 snapshot 後以 find 定位正確 ref。

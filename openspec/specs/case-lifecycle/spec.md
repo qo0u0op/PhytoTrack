@@ -2,13 +2,13 @@
 
 ## Purpose
 
-為案件導入明確狀態生命週期（待處理／已處理／已結案）並補全更新契約，使案件可被完整追蹤與修正。
+為案件導入明確狀態生命週期 (待處理／已處理／已結案) 並補全更新契約，使案件可被完整追蹤與修正。
 
 ## Requirements
 
 ### Requirement: 案件狀態列舉
 
-系統 SHALL 以列舉值表示案件狀態：`PENDING`（待處理）、`RESOLVED`（已處理）、`CLOSED`（已結案）。
+系統 SHALL 以列舉值表示案件狀態：`PENDING` (待處理)、`RESOLVED` (已處理)、`CLOSED` (已結案)。
 
 #### Scenario: 建立新案件
 - **WHEN** 建立案件
@@ -36,7 +36,7 @@ STAFF/ADMIN SHALL 可將案件由 `PENDING` 標記為 `RESOLVED`；ADMIN SHALL �
 
 ### Requirement: 既有狀態資料遷移
 
-系統 SHALL 將既有整數狀態資料對映至新列舉（`0` → `PENDING`），遷移後既有案件可正常讀取與查詢。
+系統 SHALL 將既有整數狀態資料對映至新列舉 (`0` → `PENDING`)，遷移後既有案件可正常讀取與查詢。
 
 #### Scenario: 讀取既有案件
 - **WHEN** 讀取遷移前建立的案件

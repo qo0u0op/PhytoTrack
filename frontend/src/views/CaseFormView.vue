@@ -33,16 +33,16 @@ interface City {
   districts: IdName[]
 }
 
-const auth = useAuthStore()
-const route = useRoute()
-const router = useRouter()
+const auth = useAuthStore ()
+const route = useRoute ()
+const router = useRouter ()
 
 // 編輯模式：路由帶 :id 即為編輯既有案件
-const editId = route.params.id ? Number(route.params.id) : null
+const editId = route.params.id ? Number (route.params.id) : null
 
-// 表單資料（對應後端 CaseCreateRequest）
-const form = reactive({
-  receiveDate: new Date().toISOString().slice(0, 10),
+// 表單資料 (對應後端 CaseCreateRequest)
+const form = reactive ({
+  receiveDate: new Date ().toISOString ().slice (0, 10),
   cropScale: '',
   damageScale: '',
   caseDescription: '',
@@ -66,13 +66,13 @@ const form = reactive({
   identifierIds: [] as number[],
 })
 
-// 作物級聯：所選分類（null 為全部）
+// 作物級聯：所選分類 (null 為全部)
 const selectedCropCategoryId = ref<number | null>(null)
 const selectedSenderCityId = ref<number | null>(null)
 const selectedFieldCityId = ref<number | null>(null)
-const fieldSameAsSender = ref(false)
+const fieldSameAsSender = ref (false)
 
-// 害物三段式列編輯：每列為一害物（類型→分類→學名：描述），可同分類多筆
+// 害物三段式列編輯：每列為一害物 (類型→分類→學名：描述)，可同分類多筆
 interface PestRow {
   pestTypeId: number
   pestCategoryId: number
@@ -92,12 +92,12 @@ const cities = ref<City[]>([])
 const senderTypes = ref<IdName[]>([])
 const identifiers = ref<IdName[]>([])
 
-const loading = ref(true)
-const saving = ref(false)
-const savingSender = ref(false)
-const analyzing = ref(false)
+const loading = ref (true)
+const saving = ref (false)
+const savingSender = ref (false)
+const analyzing = ref (false)
 
-// 送件人編輯狀態：快照（取消編輯還原用）與髒污判定
+// 送件人編輯狀態：快照 (取消編輯還原用) 與髒污判定
 interface SenderSnapshot {
   senderId: number | null
   senderName: string
@@ -109,7 +109,7 @@ interface SenderSnapshot {
 }
 let senderSnapshot: SenderSnapshot | null = null
 
-function snapshotSender(): SenderSnapshot {
+function snapshotSender (): SenderSnapshot {
   return {
     senderId: form.senderId,
     senderName: form.senderName,
@@ -121,7 +121,7 @@ function snapshotSender(): SenderSnapshot {
   }
 }
 
-function restoreSender() {
+function restoreSender () {
   if (!senderSnapshot) return
   form.senderId = senderSnapshot.senderId
   form.senderName = senderSnapshot.senderName
@@ -132,7 +132,7 @@ function restoreSender() {
   form.senderTypeId = senderSnapshot.senderTypeId
 }
 
-const senderDirty = computed(() => {
+const senderDirty = computed (() => {
   if (!senderSnapshot) return false
   const s = senderSnapshot
   return form.senderName !== s.senderName
@@ -143,27 +143,27 @@ const senderDirty = computed(() => {
     || form.senderTypeId !== s.senderTypeId
 })
 
-const filteredSenderDistricts = computed(() => {
+const filteredSenderDistricts = computed (() => {
   if (selectedSenderCityId.value == null) return []
-  const city = cities.value.find((c) => c.id === selectedSenderCityId.value)
+  const city = cities.value.find ((c) => c.id === selectedSenderCityId.value)
   return city ? city.districts : []
 })
-const filteredFieldDistricts = computed(() => {
+const filteredFieldDistricts = computed (() => {
   if (selectedFieldCityId.value == null) return []
-  const city = cities.value.find((c) => c.id === selectedFieldCityId.value)
+  const city = cities.value.find ((c) => c.id === selectedFieldCityId.value)
   return city ? city.districts : []
 })
 
-watch(selectedSenderCityId, (newCityId) => {
-  const districts = cities.value.find((c) => c.id === newCityId)?.districts ?? []
-  if (districts.length > 0 && !districts.some((d) => d.id === form.senderDistrictId)) {
+watch (selectedSenderCityId, (newCityId) => {
+  const districts = cities.value.find ((c) => c.id === newCityId)?.districts ?? []
+  if (districts.length > 0 && !districts.some ((d) => d.id === form.senderDistrictId)) {
     form.senderDistrictId = districts[0].id
   }
 })
 
-watch(() => form.senderDistrictId, (districtId) => {
+watch (() => form.senderDistrictId, (districtId) => {
   if (!districtId) return
-  const city = cities.value.find((c) => c.districts.some((d) => d.id === districtId))
+  const city = cities.value.find ((c) => c.districts.some ((d) => d.id === districtId))
   if (city && selectedSenderCityId.value !== city.id) {
     selectedSenderCityId.value = city.id
   }
@@ -174,79 +174,78 @@ watch(() => form.senderDistrictId, (districtId) => {
   }
 })
 
-watch(selectedFieldCityId, (newCityId) => {
-  const districts = cities.value.find((c) => c.id === newCityId)?.districts ?? []
-  if (districts.length > 0 && form.fieldDistrictId && !districts.some((d) => d.id === form.fieldDistrictId)) {
+watch (selectedFieldCityId, (newCityId) => {
+  const districts = cities.value.find ((c) => c.id === newCityId)?.districts ?? []
+  if (districts.length > 0 && form.fieldDistrictId && !districts.some ((d) => d.id === form.fieldDistrictId)) {
     form.fieldDistrictId = districts[0].id
   } else if (districts.length > 0 && !form.fieldDistrictId && !fieldSameAsSender.value) {
     form.fieldDistrictId = districts[0].id
   }
 })
 
-watch(() => form.fieldDistrictId, (districtId) => {
+watch (() => form.fieldDistrictId, (districtId) => {
   if (!districtId) return
-  const city = cities.value.find((c) => c.districts.some((d) => d.id === districtId))
+  const city = cities.value.find ((c) => c.districts.some ((d) => d.id === districtId))
   if (city && selectedFieldCityId.value !== city.id) {
     selectedFieldCityId.value = city.id
   }
 })
 
-watch(fieldSameAsSender, (checked) => {
+watch (fieldSameAsSender, (checked) => {
   if (checked) {
     form.fieldDistrictId = form.senderDistrictId || null
     if (form.senderDistrictId) {
-      const city = cities.value.find((c) => c.districts.some((d) => d.id === form.senderDistrictId))
+      const city = cities.value.find ((c) => c.districts.some ((d) => d.id === form.senderDistrictId))
       if (city) selectedFieldCityId.value = city.id
     }
   }
 })
 
 // 診斷區段顯示條件：編輯模式先顯示但髒時隱藏；新增模式需已儲存送件人且無髒污
-const diagnosisVisible = computed(() => {
+const diagnosisVisible = computed (() => {
   if (editId !== null) return !senderDirty.value
   return form.senderId !== null && !senderDirty.value
 })
 
-// 診斷儲存阻擋：送件人未儲存（無 senderId）或尚有未儲存的送件人編輯
-const diagnosisSaveBlocked = computed(() => !editId && (form.senderId === null || senderDirty.value))
+// 診斷儲存阻擋：送件人未儲存 (無 senderId) 或尚有未儲存的送件人編輯
+const diagnosisSaveBlocked = computed (() => !editId && (form.senderId === null || senderDirty.value))
 
-// Fuzzy 相似提示：任一欄位輸入後即時（debounce），有候選時提示帶入
+// Fuzzy 相似提示：任一欄位輸入後即時 (debounce)，有候選時提示帶入
 let fuzzyTimer: ReturnType<typeof setTimeout> | null = null
 let lastFuzzyQuery = ''
-const fuzzyFields = computed(() => [form.senderName, form.senderPhone, form.senderDisplayName] as const)
-watch(
-  fuzzyFields,
-  (newVals, oldVals) => {
-    if (fuzzyTimer) clearTimeout(fuzzyTimer)
+const fuzzyFields = computed (() => [form.senderName, form.senderPhone, form.senderDisplayName] as const)
+watch (fuzzyFields,
+ (newVals, oldVals) => {
+    if (fuzzyTimer) clearTimeout (fuzzyTimer)
     // 已選用既有送件人且無編輯時不提示
     if (form.senderId !== null && !senderDirty.value) return
-    // 找出本次變動的欄位值作為 q（任一欄位相似即觸發，符合需求 3）
+    // 找出本次變動的欄位值作為 q (任一欄位相似即觸發，符合需求 3)
     let q = ''
     if (oldVals) {
       for (let i = 0; i < newVals.length; i++) {
-        if (newVals[i] !== oldVals[i] && newVals[i].trim().length >= 2) {
-          q = newVals[i].trim()
+        if (newVals[i] !== oldVals[i] && newVals[i].trim ().length >= 2) {
+          q = newVals[i].trim ()
           break
         }
       }
       if (!q) return // 無有效變動
     } else {
-      q = newVals.find((v) => v.trim().length >= 2)?.trim() ?? ''
+      q = newVals.find ((v) => v.trim ().length >= 2)?.trim () ?? ''
       if (!q) return
     }
     if (q === lastFuzzyQuery) return
-    fuzzyTimer = setTimeout(async () => {
+    fuzzyTimer = setTimeout (async () => {
       try {
-        const { data } = await senderApi.search(q)
+        const { data } = await senderApi.search (q)
         if (data.length === 0) return
         lastFuzzyQuery = q
         const inputOptions: Record<string, string> = {}
-        data.forEach((s: any) => {
-          inputOptions[String(s.senderId)] =
+        data.forEach ((s: any) => {
+          inputOptions[String (s.senderId)] =
             `${s.name ?? ''}${s.displayName ? '(' + s.displayName + ')' : ''} - ${s.phone ?? ''}`
         })
         inputOptions['0'] = '— 建立新送件人 —'
-        const { value: selected } = await Swal.fire({
+        const { value: selected } = await Swal.fire ({
           title: '有相似的資料，是否帶入?',
           text: '找到相似的既有送件人，可沿用避免重複建立',
           input: 'select',
@@ -258,16 +257,15 @@ watch(
         if (selected === '0') {
           form.senderId = null
         } else if (selected) {
-          applyCandidate(Number(selected), data as any[])
+          applyCandidate (Number (selected), data as any[])
         }
       } catch {}
     }, 600)
-  },
-)
+  },)
 
-function applyCandidate(id: number, candidates: any[]) {
+function applyCandidate (id: number, candidates: any[]) {
   form.senderId = id
-  const chosen = candidates.find((s) => String(s.senderId) === String(id))
+  const chosen = candidates.find ((s) => String (s.senderId) === String (id))
   if (chosen) {
     form.senderName = chosen.name ?? ''
     form.senderDisplayName = chosen.displayName ?? ''
@@ -276,30 +274,30 @@ function applyCandidate(id: number, candidates: any[]) {
     if (chosen.districtId) form.senderDistrictId = chosen.districtId
     if (chosen.senderTypeId) form.senderTypeId = chosen.senderTypeId
   }
-  senderSnapshot = snapshotSender()
+  senderSnapshot = snapshotSender ()
 }
 
-async function searchCandidates() {
-  // 手動搜尋：以任一非空欄位單獨為查詢（符合 fuzzy 任一欄位相似即提示）
-  const q = form.senderName.trim() || form.senderPhone.trim() || form.senderDisplayName.trim()
+async function searchCandidates () {
+  // 手動搜尋：以任一非空欄位單獨為查詢 (符合 fuzzy 任一欄位相似即提示)
+  const q = form.senderName.trim () || form.senderPhone.trim () || form.senderDisplayName.trim ()
   if (!q) {
-    Swal.fire({ icon: 'info', title: '請輸入姓名、電話或顯示名稱關鍵字' })
+    Swal.fire ({ icon: 'info', title: '請輸入姓名、電話或顯示名稱關鍵字' })
     return
   }
   try {
-    const { data } = await senderApi.search(q)
+    const { data } = await senderApi.search (q)
     if (data.length === 0) {
-      Swal.fire({ icon: 'info', title: '無候選', text: '未找到相符的送件人，將建立新送件人' })
+      Swal.fire ({ icon: 'info', title: '無候選', text: '未找到相符的送件人，將建立新送件人' })
       form.senderId = null
       return
     }
     const inputOptions: Record<string, string> = {}
-    data.forEach((s: any) => {
+    data.forEach ((s: any) => {
       const label = `${s.name ?? ''}${s.displayName ? '(' + s.displayName + ')' : ''} - ${s.phone ?? ''} - ${s.districtName ?? ''}`
-      inputOptions[String(s.senderId)] = label
+      inputOptions[String (s.senderId)] = label
     })
     inputOptions['0'] = '— 建立新送件人 —'
-    const { value: selected } = await Swal.fire({
+    const { value: selected } = await Swal.fire ({
       title: '選擇送件人候選',
       input: 'select',
       inputOptions,
@@ -310,24 +308,24 @@ async function searchCandidates() {
     if (selected !== undefined) {
       if (selected === '0') {
         form.senderId = null
-        senderSnapshot = snapshotSender()
-        Swal.fire({ icon: 'info', title: '將建立新送件人', timer: 1200, showConfirmButton: false })
+        senderSnapshot = snapshotSender ()
+        Swal.fire ({ icon: 'info', title: '將建立新送件人', timer: 1200, showConfirmButton: false })
       } else if (selected) {
-        applyCandidate(Number(selected), data as any[])
-        Swal.fire({ icon: 'success', title: '已選用既有送件人', timer: 1200, showConfirmButton: false })
+        applyCandidate (Number (selected), data as any[])
+        Swal.fire ({ icon: 'success', title: '已選用既有送件人', timer: 1200, showConfirmButton: false })
       }
     }
   } catch {}
 }
 
 // 獨立儲存送件人：有 senderId 時 PUT 更新，否則 POST 建立；成功後鎖定 senderId 並解鎖診斷區段
-async function saveSender() {
+async function saveSender () {
   if (!form.senderDistrictId) {
-    Swal.fire({ icon: 'warning', title: '欄位不完整', text: '請選擇鄉鎮市區' })
+    Swal.fire ({ icon: 'warning', title: '欄位不完整', text: '請選擇鄉鎮市區' })
     return
   }
-  if (!form.senderPhone.trim() && !form.senderDisplayName.trim()) {
-    Swal.fire({ icon: 'warning', title: '欄位不完整', text: '電話與顯示名稱至少需提供一項' })
+  if (!form.senderPhone.trim () && !form.senderDisplayName.trim ()) {
+    Swal.fire ({ icon: 'warning', title: '欄位不完整', text: '電話與顯示名稱至少需提供一項' })
     return
   }
   const payload = {
@@ -341,14 +339,14 @@ async function saveSender() {
   savingSender.value = true
   try {
     if (form.senderId) {
-      await senderApi.update(form.senderId, payload)
+      await senderApi.update (form.senderId, payload)
     } else {
-      const { data } = await senderApi.create(payload)
+      const { data } = await senderApi.create (payload)
       form.senderId = (data as any).senderId
     }
-    senderSnapshot = snapshotSender()
+    senderSnapshot = snapshotSender ()
     lastFuzzyQuery = ''
-    Swal.fire({ icon: 'success', title: '送件人已儲存', timer: 1200, showConfirmButton: false })
+    Swal.fire ({ icon: 'success', title: '送件人已儲存', timer: 1200, showConfirmButton: false })
   } catch {}
   finally {
     savingSender.value = false
@@ -356,47 +354,47 @@ async function saveSender() {
 }
 
 // 取消送件人編輯：還原快照並同步縣市
-function cancelSenderEdit() {
-  restoreSender()
+function cancelSenderEdit () {
+  restoreSender ()
   if (form.senderDistrictId) {
-    const city = cities.value.find((c) => c.districts.some((d) => d.id === form.senderDistrictId))
+    const city = cities.value.find ((c) => c.districts.some ((d) => d.id === form.senderDistrictId))
     if (city) selectedSenderCityId.value = city.id
   }
 }
 
-async function handleCreateCrop() {
-  const { value: formData } = await Swal.fire({
+async function handleCreateCrop () {
+  const { value: formData } = await Swal.fire ({
     title: '新增作物',
     html: `
       <input id="swal-crop-name" class="swal2-input" placeholder="作物名稱" />
       <select id="swal-crop-category" class="swal2-select">
-        ${cropCategories.value.map((c) => `<option value="${c.id}" ${c.id === selectedCropCategoryId.value ? 'selected' : ''}>${c.name}</option>`).join('')}
+        ${cropCategories.value.map ((c) => `<option value="${c.id}" ${c.id === selectedCropCategoryId.value ? 'selected' : ''}>${c.name}</option>`).join ('')}
       </select>
     `,
     showCancelButton: true,
     confirmButtonText: '新增',
     cancelButtonText: '取消',
     preConfirm: () => {
-      const name = (document.getElementById('swal-crop-name') as HTMLInputElement).value.trim()
-      const catId = Number((document.getElementById('swal-crop-category') as HTMLSelectElement).value)
-      if (!name) return Swal.showValidationMessage('名稱不可為空白')
-      if (!catId) return Swal.showValidationMessage('請選擇作物別')
+      const name = (document.getElementById ('swal-crop-name') as HTMLInputElement).value.trim ()
+      const catId = Number ((document.getElementById ('swal-crop-category') as HTMLSelectElement).value)
+      if (!name) return Swal.showValidationMessage ('名稱不可為空白')
+      if (!catId) return Swal.showValidationMessage ('請選擇作物別')
       return { name, categoryId: catId }
     },
   })
   if (!formData) return
   try {
-    const { data } = await refAdminApi.createCrop({ name: formData.name, cropCategoryId: formData.categoryId })
-    const cc = await refApi.cropCategories()
+    const { data } = await refAdminApi.createCrop ({ name: formData.name, cropCategoryId: formData.categoryId })
+    const cc = await refApi.cropCategories ()
     cropCategories.value = cc.data
     form.cropId = (data as any).id
     selectedCropCategoryId.value = formData.categoryId
-    Swal.fire({ icon: 'success', title: '已新增作物', timer: 1200, showConfirmButton: false })
+    Swal.fire ({ icon: 'success', title: '已新增作物', timer: 1200, showConfirmButton: false })
   } catch {}
 }
 
-async function handleCreateIdentifier() {
-  const { value: name } = await Swal.fire({
+async function handleCreateIdentifier () {
+  const { value: name } = await Swal.fire ({
     title: '新增簽名人',
     input: 'text',
     inputLabel: '簽名人名稱',
@@ -404,46 +402,46 @@ async function handleCreateIdentifier() {
     showCancelButton: true,
     confirmButtonText: '新增',
     cancelButtonText: '取消',
-    inputValidator: (v) => (!v?.trim() ? '名稱不可為空白' : null),
+    inputValidator: (v) => (!v?.trim () ? '名稱不可為空白' : null),
   })
   if (!name) return
   try {
-    const { data } = await refAdminApi.createIdentifier({ name: name.trim() })
-    identifiers.value.push({ id: (data as any).id, name: (data as any).name })
-    form.identifierIds.push((data as any).id)
-    Swal.fire({ icon: 'success', title: '已新增簽名人', timer: 1200, showConfirmButton: false })
+    const { data } = await refAdminApi.createIdentifier ({ name: name.trim () })
+    identifiers.value.push ({ id: (data as any).id, name: (data as any).name })
+    form.identifierIds.push ((data as any).id)
+    Swal.fire ({ icon: 'success', title: '已新增簽名人', timer: 1200, showConfirmButton: false })
   } catch {}
 }
 
-// 依選定作物反查其所屬分類名稱（供 AI Prompt 使用）
-const selectedCropCategory = computed(() => {
+// 依選定作物反查其所屬分類名稱 (供 AI Prompt 使用)
+const selectedCropCategory = computed (() => {
   const crop = cropCategories.value
-    .flatMap((c) => c.crops.map((cr) => ({ ...cr, category: c.name })))
-    .find((c) => c.id === form.cropId)
+    .flatMap ((c) => c.crops.map ((cr) => ({ ...cr, category: c.name })))
+    .find ((c) => c.id === form.cropId)
   return crop?.category ?? ''
 })
 
-// 狀態選項：已結案不可再轉移（僅維持原狀）；其餘角色依權限——CLOSED 僅 ADMIN 可選
-const statusOptions = computed(() => {
+// 狀態選項：已結案不可再轉移 (僅維持原狀)；其餘角色依權限——CLOSED 僅 ADMIN 可選
+const statusOptions = computed (() => {
   if (form.status === 'CLOSED') {
-    return STATUS_OPTIONS.filter((o) => o.value === 'CLOSED')
+    return STATUS_OPTIONS.filter ((o) => o.value === 'CLOSED')
   }
-  return auth.isAdmin ? STATUS_OPTIONS : STATUS_OPTIONS.filter((o) => o.value !== 'CLOSED')
+  return auth.isAdmin ? STATUS_OPTIONS : STATUS_OPTIONS.filter ((o) => o.value !== 'CLOSED')
 })
 
-async function loadRefs() {
+async function loadRefs () {
   // 平行載入所有下拉選單資料
-  const [cc, pt, dm, hn, mt, dl, sv, ct, st, idf] = await Promise.all([
-    refApi.cropCategories(),
-    refApi.pestTypes(),
-    refApi.damages(),
-    refApi.hints(),
-    refApi.methods(),
-    refApi.deliveries(),
-    refApi.services(),
-    refApi.cities(),
-    refApi.senderTypes(),
-    refApi.identifiers(),
+  const [cc, pt, dm, hn, mt, dl, sv, ct, st, idf] = await Promise.all ([
+    refApi.cropCategories (),
+    refApi.pestTypes (),
+    refApi.damages (),
+    refApi.hints (),
+    refApi.methods (),
+    refApi.deliveries (),
+    refApi.services (),
+    refApi.cities (),
+    refApi.senderTypes (),
+    refApi.identifiers (),
   ])
   cropCategories.value = cc.data
   pestTypes.value = pt.data
@@ -461,17 +459,17 @@ async function loadRefs() {
   form.deliverId = deliveries.value[0]?.id ?? 0
   form.serviceId = services.value[0]?.id ?? 0
   form.senderTypeId = senderTypes.value[0]?.id ?? 0
-  // 初始化縣市選取（依預設 district 或首個城市）
+  // 初始化縣市選取 (依預設 district 或首個城市)
   if (cities.value.length > 0) {
     const initDistrict = form.senderDistrictId
-    const city = cities.value.find((c) => c.districts.some((d) => d.id === initDistrict))
+    const city = cities.value.find ((c) => c.districts.some ((d) => d.id === initDistrict))
     selectedSenderCityId.value = city ? city.id : cities.value[0].id
     if (!initDistrict && city) {
       form.senderDistrictId = city.districts[0]?.id ?? 0
     }
     // 田區位置初始化
     if (form.fieldDistrictId) {
-      const fCity = cities.value.find((c) => c.districts.some((d) => d.id === form.fieldDistrictId))
+      const fCity = cities.value.find ((c) => c.districts.some ((d) => d.id === form.fieldDistrictId))
       if (fCity) selectedFieldCityId.value = fCity.id
     } else {
       selectedFieldCityId.value = selectedSenderCityId.value
@@ -480,24 +478,24 @@ async function loadRefs() {
 
   // 新增模式亦初始化快照，確保髒污判定正確
   if (!editId) {
-    senderSnapshot = snapshotSender()
+    senderSnapshot = snapshotSender ()
   }
 
   if (editId) {
-    await loadCase(editId)
+    await loadCase (editId)
   }
 }
 
-async function loadCase(id: number) {
-  const { data } = await caseApi.detail(id)
+async function loadCase (id: number) {
+  const { data } = await caseApi.detail (id)
   const d = data as components['schemas']['CaseResponse']
-  // 已結案案件僅管理者可編輯：STAFF 提示後返回列表（防直接輸入網址進編輯頁）
+  // 已結案案件僅管理者可編輯：STAFF 提示後返回列表 (防直接輸入網址進編輯頁)
   if (d.status === 'CLOSED' && !auth.isAdmin) {
-    Swal.fire({
+    Swal.fire ({
       icon: 'warning',
       title: '案件已結案',
       text: '已結案案件僅管理者可編輯',
-    }).then(() => router.push('/cases'))
+    }).then (() => router.push ('/cases'))
     return
   }
   form.receiveDate = d.receiveDate ?? ''
@@ -516,11 +514,11 @@ async function loadCase(id: number) {
   form.fieldDistrictId = (d as any).fieldDistrictId ?? null
   // 同步縣市選取
   if (form.senderDistrictId) {
-    const city = cities.value.find((c) => c.districts.some((d2) => d2.id === form.senderDistrictId))
+    const city = cities.value.find ((c) => c.districts.some ((d2) => d2.id === form.senderDistrictId))
     if (city) selectedSenderCityId.value = city.id
   }
   if (form.fieldDistrictId) {
-    const fCity = cities.value.find((c) => c.districts.some((d2) => d2.id === form.fieldDistrictId))
+    const fCity = cities.value.find ((c) => c.districts.some ((d2) => d2.id === form.fieldDistrictId))
     if (fCity) selectedFieldCityId.value = fCity.id
     // 若田區與送件人相同，自動勾選
     if (form.fieldDistrictId === form.senderDistrictId) fieldSameAsSender.value = true
@@ -529,82 +527,82 @@ async function loadCase(id: number) {
     fieldSameAsSender.value = false
   }
   // 編輯模式快照：用於髒污判定與取消還原，修復編輯時無法更新 sender 的 bug
-  senderSnapshot = snapshotSender()
-  form.damageIds = d.damages?.map((x) => x.id).filter((x): x is number => x != null) ?? []
-  form.hintIds = d.hints?.map((x) => x.id).filter((x): x is number => x != null) ?? []
-  // 新結構：pestCategoryWithNotes（含 note），回退舊 pestCategoryIds
+  senderSnapshot = snapshotSender ()
+  form.damageIds = d.damages?.map ((x) => x.id).filter ((x): x is number => x != null) ?? []
+  form.hintIds = d.hints?.map ((x) => x.id).filter ((x): x is number => x != null) ?? []
+  // 新結構：pestCategoryWithNotes (含 note)，回退舊 pestCategoryIds
   const pcs = (d as any).pestCategories ?? []
-  // 若為新結構（有 pestNote），轉為 pestRows；否則回退為舊的 id 列表
+  // 若為新結構 (有 pestNote)，轉為 pestRows；否則回退為舊的 id 列表
   if (pcs.length > 0 && pcs[0] && 'pestNote' in pcs[0]) {
-    pestRows.value = pcs.map((x: any) => ({
-      pestTypeId: pestTypes.value.find((p) => p.categories.some((c) => c.id === x.id))?.id ?? pestTypes.value[0]?.id ?? 0,
+    pestRows.value = pcs.map ((x: any) => ({
+      pestTypeId: pestTypes.value.find ((p) => p.categories.some ((c) => c.id === x.id))?.id ?? pestTypes.value[0]?.id ?? 0,
       pestCategoryId: x.id,
       pestNote: x.pestNote ?? '',
     }))
     // 同步舊的 id 列表供 submit 回退
-    form.pestCategoryIds = pcs.map((x: any) => x.id).filter((x: any) => x != null)
+    form.pestCategoryIds = pcs.map ((x: any) => x.id).filter ((x: any) => x != null)
   } else {
-    form.pestCategoryIds = pcs.map((x: any) => x.id).filter((x: any) => x != null)
+    form.pestCategoryIds = pcs.map ((x: any) => x.id).filter ((x: any) => x != null)
     // 若舊資料無 note，初始化一列空的 pestRow 以便編輯
     if (form.pestCategoryIds.length > 0 && pestRows.value.length === 0) {
-      pestRows.value = form.pestCategoryIds.map((id) => ({
-        pestTypeId: pestTypes.value.find((p) => p.categories.some((c) => c.id === id))?.id ?? pestTypes.value[0]?.id ?? 0,
+      pestRows.value = form.pestCategoryIds.map ((id) => ({
+        pestTypeId: pestTypes.value.find ((p) => p.categories.some ((c) => c.id === id))?.id ?? pestTypes.value[0]?.id ?? 0,
         pestCategoryId: id,
         pestNote: '',
       }))
     }
   }
-  form.identifierIds = d.identifiers?.map((x) => x.id).filter((x): x is number => x != null) ?? []
+  form.identifierIds = d.identifiers?.map ((x) => x.id).filter ((x): x is number => x != null) ?? []
 
-  // 由名稱反查 ID（後端詳細回應帶的是名稱而非 ID）
+  // 由名稱反查 ID (後端詳細回應帶的是名稱而非 ID)
   const crop = cropCategories.value
-    .flatMap((c) => c.crops)
-    .find((c) => c.name === d.cropName)
+    .flatMap ((c) => c.crops)
+    .find ((c) => c.name === d.cropName)
   form.cropId = crop?.id ?? 0
-  const catForCrop = cropCategories.value.find((cc) => cc.crops.some((cr) => cr.id === form.cropId))
+  const catForCrop = cropCategories.value.find ((cc) => cc.crops.some ((cr) => cr.id === form.cropId))
   selectedCropCategoryId.value = catForCrop?.id ?? null
-  form.methodId = methods.value.find((m) => m.name === d.methodName)?.id ?? 0
-  form.serviceId = services.value.find((s) => s.name === d.serviceName)?.id ?? 0
-  form.deliverId = deliveries.value.find((x) => x.name === d.deliveryName)?.id ?? 0
+  form.methodId = methods.value.find ((m) => m.name === d.methodName)?.id ?? 0
+  form.serviceId = services.value.find ((s) => s.name === d.serviceName)?.id ?? 0
+  form.deliverId = deliveries.value.find ((x) => x.name === d.deliveryName)?.id ?? 0
 }
 
-onMounted(async () => {
-  await loadRefs()
+onMounted (async () => {
+  await loadRefs ()
   loading.value = false
 })
 
-// 切換多選（Checkbox）的輔助函式
-function toggle(arr: number[], id: number) {
-  const i = arr.indexOf(id)
-  if (i >= 0) arr.splice(i, 1)
-  else arr.push(id)
+// 切換多選 (Checkbox) 的輔助函式
+function toggle (arr: number[], id: number) {
+  const i = arr.indexOf (id)
+  if (i >= 0) arr.splice (i, 1)
+  else arr.push (id)
 }
 
-async function submit() {
-  // 診斷儲存阻擋：送件人未儲存（無 senderId）或尚有未儲存的送件人編輯
+async function submit () {
+  // 診斷儲存阻擋：送件人未儲存 (無 senderId) 或尚有未儲存的送件人編輯
   if (diagnosisSaveBlocked.value) {
-    Swal.fire({ icon: 'warning', title: '請先儲存送件人', text: '送件人資料已修改，請先點「更新送件人」或「取消編輯」' })
+    Swal.fire ({ icon: 'warning', title: '請先儲存送件人', text: '送件人資料已修改，請先點「更新送件人」或「取消編輯」' })
     return
   }
-  // 送出前檢查（後端仍有完整驗證）
+  // 送出前檢查 (後端仍有完整驗證)
   if (!form.cropId) {
-    Swal.fire({ icon: 'warning', title: '欄位不完整', text: '請選擇作物' })
+    Swal.fire ({ icon: 'warning', title: '欄位不完整', text: '請選擇作物' })
     return
   }
-  // 田區位置必填（與診斷卡片同交易，後端 NOT NULL）
+  // 田區位置必填 (與診斷卡片同交易，後端 NOT NULL)
   const effectiveForValidate = fieldSameAsSender.value ? form.senderDistrictId : form.fieldDistrictId
   if (!effectiveForValidate) {
-    Swal.fire({ icon: 'warning', title: '欄位不完整', text: '請選擇田區位置' })
+    Swal.fire ({ icon: 'warning', title: '欄位不完整', text: '請選擇田區位置' })
     return
   }
   saving.value = true
   try {
     if (editId) {
       const pestWithNotes = pestRows.value
-        .filter((r) => r.pestCategoryId)
-        .map((r) => ({ pestCategoryId: r.pestCategoryId, pestNote: r.pestNote?.trim() || undefined }))
+        .filter ((r) => r.pestCategoryId)
+        .map ((r) => ({ pestCategoryId: r.pestCategoryId, pestNote: r.pestNote?.trim () || undefined }))
       const effectiveFieldDistrictId = fieldSameAsSender.value ? form.senderDistrictId : form.fieldDistrictId
-      await caseApi.update(editId, {
+      await caseApi.update (editId, {
         receiveDate: form.receiveDate,
         cropScale: form.cropScale ?? undefined,
         damageScale: form.damageScale ?? undefined,
@@ -622,15 +620,15 @@ async function submit() {
         pestCategoryWithNotes: pestWithNotes,
         identifierIds: form.identifierIds,
       } as any)
-      Swal.fire({ icon: 'success', title: '儲存成功', timer: 1200, showConfirmButton: false }).then(() => {
-        router.push(`/cases/${editId}`)
+      Swal.fire ({ icon: 'success', title: '儲存成功', timer: 1200, showConfirmButton: false }).then (() => {
+        router.push (`/cases/${editId}`)
       })
     } else {
       const pestWithNotes2 = pestRows.value
-        .filter((r) => r.pestCategoryId)
-        .map((r) => ({ pestCategoryId: r.pestCategoryId, pestNote: r.pestNote?.trim() || undefined }))
+        .filter ((r) => r.pestCategoryId)
+        .map ((r) => ({ pestCategoryId: r.pestCategoryId, pestNote: r.pestNote?.trim () || undefined }))
       const effectiveFieldDistrictId2 = fieldSameAsSender.value ? form.senderDistrictId : form.fieldDistrictId
-      const { data } = await caseApi.create({
+      const { data } = await caseApi.create ({
         receiveDate: form.receiveDate,
         cropScale: form.cropScale ?? undefined,
         damageScale: form.damageScale ?? undefined,
@@ -651,9 +649,9 @@ async function submit() {
         identifierIds: form.identifierIds,
       } as any)
       const newId = (data as any)?.caseId
-      Swal.fire({ icon: 'success', title: '儲存成功', timer: 1200, showConfirmButton: false }).then(() => {
-        if (newId) router.push(`/cases/${newId}`)
-        else router.push('/cases')
+      Swal.fire ({ icon: 'success', title: '儲存成功', timer: 1200, showConfirmButton: false }).then (() => {
+        if (newId) router.push (`/cases/${newId}`)
+        else router.push ('/cases')
       })
     }
   } catch {
@@ -664,42 +662,42 @@ async function submit() {
 }
 
 // AI 診斷：組出欄位資料送後端，再由後端代理 llama.cpp
-async function runAi() {
+async function runAi () {
   const category = selectedCropCategory.value
   const crop = cropCategories.value
-    .flatMap((c) => c.crops)
-    .find((c) => c.id === form.cropId)
+    .flatMap ((c) => c.crops)
+    .find ((c) => c.id === form.cropId)
   if (!crop) {
-    Swal.fire({ icon: 'warning', title: '請先選擇作物' })
+    Swal.fire ({ icon: 'warning', title: '請先選擇作物' })
     return
   }
   analyzing.value = true
   try {
     const pestCategoryNames = pestRows.value
-      .map((r) => pestTypes.value.flatMap((p) => p.categories).find((c) => c.id === r.pestCategoryId)?.name)
-      .filter((n): n is string => !!n)
-    const pestNotes = pestRows.value.map((r) => r.pestNote?.trim()).filter((n): n is string => !!n && n.length > 0)
-    const { data } = await aiApi.analyze({
+      .map ((r) => pestTypes.value.flatMap ((p) => p.categories).find ((c) => c.id === r.pestCategoryId)?.name)
+      .filter ((n): n is string => !!n)
+    const pestNotes = pestRows.value.map ((r) => r.pestNote?.trim ()).filter ((n): n is string => !!n && n.length > 0)
+    const { data } = await aiApi.analyze ({
       cropName: crop.name,
       cropCategory: category,
-      damages: damages.value.filter((d) => form.damageIds.includes(d.id)).map((d) => d.name),
+      damages: damages.value.filter ((d) => form.damageIds.includes (d.id)).map ((d) => d.name),
       pestCategories: pestCategoryNames,
       pestNotes: pestNotes.length > 0 ? pestNotes : undefined,
       caseDescription: form.caseDescription,
       cropScale: form.cropScale,
       damageScale: form.damageScale,
-      cultivationMethod: methods.value.find((m) => m.id === form.methodId)?.name,
+      cultivationMethod: methods.value.find ((m) => m.id === form.methodId)?.name,
       hintDescription: form.hintDescription,
     } as any)
-    Swal.fire({
+    Swal.fire ({
       icon: 'info',
-      title: `AI 診斷建議（${(data.elapsedMs / 1000).toFixed(1)} 秒）`,
+      title: `AI 診斷建議 (${(data.elapsedMs / 1000).toFixed (1)} 秒)`,
       width: 700,
-      html: `<div class="text-start"><pre class="text-wrap small">${escapeHtml(data.suggestion)}</pre></div>`,
+      html: `<div class="text-start"><pre class="text-wrap small">${escapeHtml (data.suggestion)}</pre></div>`,
       confirmButtonText: '關閉',
     })
   } catch {
-    // 錯誤由攔截器處理（模型未啟動時亦會在此顯示）
+    // 錯誤由攔截器處理 (模型未啟動時亦會在此顯示)
   } finally {
     analyzing.value = false
   }
@@ -753,7 +751,7 @@ async function runAi() {
             <input v-model.trim="form.senderName" class="form-control" placeholder="可空" />
           </div>
           <div class="col-md-3">
-            <label class="form-label">顯示名稱（Line/FB 暱稱）</label>
+            <label class="form-label">顯示名稱 (Line/FB 暱稱)</label>
             <input v-model.trim="form.senderDisplayName" class="form-control" placeholder="電話與顯示名稱至少一項" />
           </div>
           <div class="col-md-3">
@@ -836,7 +834,7 @@ async function runAi() {
             <select v-model.number="form.cropId" class="form-select" required>
               <option value="0" disabled>請選擇作物</option>
               <option
-                v-for="cr in (selectedCropCategoryId ? (cropCategories.find((c) => c.id === selectedCropCategoryId)?.crops ?? []) : cropCategories.flatMap((c) => c.crops))"
+                v-for="cr in (selectedCropCategoryId ? (cropCategories.find ((c) => c.id === selectedCropCategoryId)?.crops ?? []) : cropCategories.flatMap ((c) => c.crops))"
                 :key="cr.id"
                 :value="cr.id"
               >
@@ -892,21 +890,21 @@ async function runAi() {
             <input v-model.trim="form.damageScale" class="form-control" placeholder="例：約 3 成" />
           </div>
           <div class="col-12">
-            <label class="form-label">被害部位（可複選）</label>
+            <label class="form-label">被害部位 (可複選)</label>
             <div class="d-flex flex-wrap gap-3">
               <label v-for="d in damages" :key="d.id" class="form-check form-check-inline">
                 <input
                   class="form-check-input"
                   type="checkbox"
-                  :checked="form.damageIds.includes(d.id)"
-                  @change="toggle(form.damageIds, d.id)"
+                  :checked="form.damageIds.includes (d.id)"
+                  @change="toggle (form.damageIds, d.id)"
                 />
                 <span class="form-check-label">{{ d.name }}</span>
               </label>
             </div>
           </div>
           <div class="col-12">
-            <label class="form-label">病蟲害明細（可增刪多列，同分類可多筆）</label>
+            <label class="form-label">病蟲害明細 (可增刪多列，同分類可多筆)</label>
             <div v-for="(row, idx) in pestRows" :key="idx" class="row g-2 align-items-end mb-2">
               <div class="col-md-3">
                 <label class="form-label small text-muted mb-1">害物類型</label>
@@ -918,7 +916,7 @@ async function runAi() {
                 <label class="form-label small text-muted mb-1">病蟲害分類</label>
                 <select v-model.number="row.pestCategoryId" class="form-select form-select-sm">
                   <option
-                    v-for="c in (pestTypes.find((p) => p.id === row.pestTypeId)?.categories ?? [])"
+                    v-for="c in (pestTypes.find ((p) => p.id === row.pestTypeId)?.categories ?? [])"
                     :key="c.id"
                     :value="c.id"
                   >
@@ -928,20 +926,20 @@ async function runAi() {
               </div>
               <div class="col-md-4">
                 <label class="form-label small text-muted mb-1">學名：描述</label>
-                <input v-model.trim="row.pestNote" class="form-control form-control-sm" placeholder="學名：描述（選填）" maxlength="500" />
+                <input v-model.trim="row.pestNote" class="form-control form-control-sm" placeholder="學名：描述 (選填)" maxlength="500" />
               </div>
               <div class="col-md-1">
-                <button type="button" class="btn btn-sm btn-outline-danger" @click="pestRows.splice(idx, 1)">刪除</button>
+                <button type="button" class="btn btn-sm btn-outline-danger" @click="pestRows.splice (idx, 1)">刪除</button>
               </div>
             </div>
-            <button type="button" class="btn btn-sm btn-outline-primary" @click="pestRows.push({ pestTypeId: pestTypes[0]?.id ?? 0, pestCategoryId: pestTypes[0]?.categories[0]?.id ?? 0, pestNote: '' })">＋新增一列</button>
+            <button type="button" class="btn btn-sm btn-outline-primary" @click="pestRows.push ({ pestTypeId: pestTypes[0]?.id ?? 0, pestCategoryId: pestTypes[0]?.categories[0]?.id ?? 0, pestNote: '' })">＋新增一列</button>
           </div>
           <div class="col-12">
             <label class="form-label">土壤、栽培、用藥紀錄</label>
             <textarea v-model.trim="form.caseDescription" class="form-control" rows="2" placeholder="對應紙本表單土壤、栽培、用藥紀錄欄位"></textarea>
           </div>
           <div class="col-12">
-            <label class="form-label">是否已採取防治措施及其效果</label>
+            <label class="form-label">建議採取措施</label>
             <textarea v-model.trim="form.hintDescription" class="form-control" rows="2"></textarea>
           </div>
         </div>
@@ -952,25 +950,25 @@ async function runAi() {
         <div class="card-header bg-success text-white">防治建議與簽名</div>
         <div class="card-body row g-3">
           <div class="col-md-6">
-            <label class="form-label">防治建議（可複選）</label>
+            <label class="form-label">防治建議 (可複選)</label>
             <div v-for="h in hints" :key="h.id" class="form-check">
               <input
                 class="form-check-input"
                 type="checkbox"
-                :checked="form.hintIds.includes(h.id)"
-                @change="toggle(form.hintIds, h.id)"
+                :checked="form.hintIds.includes (h.id)"
+                @change="toggle (form.hintIds, h.id)"
               />
               <span class="form-check-label">{{ h.name }}</span>
             </div>
           </div>
           <div class="col-md-6">
-            <label class="form-label d-flex justify-content-between">診斷簽名人（可複選） <button type="button" class="btn btn-sm btn-outline-success py-0" @click="handleCreateIdentifier">＋新增</button></label>
+            <label class="form-label d-flex justify-content-between">診斷簽名人 (可複選) <button type="button" class="btn btn-sm btn-outline-success py-0" @click="handleCreateIdentifier">＋新增</button></label>
             <div v-for="i in identifiers" :key="i.id" class="form-check">
               <input
                 class="form-check-input"
                 type="checkbox"
-                :checked="form.identifierIds.includes(i.id)"
-                @change="toggle(form.identifierIds, i.id)"
+                :checked="form.identifierIds.includes (i.id)"
+                @change="toggle (form.identifierIds, i.id)"
               />
               <span class="form-check-label">{{ i.name }}</span>
             </div>

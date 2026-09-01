@@ -12,7 +12,7 @@
 - **WHEN** AI 建議內容包含 `<img onerror=...>` 等 HTML
 - **THEN** 前端以純文字顯示該內容，且不執行任何標籤
 
-### Requirement: 關閉 OSIV（Open Session in View）
+### Requirement: 關閉 OSIV (Open Session in View)
 
 後端 SHALL 關閉 open-in-view，任何 API 回應不得因自動保持資料庫 session 而依賴交易外的延遲載入。
 
