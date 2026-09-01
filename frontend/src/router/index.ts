@@ -66,6 +66,18 @@ const router = createRouter ({
       component: () => import ('../views/SendersView.vue'),
       meta: { requiresAuth: true, staffOnly: true },
     },
+    {
+      path: '/admin/crops',
+      name: 'crops-admin',
+      component: () => import ('../views/CropManagementView.vue'),
+      meta: { requiresAuth: true, staffOnly: true },
+    },
+    {
+      path: '/admin/pest-categories',
+      name: 'pest-categories-admin',
+      component: () => import ('../views/PestManagementView.vue'),
+      meta: { requiresAuth: true, adminOnly: true },
+    },
     { path: '/:pathMatch (.*)*', redirect: '/' },
   ],
 })
