@@ -574,7 +574,7 @@ async function confirmDelete (id: number) {
               <td style="width:90px">
                 <span class="badge" :class="statusBadgeClass (c.status)">{{ statusLabel (c.status) }}</span>
               </td>
-              <td class="text-end" style="width:130px;min-width:130px;position:sticky;right:0;background:var(--bs-body-bg, white);z-index:1;box-shadow:-6px 0 12px rgba(0,0,0,0.06)">
+              <td class="text-end" style="width:130px;min-width:130px">
                 <button class="btn btn-sm btn-outline-success me-1" @click="viewDetail (c.caseId)">
                   預覽
                 </button>
