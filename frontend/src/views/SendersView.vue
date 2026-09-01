@@ -36,7 +36,7 @@ const senderTypes = ref<{ id: number; name: string }[]>([])
 function displayLabel (s: SenderRow) {
   const hasName = s.name && s.name.trim ()
   const hasDisplay = s.displayName && s.displayName.trim ()
-  if (hasName && hasDisplay) return `${s.name}(${s.displayName})`
+  if (hasName && hasDisplay) return `${s.name} (${s.displayName})`
   if (hasDisplay) return s.displayName!
   if (hasName) return s.name!
   return s.phone ?? ''
@@ -325,18 +325,18 @@ async function handleEdit (s: SenderRow) {
     </div>
 
     <div class="card shadow-sm">
-      <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0">
+      <div class="table-responsive position-relative" style="overflow-x:auto;-webkit-overflow-scrolling:touch">
+        <table class="table table-hover align-middle mb-0 text-nowrap" style="min-width:950px;table-layout:fixed">
           <thead class="table-light">
             <tr>
-              <th>ID</th>
-              <th>送件人</th>
-              <th>電話</th>
-              <th>身分別</th>
-              <th>縣市</th>
-              <th>鄉鎮市區</th>
-              <th>地址</th>
-              <th class="text-end">操作</th>
+              <th style="width:60px;min-width:60px">ID</th>
+              <th style="width:140px;min-width:140px">送件人</th>
+              <th style="width:110px;min-width:110px">電話</th>
+              <th style="width:100px;min-width:100px">身分別</th>
+              <th style="width:80px;min-width:80px">縣市</th>
+              <th style="width:100px;min-width:100px">鄉鎮市區</th>
+              <th style="width:150px;min-width:150px">地址</th>
+              <th class="text-end" style="width:130px;min-width:130px">操作</th>
             </tr>
           </thead>
           <tbody>
@@ -348,12 +348,12 @@ async function handleEdit (s: SenderRow) {
             </tr>
             <tr v-for="s in pagedSenders" :key="s.senderId">
               <td>{{ s.senderId }}</td>
-              <td>{{ displayLabel (s) }}</td>
-              <td>{{ s.phone ?? '—' }}</td>
-              <td>{{ s.senderTypeName }}</td>
-              <td>{{ s.cityName }}</td>
-              <td>{{ s.districtName }}</td>
-              <td>{{ s.address }}</td>
+              <td class="text-truncate" style="max-width:140px" :title="displayLabel(s)">{{ displayLabel(s) }}</td>
+              <td class="text-truncate" style="max-width:110px" :title="s.phone ?? '—'">{{ s.phone ?? '—' }}</td>
+              <td class="text-truncate" style="max-width:100px" :title="s.senderTypeName">{{ s.senderTypeName }}</td>
+              <td class="text-truncate" style="max-width:80px" :title="s.cityName">{{ s.cityName }}</td>
+              <td class="text-truncate" style="max-width:100px" :title="s.districtName">{{ s.districtName }}</td>
+              <td class="text-truncate" style="max-width:150px" :title="s.address">{{ s.address }}</td>
               <td class="text-end">
                 <button v-if="auth.isStaff" class="btn btn-sm btn-outline-primary me-1" @click="handleEdit (s)">編輯</button>
                 <button v-if="auth.isAdmin" class="btn btn-sm btn-outline-danger" @click="handleDelete (s.senderId, displayLabel (s))">刪除</button>

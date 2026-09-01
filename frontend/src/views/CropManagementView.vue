@@ -142,12 +142,12 @@ async function handleDelete (item: CropRow) {
 
     <div v-if="loading" class="text-center text-muted py-4">載入中…</div>
     <div v-else class="card shadow-sm">
-      <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0">
-          <thead class="table-light"><tr><th>ID</th><th>名稱</th><th>分類</th><th class="text-end">操作</th></tr></thead>
+      <div class="table-responsive position-relative" style="overflow-x:auto;-webkit-overflow-scrolling:touch">
+        <table class="table table-hover align-middle mb-0 text-nowrap" style="min-width:600px;table-layout:fixed">
+          <thead class="table-light"><tr><th style="width:60px;min-width:60px">ID</th><th style="width:200px;min-width:200px">名稱</th><th style="width:120px;min-width:120px">分類</th><th class="text-end" style="width:130px;min-width:130px">操作</th></tr></thead>
           <tbody>
             <tr v-if="filtered.length === 0"><td colspan="4" class="text-center text-muted py-4">尚無資料</td></tr>
-            <tr v-for="item in paged" :key="item.id"><td>{{ item.id }}</td><td>{{ item.name }}</td><td>{{ cropCategories.find ((c) => c.id === item.cropCategoryId)?.name ?? '—' }}</td><td class="text-end"><button v-if="auth.isStaff" class="btn btn-sm btn-outline-primary me-1" @click="handleEdit (item)">編輯</button><button v-if="auth.isAdmin" class="btn btn-sm btn-outline-danger" @click="handleDelete (item)">刪除</button></td></tr>
+            <tr v-for="item in paged" :key="item.id"><td>{{ item.id }}</td><td class="text-truncate" style="max-width:200px" :title="item.name">{{ item.name }}</td><td class="text-truncate" style="max-width:120px" :title="cropCategories.find ((c) => c.id === item.cropCategoryId)?.name ?? '—'">{{ cropCategories.find ((c) => c.id === item.cropCategoryId)?.name ?? '—' }}</td><td class="text-end"><button v-if="auth.isStaff" class="btn btn-sm btn-outline-primary me-1" @click="handleEdit (item)">編輯</button><button v-if="auth.isAdmin" class="btn btn-sm btn-outline-danger" @click="handleDelete (item)">刪除</button></td></tr>
           </tbody>
         </table>
       </div>
