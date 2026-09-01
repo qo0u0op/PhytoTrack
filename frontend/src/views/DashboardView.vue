@@ -57,14 +57,11 @@ const total = () => stats.value?.periodTotal ?? stats.value?.totalCases ?? 0
 
 const percent = (count?: number) => {
   const t = total ()
-  return t === 0 ? 0 : Math.round (((count ?? 0) / t) * 100)
+  return t === 0 ? "0.0" : (((count ?? 0) / t) * 100).toFixed (1)
 }
 
 const statusLabel = (status?: string) =>
   status === 'PENDING' ? '待處理' : status === 'RESOLVED' ? '已診斷' : '已結案'
-
-const periodLabel = (p?: string) =>
-  p === 'ANNUAL' ? '年度' : p === 'MONTHLY' ? '月度' : '歷史'
 
 const barClass = (status?: string) =>
   status === 'PENDING' ? 'bg-warning' : status === 'RESOLVED' ? 'bg-success' : 'bg-secondary'
@@ -101,7 +98,6 @@ const barClass = (status?: string) =>
           </div>
           <div class="col-md-3">
             <div class="small text-muted">期別案件數：<strong>{{ total () }}</strong> 件</div>
-            <div class="small text-muted">期間：{{ periodLabel (stats?.period) }} {{ selectedYear ?? '' }} {{ period === 'MONTHLY' ? (selectedMonth + '月') : '' }}</div>
           </div>
         </div>
       </div>
@@ -204,7 +200,7 @@ const barClass = (status?: string) =>
             <h6 class="card-title text-muted">常見作物 (Top 10)</h6>
             <table class="table table-sm mb-0">
               <thead>
-                <tr><th>作物</th><th class="text-end">件數</th></tr>
+                <tr><th>作物</th><th class="text-end">案件數</th></tr>
               </thead>
               <tbody>
                 <tr v-for="c in stats?.topCrops ?? []" :key="c.name">
@@ -224,7 +220,7 @@ const barClass = (status?: string) =>
             <h6 class="card-title text-muted">常見因素 (Top 10)</h6>
             <table class="table table-sm mb-0">
               <thead>
-                <tr><th>因素</th><th class="text-end">件數</th></tr>
+                <tr><th>因素</th><th class="text-end">案件數</th></tr>
               </thead>
               <tbody>
                 <tr v-for="c in stats?.topPestCategories ?? []" :key="c.name">
@@ -243,7 +239,7 @@ const barClass = (status?: string) =>
           <div class="card-body">
             <h6 class="card-title text-muted">田區位置 (Top 10)</h6>
             <table class="table table-sm mb-0">
-              <thead><tr><th>縣市</th><th class="text-end">件數</th></tr></thead>
+              <thead><tr><th>縣市</th><th class="text-end">案件數</th></tr></thead>
               <tbody>
                 <tr v-for="c in (stats?.fieldCityBreakdown ?? []).slice(0, 10)" :key="c.name">
                   <td>{{ c.name }}</td><td class="text-end">{{ c.count }}</td>
