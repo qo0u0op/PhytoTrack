@@ -1,8 +1,5 @@
 {
   "browser": {
-    "browserName": "terminal-browser",
-    "launchOptions": {
-      "executablePath": "/usr/bin/terminal-browser"
-    }
+    "browserName": "chromium"
   }
 }

@@ -58,7 +58,7 @@ npm install -g @playwright/cli@0.1.18
 ```
 
 > 安裝後 `playwright-cli` 與 `npx playwright cli` 為同一工具，參數完全互通。
-> 本專案以 **terminal-browser** 作為測試用瀏覽器 (見 `.playwright/cli.config.json:2`)，由 `terminal-browser` 自帶的 Electron/Chromium 提供，無需額外執行 `playwright install` 或 `install-browser` 下載瀏覽器。
+> 本專案 `playwright-cli` 預設以 **chromium** 自帶瀏覽器 (見 `.playwright/cli.config.json:2`，`browserName: chromium`)，需首次 `npx playwright install chromium`（`mise` 已快取）；`terminal-browser` 互動式則使用 `.playwright/cli.config.terminal.json`（`--config .playwright/cli.config.terminal.json` 或 `terminal-browser action --`）。
 
 ## 4. 啟動待測系統
 
