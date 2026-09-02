@@ -89,6 +89,11 @@ HTTP 請求
 3. 非串流 `.call ()` 等待完整回覆 → 回傳建議文字與耗時
 4. `GET /api/ai/health` 由後端主動檢查 llama-server 存活，供前端顯示模型狀態
 
+### 監控與日誌 (Phase 2, api-observability)
+
+- Actuator：`GET /actuator/health`（含 `db` 與 `llama` 組件，公開）、`GET /actuator/info`（公開）、`GET /actuator/metrics`（僅 `ROLE_ADMIN`，`management.endpoints.web.exposure.include=health,info,metrics`，`show-details: always`）
+- 日誌：`logback-spring.xml` 以 `RollingFileAppender` 寫入 `logs/phytotrack.log`，依日與大小滾動 `logs/phytotrack-%d{yyyy-MM-dd}.%i.log.gz`（`maxFileSize 10MB`、`maxHistory 30`、`totalSizeCap 500MB`），pattern 含 `[%X{requestId}]` 供追蹤
+
 ## 4. 前端結構
 
 程式位於 `frontend/src/`：
@@ -171,4 +176,6 @@ types/    openapi-typescript 由 /v3/api-docs 自動生成的 API 型別 (與後
 - `app.jwt.secret`：JWT 簽章密鑰，正式環境以環境變數 `JWT_SECRET` 覆蓋
 - `app.bootstrap.*`：首次啟動自動建立的帳號 (admin / staff / viewer)
 - `spring.ai.openai.*`：llama-server 連線設定
+- `management.endpoints.web.exposure.include`：`health,info,metrics`（非 dev `metrics` 僅 ADMIN）
 - `application-postgres.yaml`：PostgreSQL 升級 profile (見 ADR-007)
+- 日誌：`logback-spring.xml`（`logs/phytotrack-%d{yyyy-MM-dd}.%i.log.gz`，見上節）

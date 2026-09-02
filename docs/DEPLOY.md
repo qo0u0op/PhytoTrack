@@ -161,7 +161,13 @@ sqlite3 backend/diagnoses.db "SELECT COUNT (*) FROM cases WHERE field_district_i
 
 影響：下游若以索引解析 CSV，需改以表頭名稱解析；全欄位已改為引號字串。
 
-## 9. 升級到 PostgreSQL (選用)
+## 9. 監控與日誌 (Phase 2, api-observability)
+
+- 健康檢查：`GET /actuator/health`（含 `db`，公開）、`GET /actuator/info`（公開）；指標：`GET /actuator/metrics/http.server.requests` 等僅 `ROLE_ADMIN`（`management.endpoints.web.exposure.include=health,info,metrics`）
+- 日誌：`logs/phytotrack.log` 為主檔，依日與大小滾動為 `logs/phytotrack-%d{yyyy-MM-dd}.%i.log.gz`（`maxFileSize 10MB`、`maxHistory 30`、`totalSizeCap 500MB`），pattern 含 `[%X{requestId}]` 供追蹤；`logs/` 已 gitignore，建議納入備份排除
+- 驗證：`curl http://localhost:8080/actuator/health` 應回 `{"status":"UP"}`；`ls logs/` 觀察滾動與壓縮
+
+## 10. 升級到 PostgreSQL (選用)
 
 現階段使用 SQLite 起步 (理由見 ADR-007)。若未來資料量與並發需求增加，切換方式：
 
