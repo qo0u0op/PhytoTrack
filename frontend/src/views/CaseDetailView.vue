@@ -196,13 +196,19 @@ function showAiTip () {
             </div>
             <div class="col-12"><hr class="my-2" /></div>
             <div class="col-md-6">
+              <strong>服務類別：</strong>{{ detail.serviceName ?? '無' }}
+            </div>
+            <div class="col-md-6">
+              <strong>送件方式：</strong>{{ detail.deliveryName ?? '無' }}
+            </div>
+            <div class="col-md-6">
               <strong>耕種方式：</strong>{{ detail.methodName ?? '無' }}
             </div>
             <div class="col-md-6">
-              <strong>作物種類：</strong>{{ detail.cropCategoryName ?? '—' }}
+              <strong>作物類別：</strong>{{ detail.cropCategoryName ?? '—' }}
             </div>
             <div class="col-12">
-              <strong>作物名稱：</strong>{{ detail.cropName ?? '無' }}
+              <strong>作物：</strong>{{ detail.cropName ?? '無' }}
             </div>
             <div class="col-md-6">
               <strong>被害部位：</strong>{{ join (detail.damages) }}
@@ -218,12 +224,6 @@ function showAiTip () {
               <p class="mb-0">{{ detail.caseDescription ?? '無' }}</p>
             </div>
             <div class="col-12"><hr class="my-2" /></div>
-            <div class="col-md-6">
-              <strong>服務類別：</strong>{{ detail.serviceName ?? '無' }}
-            </div>
-            <div class="col-md-6">
-              <strong>送件方式：</strong>{{ detail.deliveryName ?? '無' }}
-            </div>
             <div class="col-12">
               <strong>鑑定者：</strong>{{ join (detail.identifiers) }}
             </div>

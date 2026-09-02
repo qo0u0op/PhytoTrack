@@ -102,7 +102,7 @@ public class ReferenceDataService {
         .toList ();
   }
 
-  /** 害物類型 (含小分類清單，依代碼降冪排序) */
+  /** 害物類型 (含小分類清單，依代碼升冪排序) */
   @Transactional (readOnly = true)
   public List<PestTypeResponse> pestTypes () {
     return pestTypeRepository.findAllByOrderByPestTypeIdAsc ().stream ()
@@ -489,7 +489,7 @@ public class ReferenceDataService {
 
   private PestTypeResponse toPestTypeResponse (PestType pestType) {
     List<PestTypeResponse.PestCategoryItem> categories = pestType.getCategories ().stream ()
-        .sorted (Comparator.comparing (PestCategory::getPestCategoryCode).reversed ())
+        .sorted (Comparator.comparing (PestCategory::getPestCategoryCode))
         .map (c -> new PestTypeResponse.PestCategoryItem (c.getPestCategoryId (), c.getPestCategoryCode (), c.getPestCategory ()))
         .toList ();
     return new PestTypeResponse (pestType.getPestTypeId (), pestType.getPestType (), categories);

@@ -216,8 +216,6 @@ async function loadRefs () {
   } catch {}
 }
 
-
-
 async function handleDelete (id: number, label: string) {
   const result = await Swal.fire ({
     icon: 'warning',
@@ -231,61 +229,6 @@ async function handleDelete (id: number, label: string) {
   try {
     await senderApi.remove (id)
     Swal.fire ({ icon: 'success', title: '已刪除', timer: 1200, showConfirmButton: false })
-    await load ()
-  } catch {}
-}
-
-async function handleCreate () {
-  if (cities.value.length === 0 || senderTypes.value.length === 0) {
-    await loadRefs ()
-  }
-  const cityOptionsHtml = cities.value.map ((c) => `<option value="${c.id}">${c.name}</option>`).join ('')
-  const firstCity = cities.value[0]
-  const districtOptionsHtml = firstCity ? firstCity.districts.map ((d) => `<option value="${d.id}">${d.name}</option>`).join ('') : ''
-  const typeOptionsHtml = senderTypes.value.map ((t) => `<option value="${t.id}">${t.name}</option>`).join ('')
-  const { value: form } = await Swal.fire ({
-    title: '新增送件人',
-    html: `
-      <input id="swal-sender-name" class="swal2-input" placeholder="姓名" />
-      <input id="swal-sender-displayName" class="swal2-input" placeholder="顯示名稱" />
-      <input id="swal-sender-phone" class="swal2-input" placeholder="電話" />
-      <input id="swal-sender-address" class="swal2-input" placeholder="地址" />
-      <select id="swal-sender-city" class="swal2-select"><option value="">請選擇縣市</option>${cityOptionsHtml}</select>
-      <select id="swal-sender-district" class="swal2-select">${districtOptionsHtml}</select>
-      <select id="swal-sender-type" class="swal2-select">${typeOptionsHtml}</select>
-    `,
-    didOpen: () => {
-      const cityEl = document.getElementById ('swal-sender-city') as HTMLSelectElement
-      const districtEl = document.getElementById ('swal-sender-district') as HTMLSelectElement
-      if (cityEl && districtEl) {
-        cityEl.addEventListener ('change', () => {
-          const cid = Number (cityEl.value)
-          const city = cities.value.find ((c) => c.id === cid)
-          districtEl.innerHTML = city ? city.districts.map ((d) => `<option value="${d.id}">${d.name}</option>`).join ('') : ''
-        })
-      }
-    },
-    showCancelButton: true,
-    confirmButtonText: '新增',
-    cancelButtonText: '取消',
-    preConfirm: () => {
-      const name = (document.getElementById ('swal-sender-name') as HTMLInputElement).value.trim ()
-      const displayName = (document.getElementById ('swal-sender-displayName') as HTMLInputElement).value.trim ()
-      const phone = (document.getElementById ('swal-sender-phone') as HTMLInputElement).value.trim ()
-      const address = (document.getElementById ('swal-sender-address') as HTMLInputElement).value.trim ()
-      const districtId = Number ((document.getElementById ('swal-sender-district') as HTMLSelectElement).value)
-      const senderTypeId = Number ((document.getElementById ('swal-sender-type') as HTMLSelectElement).value)
-      if (!phone && !displayName) return Swal.showValidationMessage ('電話與顯示名稱至少需提供一項')
-      if (!address) return Swal.showValidationMessage ('地址不可為空白')
-      if (!districtId) return Swal.showValidationMessage ('請選擇鄉鎮市區')
-      if (!senderTypeId) return Swal.showValidationMessage ('請選擇身分別')
-      return { name: name || undefined, displayName: displayName || undefined, phone: phone || undefined, address, districtId, senderTypeId }
-    },
-  })
-  if (!form) return
-  try {
-    await senderApi.create (form as any)
-    Swal.fire ({ icon: 'success', title: '已新增', timer: 1200, showConfirmButton: false })
     await load ()
   } catch {}
 }
@@ -367,10 +310,7 @@ async function handleEdit (s: SenderRow) {
   <div class="container py-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
       <h4 class="mb-0">送件人管理</h4>
-      <div class="d-flex gap-1">
-        <button v-if="auth.isStaff" class="btn btn-success btn-sm" @click="handleCreate">新增</button>
-        <button class="btn btn-outline-primary btn-sm" :aria-expanded="showFilter" aria-controls="senderFilterCard" @click="showFilter = !showFilter">篩選</button>
-      </div>
+      <button class="btn btn-outline-primary btn-sm" :aria-expanded="showFilter" aria-controls="senderFilterCard" @click="showFilter = !showFilter">篩選</button>
     </div>
     <div v-show="showFilter" id="senderFilterCard" class="card shadow-sm mb-3">
       <div class="card-body">

@@ -421,11 +421,8 @@ const selectedCropCategory = computed (() => {
   return crop?.category ?? ''
 })
 
-// 狀態選項：已結案不可再轉移 (僅維持原狀)；其餘角色依權限——CLOSED 僅 ADMIN 可選
+// 狀態選項：CLOSED 僅 ADMIN 可選；已選 CLOSED 仍可切換，僅儲存成功後由後端鎖定
 const statusOptions = computed (() => {
-  if (form.status === 'CLOSED') {
-    return STATUS_OPTIONS.filter ((o) => o.value === 'CLOSED')
-  }
   return auth.isAdmin ? STATUS_OPTIONS : STATUS_OPTIONS.filter ((o) => o.value !== 'CLOSED')
 })
 
@@ -818,12 +815,63 @@ async function runAi () {
         </div>
       </div>
 
-      <!-- 作物與診斷資訊：送件人帶入/儲存後才顯示 -->
+      <!-- 收件資訊：收件日期與狀態獨立卡片 -->
       <div v-if="diagnosisVisible" class="card shadow-sm mb-4">
-        <div class="card-header bg-success text-white">作物與診斷資訊</div>
+        <div class="card-header bg-success text-white">收件資訊</div>
         <div class="card-body row g-3">
+          <div class="col-md-6">
+            <label class="form-label">收件日期</label>
+            <input v-model="form.receiveDate" type="date" class="form-control" required />
+          </div>
+          <div v-if="editId" class="col-md-6">
+            <label class="form-label">狀態</label>
+            <select v-model="form.status" class="form-select">
+              <option v-for="opt in statusOptions" :key="opt.value" :value="opt.value">
+                {{ opt.label }}
+              </option>
+            </select>
+            <div class="form-text small text-muted">
+              {{
+                form.status === 'CLOSED'
+                  ? '已結案狀態不可變更'
+                  : auth.isAdmin
+                    ? '待處理→已處理→已結案'
+                    : '待處理→已處理'
+              }}
+            </div>
+          </div>
+          <div v-if="!editId" class="col-md-6">
+            <label class="form-label">狀態</label>
+            <input class="form-control" value="待處理" disabled />
+            <div class="form-text small text-muted">新增案件預設為待處理</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 作物資訊：送件人帶入/儲存後才顯示 -->
+      <div v-if="diagnosisVisible" class="card shadow-sm mb-4">
+        <div class="card-header bg-success text-white">作物資訊</div>
+        <div class="card-body row g-3">
+          <div class="col-md-6">
+            <label class="form-label">服務類別</label>
+            <select v-model.number="form.serviceId" class="form-select" required>
+              <option v-for="s in services" :key="s.id" :value="s.id">{{ s.name }}</option>
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">交付方式</label>
+            <select v-model.number="form.deliverId" class="form-select" required>
+              <option v-for="d in deliveries" :key="d.id" :value="d.id">{{ d.name }}</option>
+            </select>
+          </div>
           <div class="col-md-4">
-            <label class="form-label">作物別</label>
+            <label class="form-label">耕種方式</label>
+            <select v-model.number="form.methodId" class="form-select" required>
+              <option v-for="m in methods" :key="m.id" :value="m.id">{{ m.name }}</option>
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">作物類別</label>
             <select v-model.number="selectedCropCategoryId" class="form-select">
               <option :value="null">全部</option>
               <option v-for="cc in cropCategories" :key="cc.id" :value="cc.id">{{ cc.name }}</option>
@@ -842,53 +890,6 @@ async function runAi () {
               </option>
             </select>
           </div>
-          <div class="col-md-4">
-            <label class="form-label">耕種方式</label>
-            <select v-model.number="form.methodId" class="form-select" required>
-              <option v-for="m in methods" :key="m.id" :value="m.id">{{ m.name }}</option>
-            </select>
-          </div>
-          <div class="col-md-4">
-            <label class="form-label">服務類別</label>
-            <select v-model.number="form.serviceId" class="form-select" required>
-              <option v-for="s in services" :key="s.id" :value="s.id">{{ s.name }}</option>
-            </select>
-          </div>
-          <div class="col-md-4">
-            <label class="form-label">交付方式</label>
-            <select v-model.number="form.deliverId" class="form-select" required>
-              <option v-for="d in deliveries" :key="d.id" :value="d.id">{{ d.name }}</option>
-            </select>
-          </div>
-          <div v-if="editId" class="col-md-4">
-            <label class="form-label">狀態</label>
-            <select v-model="form.status" class="form-select">
-              <option v-for="opt in statusOptions" :key="opt.value" :value="opt.value">
-                {{ opt.label }}
-              </option>
-            </select>
-            <div class="form-text small text-muted">
-              {{
-                form.status === 'CLOSED'
-                  ? '已結案狀態不可變更'
-                  : auth.isAdmin
-                    ? '待處理→已處理→已結案'
-                    : '待處理→已處理'
-              }}
-            </div>
-          </div>
-          <div class="col-md-4">
-            <label class="form-label">收件日期</label>
-            <input v-model="form.receiveDate" type="date" class="form-control" required />
-          </div>
-          <div class="col-md-4">
-            <label class="form-label">種植面積</label>
-            <input v-model.trim="form.cropScale" class="form-control" placeholder="例：2 分地" />
-          </div>
-          <div class="col-md-4">
-            <label class="form-label">被害面積或植株數</label>
-            <input v-model.trim="form.damageScale" class="form-control" placeholder="例：約 3 成" />
-          </div>
           <div class="col-12">
             <label class="form-label">被害部位 (可複選)</label>
             <div class="d-flex flex-wrap gap-3">
@@ -903,17 +904,36 @@ async function runAi () {
               </label>
             </div>
           </div>
+          <div class="col-md-6">
+            <label class="form-label">栽培面積或規模</label>
+            <input v-model.trim="form.cropScale" class="form-control" placeholder="例：2 分地" />
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">被害面積或規模</label>
+            <input v-model.trim="form.damageScale" class="form-control" placeholder="例：約 3 成" />
+          </div>
           <div class="col-12">
-            <label class="form-label">病蟲害明細 (可增刪多列，同分類可多筆)</label>
+            <label class="form-label">土壤、栽培、用藥紀錄</label>
+            <textarea v-model.trim="form.caseDescription" class="form-control" rows="2" placeholder=""></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- 診斷結果與建議：同診斷區段 -->
+      <div v-if="diagnosisVisible" class="card shadow-sm mb-4">
+        <div class="card-header bg-success text-white">診斷結果與建議</div>
+        <div class="card-body row g-3">
+          <div class="col-12">
+            <label class="form-label">診斷結果 <span class="text-muted small">(可增刪多列，同分類可多筆)</span></label>
             <div v-for="(row, idx) in pestRows" :key="idx" class="row g-2 align-items-end mb-2">
               <div class="col-md-3">
-                <label class="form-label small text-muted mb-1">害物類型</label>
+                <label class="form-label small text-muted mb-1">害物</label>
                 <select v-model.number="row.pestTypeId" class="form-select form-select-sm">
                   <option v-for="p in pestTypes" :key="p.id" :value="p.id">{{ p.name }}</option>
                 </select>
               </div>
               <div class="col-md-4">
-                <label class="form-label small text-muted mb-1">病蟲害分類</label>
+                <label class="form-label small text-muted mb-1">害物因素</label>
                 <select v-model.number="row.pestCategoryId" class="form-select form-select-sm">
                   <option
                     v-for="c in (pestTypes.find ((p) => p.id === row.pestTypeId)?.categories ?? [])"
@@ -932,23 +952,12 @@ async function runAi () {
                 <button type="button" class="btn btn-sm btn-outline-danger" @click="pestRows.splice (idx, 1)">刪除</button>
               </div>
             </div>
-            <button type="button" class="btn btn-sm btn-outline-primary" @click="pestRows.push ({ pestTypeId: pestTypes[0]?.id ?? 0, pestCategoryId: pestTypes[0]?.categories[0]?.id ?? 0, pestNote: '' })">＋新增一列</button>
-          </div>
-          <div class="col-12">
-            <label class="form-label">土壤、栽培、用藥紀錄</label>
-            <textarea v-model.trim="form.caseDescription" class="form-control" rows="2" placeholder="對應紙本表單土壤、栽培、用藥紀錄欄位"></textarea>
+            <button type="button" class="btn btn-sm btn-outline-primary" @click="pestRows.push ({ pestTypeId: pestTypes[0]?.id ?? 0, pestCategoryId: pestTypes[0]?.categories[0]?.id ?? 0, pestNote: '' })">＋新增因素</button>
           </div>
           <div class="col-12">
             <label class="form-label">建議採取措施</label>
             <textarea v-model.trim="form.hintDescription" class="form-control" rows="2"></textarea>
           </div>
-        </div>
-      </div>
-
-      <!-- 防治建議與簽名：同診斷區段 -->
-      <div v-if="diagnosisVisible" class="card shadow-sm mb-4">
-        <div class="card-header bg-success text-white">防治建議與簽名</div>
-        <div class="card-body row g-3">
           <div class="col-md-6">
             <label class="form-label">防治建議 (可複選)</label>
             <div v-for="h in hints" :key="h.id" class="form-check">
