@@ -68,7 +68,7 @@ HTTP 請求
 - **Sender** (送件人)：`name` 可空、`displayName` (Line/FB 暱稱) 可空，`phone` 與 `displayName` 至少一有值 (Service 層檢查)；顯示規則 `name (displayName)` / `displayName` / `name`；`phone` 非空時以部分唯一索引防重；**不以 DB UNIQUE 強制合併**——建案時以前端候選彈窗人工確認沿用 (帶 `senderId`) 或新建；ADMIN 可硬刪除未被引用的送件人 (見 ADR-011)
 - **VIEWER 個資遮蔽**：`CaseService.toDetail/toSummary` 依當前角色判斷，VIEWER 的回應不含送件人姓名/電話/地址，但保留縣市鄉鎮與 `senderId`
 - **統計去重鍵**：不重複送件人以 `COALESCE (phone, displayName)` distinct 計數
-- 案件列表篩選以視圖 `v_case_search` (`schema.sql` 以 `LEFT OUTER JOIN` 涵蓋可空關聯，多對多以 `GROUP_CONCAT (DISTINCT name, '、')` 頓號聚合，`CaseSearchView` 以 `@Subselect` 唯讀映射) 為基礎，經 `CaseSpecifications.buildView ()` 動態組合 14 欄 (送件人三欄合一 `name/displayName/phone`、服務/送件方式、縣市/鄉鎮、作物/作物類別、害物/害物類別、建議類別，AND 組合，鄉鎮必先選縣市)；`status` 為列舉字串契約，由 `CaseService` 解析為 `CaseStatus` 後傳入視圖查詢 (非法值 fail-fast 400 `INVALID_STATUS`)，視圖分頁後回補 `Case` 實體以保留 `VIEWER` 遮蔽
+- 案件列表篩選以視圖 `v_case_search` (`schema.sql` 以 `LEFT OUTER JOIN` 涵蓋可空關聯，多對多以 `GROUP_CONCAT (DISTINCT name, '、')` 頓號聚合，`CaseSearchView` 以 `@Subselect` 唯讀映射，含 `sender_type_id`) 為基礎，經 `CaseSpecifications.buildView ()` 動態組合 17 欄（`receiveDateFrom/To`、`status`、`cityId`/`districtId`、`senderName/senderQuery` 三欄合一、`senderTypeId`、`serviceId`/`deliveryId`/`methodId`、`cropCategoryId`/`cropId`、`damageId`、`pestTypeId`/`pestCategoryId`、`hintId`，AND 組合，鄉鎮必先選縣市；篩選卡 5 列換行：收件日期區間/狀態｜田區縣市鄉鎮/送件人/身分別｜服務/送件/耕種方式｜作物類別作物/被害部位｜害物/害物類別/建議類別）；`status` 為列舉字串契約，由 `CaseService` 解析為 `CaseStatus` 後傳入視圖查詢 (非法值 fail-fast 400 `INVALID_STATUS`)，視圖分頁後回補 `Case` 實體以保留 `VIEWER` 遮蔽；`GET /api/cases/export` 沿用相同 `CaseFilter` 穿透篩選全量匯出（`caseId asc`、UTF-8 BOM、全欄位 `"` 引號、狀態中文 `待處理/已處理/已結案`、表頭 `田區位置/身分別`）
 - 時間戳與建立者由 **JPA Auditing** 自動填寫 (`@CreatedDate`/`@LastModifiedDate`/`@CreatedBy`)，實作 `AuditorAware` 從 SecurityContext 取值 (見 ADR-006)
 - SQLite 日期欄位以 `converter/` 的字串轉換器處理，避免 Hibernate 7 SQLiteDialect 的 epoch 毫秒寫入/嚴格格式讀取不一致問題
 
@@ -113,9 +113,9 @@ types/    openapi-typescript 由 /v3/api-docs 自動生成的 API 型別 (與後
 | POST | /api/auth/login | 公開 | 登入並取得 JWT |
 | POST | /api/auth/me | 登入 | 目前使用者 |
 | POST | /api/auth/logout | 登入 | 登出 (JWT 無狀態，前端丟棄 token) |
-| GET | /api/cases | 登入 | 分頁案件列表 (經 `v_case_search` 視圖)；篩選參數：`cropId`/`cropCategoryId`、`serviceId`/`deliveryId`、`senderName`/`senderQuery` (`name/displayName/phone` 三欄合一 LIKE)、`cityId`/`districtId` (縣市必先選)、`pestTypeId`/`pestCategoryId`、`hintId`、`receiveDateFrom`/`receiveDateTo`、`status`，多參數為 AND 組合 |
+| GET | /api/cases | 登入 | 分頁案件列表 (經 `v_case_search` 視圖)；篩選參數：`receiveDateFrom/To`、`status`、`cityId`/`districtId` (縣市必先選)、`senderName`/`senderQuery` (`name/displayName/phone` 三欄合一 LIKE)、`senderTypeId`、`serviceId`/`deliveryId`/`methodId`、`cropCategoryId`/`cropId`、`damageId`、`pestTypeId`/`pestCategoryId`、`hintId`，多參數 AND，前端篩選卡 5 列換行 |
 | GET | /api/cases/statistics | 登入 | 案件統計總覽：總數／本月新增／待處理／top 作物與病蟲害 (top 5)／狀態比例／近 6 月趨勢；空資料庫回 0 或空清單。月份以收件日期 (`receiveDate`) 為基礎 |
-| GET | /api/cases/export | 登入 | CSV 匯出 (`text/csv`，attachment 下載，UTF-8 BOM)：依與列表相同的篩選參數全量匯出，收件日期升序；欄位含送件人、作物／病蟲害、描述、防治建議等明細 |
+| GET | /api/cases/export | STAFF/ADMIN | CSV 匯出 (`text/csv`，attachment 下載，UTF-8 BOM，全欄位 `"` 引號)：沿用列表相同篩選參數全量匯出（`caseId asc`）；表頭 `收件編號,收件日期,狀態(中文),田區位置,身分別,姓名...栽培面積,被害面積,土壤栽培用藥紀錄,病害...診斷結果,建議事項,防治描述,鑑定者,建立者...` |
 | GET | /api/cases/{id} | 登入 | 案件詳細 |
 | POST | /api/cases | STAFF+ | 建立案件 |
 | PUT | /api/cases/{id} | STAFF+ | 更新案件 (純量欄位、送件人、多對多關聯整組替換、狀態轉移) |

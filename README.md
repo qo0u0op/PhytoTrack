@@ -5,10 +5,11 @@
 ## 功能一覽
 
 - **認證授權**：JWT (無狀態)+ Spring Security + BCrypt，RBAC 三角色 (VIEWER / STAFF / ADMIN)
-- **案件管理**：建立、編輯、刪除、分頁列表與詳細查詢，含送件人、作物、被害部位、病蟲害分類、防治建議、診斷簽名人等多對多關聯；列表支援依作物、服務類別、送件人 (部分比對)、收件日期區間與狀態篩選 (AND 組合)
+- **案件管理**：建立、編輯、刪除、分頁列表與詳細/預覽查詢（含田區位置/身分別更名）；列表支援 17 欄篩選（收件日期區間/狀態/田區縣市鄉鎮/送件人/身分別/服務/送件方式/耕種方式/作物類別作物/被害部位/害物/害物類別/建議類別，5 列換行，AND 組合）且篩選穿透至 CSV；CSV 匯出（STAFF/ADMIN，`caseId asc`、UTF-8 BOM、全欄位 `"` 引號、狀態中文、表頭田區位置/身分別）
 - **AI 診斷**：以 Spring AI (OpenAI 相容格式) 代理本機 llama.cpp，依案件欄位生成診斷建議
 - **參照資料**：作物 (含分類)、病蟲害 (含分類)、縣市／鄉鎮、耕種方式、服務類別、送件方式、身分別、標的等選單資料
-- **管理者後台**：使用者列表管理
+- **帳號管理**：使用者角色/啟停用/重設密碼與個人帳號自助（顯示名稱/信箱/密碼/停用申請）
+- **管理者後台**：使用者與送件人管理（含 VIEWER 個資遮蔽）
 - **API 文件**：springdoc-openapi 產生 OpenAPI 3 規格，提供 Swagger UI 與前端 TS 型別 (openapi-typescript)
 
 ## 技術堆疊
@@ -104,7 +105,7 @@ terminal-browser open http://localhost:5173        # zenbu-labs/terminal-browser
 
 ## 規劃中 (見 openspec)
 
-統計 Dashboard、使用者管理完整化、送件人管理 (displayName、去重合併、VIEWER 個資遮蔽)、參照資料維護、監控與備份等，詳見 `openspec/specs/` (10 份能力契約) 與 `openspec/changes/`。案件生命週期 (狀態流轉：PENDING→RESOLVED→CLOSED) 與更新契約補全已交付。
+Phase 1 8 能力與後續增量（CSV 格式、顯示與篩選對齊）已全數交付並封存至 2026-09-02；`openspec/specs` 為 10 份能力契約單一真相源，`docs/` 已同步至最新行為。
 
 ## 同時啟動前後端 (選用，需 mise)
 
