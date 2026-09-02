@@ -562,13 +562,18 @@ public class CaseService {
    */
   @Transactional (readOnly = true)
   public CaseStatisticsResponse statistics () {
-    return statistics ("HISTORICAL", null, null);
+    return statistics ("HISTORICAL", null, null, null);
   }
 
   @Transactional (readOnly = true)
   public CaseStatisticsResponse statistics (String period, Integer year, Integer month) {
+    return statistics (period, year, month, null);
+  }
+
+  @Transactional (readOnly = true)
+  public CaseStatisticsResponse statistics (String period, Integer year, Integer month, Integer half) {
     String normalizedPeriod = period == null || period.isBlank () ? "HISTORICAL" : period.toUpperCase ();
-    if (!List.of ("HISTORICAL", "ANNUAL", "MONTHLY").contains (normalizedPeriod)) {
+    if (!List.of ("HISTORICAL", "ANNUAL", "MONTHLY", "HALF_YEAR").contains (normalizedPeriod)) {
       throw new ApiException ("VALIDATION_ERROR", HttpStatus.BAD_REQUEST, "無效的 period：" + period);
     }
     if ("ANNUAL".equals (normalizedPeriod) && year == null) {
@@ -576,6 +581,12 @@ public class CaseService {
     }
     if ("MONTHLY".equals (normalizedPeriod) && (year == null || month == null)) {
       throw new ApiException ("VALIDATION_ERROR", HttpStatus.BAD_REQUEST, "月度統計需提供 year 與 month");
+    }
+    if ("HALF_YEAR".equals (normalizedPeriod) && (year == null || half == null)) {
+      throw new ApiException ("VALIDATION_ERROR", HttpStatus.BAD_REQUEST, "半年度統計需提供 year 與 half");
+    }
+    if (half != null && (half < 1 || half > 2)) {
+      throw new ApiException ("VALIDATION_ERROR", HttpStatus.BAD_REQUEST, "無效的 half：" + half);
     }
     if (month != null && (month < 1 || month > 12)) {
       throw new ApiException ("VALIDATION_ERROR", HttpStatus.BAD_REQUEST, "無效的 month：" + month);
@@ -590,7 +601,7 @@ public class CaseService {
         .map (c -> c.getReceiveDate ().getYear ())
         .distinct ().sorted (java.util.Comparator.reverseOrder ()).toList ();
 
-    List<Case> filtered = filterByPeriod (all, normalizedPeriod, year, month);
+    List<Case> filtered = filterByPeriod (all, normalizedPeriod, year, month, half);
     long periodTotal = filtered.size ();
 
     long distinctSenders = filtered.stream ()
@@ -642,10 +653,15 @@ public class CaseService {
         fieldCityBreakdown);
   }
 
-  private List<Case> filterByPeriod (List<Case> all, String period, Integer year, Integer month) {
+  private List<Case> filterByPeriod (List<Case> all, String period, Integer year, Integer month, Integer half) {
     if ("HISTORICAL".equals (period)) return all;
     if ("ANNUAL".equals (period)) {
       return all.stream ().filter (c -> c.getReceiveDate ().getYear () == year).toList ();
+    }
+    if ("HALF_YEAR".equals (period)) {
+      LocalDate start = half == 1 ? LocalDate.of (year, 1, 1) : LocalDate.of (year, 7, 1);
+      LocalDate end = half == 1 ? LocalDate.of (year, 6, 30) : LocalDate.of (year, 12, 31);
+      return all.stream ().filter (c -> !c.getReceiveDate ().isBefore (start) && !c.getReceiveDate ().isAfter (end)).toList ();
     }
     // MONTHLY
     YearMonth ym = YearMonth.of (year, month);

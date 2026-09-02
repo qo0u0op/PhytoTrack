@@ -82,13 +82,14 @@ public class CaseController {
     return ResponseEntity.ok (caseService.list (filter, pageable));
   }
 
-  /** 案件統計總覽 (登入即可，見 spec case-statistics)，支援期別：HISTORICAL/ANNUAL/MONTHLY */
+  /** 案件統計總覽 (登入即可，見 spec case-statistics)，支援期別：HISTORICAL/ANNUAL/MONTHLY/HALF_YEAR */
   @GetMapping ("/statistics")
   @PreAuthorize ("isAuthenticated ()")
   public ResponseEntity<CaseStatisticsResponse> statistics (@RequestParam (required = false) String period,
       @RequestParam (required = false) Integer year,
-      @RequestParam (required = false) Integer month) {
-    return ResponseEntity.ok (caseService.statistics (period, year, month));
+      @RequestParam (required = false) Integer month,
+      @RequestParam (required = false) Integer half) {
+    return ResponseEntity.ok (caseService.statistics (period, year, month, half));
   }
 
   /**
