@@ -36,6 +36,15 @@ public class RequestIdFilter extends OncePerRequestFilter {
     String requestId = request.getHeader (REQUEST_ID_HEADER);
     if (requestId == null || requestId.isBlank ()) {
       requestId = UUID.randomUUID ().toString ();
+    } else {
+      // 限長度 ≤64 並過濾不可列印字元，避免日誌注入
+      requestId = requestId.replaceAll ("[^\\x20-\\x7E]", "");
+      if (requestId.length () > 64) {
+        requestId = requestId.substring (0, 64);
+      }
+      if (requestId.isBlank ()) {
+        requestId = UUID.randomUUID ().toString ();
+      }
     }
 
     MDC.put (MDC_REQUEST_ID, requestId);

@@ -1,10 +1,4 @@
-# Security Hardening Specification
-
-## Purpose
-
-消除已知的網頁安全缺口：AI 輸出注入、OSIV 開啟、JWT 開發預設密鑰落入正式環境。
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: AI 診斷建議輸出安全渲染
 
@@ -29,6 +23,8 @@
 #### Scenario: 以預設密鑰啟動非 dev 環境
 - **WHEN** 以 production profile 啟動且未提供 JWT_SECRET
 - **THEN** 應用程式啟動失敗，並明確提示設定密鑰
+
+## ADDED Requirements
 
 ### Requirement: 帳號初始化限 dev/test
 
