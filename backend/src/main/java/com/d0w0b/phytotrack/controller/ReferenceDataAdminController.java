@@ -200,12 +200,12 @@ public class ReferenceDataAdminController {
   @PostMapping ("/pest-categories")
   public ResponseEntity<IdNameResponse> createPestCategory (@Valid @RequestBody PestCategoryCreateRequest req) {
     return ResponseEntity.status (HttpStatus.CREATED)
-        .body (service.createPestCategory (req.code (), req.name (), req.pestTypeId (), req.sortOrder ()));
+        .body (service.createPestCategory (req.code (), req.name (), req.pestTypeId ()));
   }
 
   @PutMapping ("/pest-categories/{id}")
   public ResponseEntity<IdNameResponse> updatePestCategory (@PathVariable Long id, @Valid @RequestBody PestCategoryUpdateRequest req) {
-    return ResponseEntity.ok (service.updatePestCategory (id, req.code (), req.name (), req.pestTypeId (), req.sortOrder ()));
+    return ResponseEntity.ok (service.updatePestCategory (id, req.code (), req.name (), req.pestTypeId ()));
   }
 
   @DeleteMapping ("/pest-categories/{id}")

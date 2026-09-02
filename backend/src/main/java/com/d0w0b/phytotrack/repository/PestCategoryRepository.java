@@ -13,9 +13,9 @@ import java.util.Optional;
  */
 public interface PestCategoryRepository extends JpaRepository<PestCategory, Long> {
 
-  /** 查詢全部小分類並預先抓取所屬害物類型 */
+  /** 查詢全部小分類並預先抓取所屬害物類型（依代碼降冪） */
   @EntityGraph (attributePaths = "pestType")
-  List<PestCategory> findAllByOrderBySortOrderAsc ();
+  List<PestCategory> findAllByOrderByPestCategoryCodeDesc ();
 
   /** 同類型下同代碼 (composite unique 前置檢查) */
   boolean existsByPestTypePestTypeIdAndPestCategoryCodeIgnoreCase (Long pestTypeId, String code);
