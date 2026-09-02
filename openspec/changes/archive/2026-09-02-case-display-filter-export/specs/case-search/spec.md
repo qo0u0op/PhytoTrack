@@ -1,10 +1,4 @@
-# Case Search Specification
-
-## Purpose
-
-讓案件列表可依作物、診斷員、送件人、日期區間與狀態篩選，滿足診斷站的查詢需求。
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: 案件列表支援篩選參數
 
@@ -45,31 +39,3 @@
 #### Scenario: 篩選影響 CSV 匯出
 - **WHEN** 使用者套用篩選後呼叫 `GET /api/cases/export` 並帶相同篩選參數
 - **THEN** 匯出結果僅含符合該篩選的案件
-
-### Requirement: 案件列表排序
-
-案件列表 SHALL 支援依所有欄位（除操作外）點擊表頭進行升冪/降冪排序，前端本地排序，預設依收件日期降冪，表頭以箭頭指示當前排序。
-
-#### Scenario: 點擊表頭排序
-- **WHEN** 點擊任一非操作欄的表頭
-- **THEN** 依該欄位切換 asc/desc 並重排列表
-
-#### Scenario: 預設排序
-- **WHEN** 未指定排序
-- **THEN** 依收件日期降冪顯示
-
-#### Scenario: 操作欄不可排序
-- **WHEN** 檢視操作欄表頭
-- **THEN** 不提供排序互動
-
-### Requirement: 案件列表新增按鈕
-
-案件管理頁的標題列 SHALL 顯示「新增」按鈕（原「建立案件」），樣式與其他管理頁一致（`btn-sm btn-success`，右上角與篩選按鈕同列），僅 STAFF 可見。
-
-#### Scenario: 顯示新增按鈕
-- **WHEN** STAFF 進入案件管理頁
-- **THEN** 顯示「新增」按鈕
-
-#### Scenario: VIEWER 不顯示
-- **WHEN** VIEWER 進入案件管理頁
-- **THEN** 不顯示新增按鈕

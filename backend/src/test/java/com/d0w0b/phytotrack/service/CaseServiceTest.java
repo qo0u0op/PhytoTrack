@@ -654,7 +654,10 @@ class CaseServiceTest {
     assertThat (csv).startsWith ("\uFEFF\"收件編號\"");
     assertThat (csv).contains ("\"收件日期\"");
     assertThat (csv).contains ("\"狀態\"");
-    assertThat (csv).contains ("\"病蟲害發生地\"");
+    assertThat (csv).contains ("\"田區位置\"");
+    assertThat (csv).contains ("\"身分別\"");
+    assertThat (csv).doesNotContain ("病蟲害發生地");
+    assertThat (csv).doesNotContain ("送件人身分別");
     assertThat (csv).doesNotContain ("病蟲害發生地點_縣市");
     assertThat (csv).doesNotContain ("病蟲害發生地點_鄉鎮");
     assertThat (csv).doesNotContain ("是否同寄件人");

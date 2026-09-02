@@ -31,7 +31,7 @@ public final class CaseDtos {
       String senderPhone,
       @NotBlank (message = "送件人地址不可為空白") String senderAddress,
       @NotNull (message = "送件人鄉鎮市區不可為空") Long senderDistrictId,
-      @NotNull (message = "送件人身分別不可為空") Long senderTypeId,
+      @NotNull (message = "身分別不可為空") Long senderTypeId,
 
       // 參照資料 (Reference Data) 的 ID
       @NotNull (message = "耕種方式不可為空") Long methodId,
@@ -128,7 +128,7 @@ public final class CaseDtos {
     }
   }
 
-  /** 案件列表篩選條件 (查詢參數，皆可空，視圖 `v_case_search` 15 欄) */
+  /** 案件列表篩選條件 (查詢參數，皆可空，視圖 `v_case_search` 多欄) */
   public record CaseFilter (Long cropId,
       Long serviceId,
       String senderName,
@@ -143,11 +143,13 @@ public final class CaseDtos {
       Long pestCategoryId,
       Long hintId,
       Long deliveryId,
-      Long damageId) {
+      Long damageId,
+      Long senderTypeId,
+      Long methodId) {
 
     /** 空篩選 (等同不分條件) */
     public static CaseFilter empty () {
-      return new CaseFilter (null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+      return new CaseFilter (null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
     }
 
     /** 是否有任一條件 */
@@ -156,14 +158,14 @@ public final class CaseDtos {
           && receiveDateFrom == null && receiveDateTo == null && status == null
           && cityId == null && districtId == null && cropCategoryId == null
           && pestTypeId == null && pestCategoryId == null && hintId == null && deliveryId == null
-          && damageId == null;
+          && damageId == null && senderTypeId == null && methodId == null;
     }
 
     /** 相容舊 6 欄建構 */
     public CaseFilter (Long cropId, Long serviceId, String senderName,
         LocalDate receiveDateFrom, LocalDate receiveDateTo, String status) {
       this (cropId, serviceId, senderName, senderName, receiveDateFrom, receiveDateTo, status,
-          null, null, null, null, null, null, null, null);
+          null, null, null, null, null, null, null, null, null, null);
     }
   }
 

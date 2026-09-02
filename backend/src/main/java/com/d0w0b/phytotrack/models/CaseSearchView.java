@@ -48,6 +48,9 @@ public class CaseSearchView {
   @Column (name = "sender_phone")
   private String senderPhone;
 
+  @Column (name = "sender_type_id")
+  private Long senderTypeId;
+
   @Column (name = "district_id")
   private Long districtId;
 

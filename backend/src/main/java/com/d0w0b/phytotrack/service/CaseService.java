@@ -743,7 +743,7 @@ public class CaseService {
   private String toCsv (List<Case> cases) {
     StringBuilder sb = new StringBuilder ("\uFEFF");
     sb.append (join ("收件編號", "收件日期", "狀態",
-        "病蟲害發生地", "送件人身分別", "姓名", "顯示名稱", "電話", "住址",
+        "田區位置", "身分別", "姓名", "顯示名稱", "電話", "住址",
         "服務類別", "送件方式", "耕作方式", "作物種類", "作物名稱",
         "被害部位", "栽培面積", "被害面積", "土壤栽培用藥紀錄",
         "病害", "蟲害", "有害動物", "生理因子", "其他", "診斷結果",

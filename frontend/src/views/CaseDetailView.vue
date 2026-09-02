@@ -179,7 +179,7 @@ function showAiTip () {
               <strong>案件編號：</strong>#{{ detail.caseId }}
             </div>
             <div class="col-12">
-              <strong>病蟲害發生地點：</strong>{{ detail.fieldCityName ?? '' }}{{ detail.fieldDistrictName ?? '無' }}
+              <strong>田區位置：</strong>{{ detail.fieldCityName ?? '' }}{{ detail.fieldDistrictName ?? '無' }}
               <span v-if="detail.fieldDistrictId && detail.fieldDistrictId === detail.senderDistrictId" class="text-muted"> (同寄件人)</span>
             </div>
             <div class="col-md-6">
