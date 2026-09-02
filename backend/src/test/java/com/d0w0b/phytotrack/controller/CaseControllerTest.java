@@ -193,7 +193,7 @@ class CaseControllerTest {
   @Test
   @WithMockUser (roles = "VIEWER")
   void statistics_shouldReturnAggregates () throws Exception {
-    when (caseService.statistics (any (), any (), any ())).thenReturn (new CaseStatisticsResponse (3L, 2L, 1L, 2L,
+    when (caseService.statistics (any (), any (), any (), any ())).thenReturn (new CaseStatisticsResponse (3L, 2L, 1L, 2L,
         List.of (new CountName ("柑橘", 2L), new CountName ("水稻", 1L)),
         List.of (new CountName ("真菌", 3L)),
         List.of (new StatusCount ("PENDING", 1L), new StatusCount ("RESOLVED", 2L),

@@ -11,9 +11,10 @@ type CaseStatistics = components['schemas']['CaseStatisticsResponse']
 // 統計總覽 (由 GET /cases/statistics 提供)＋AI 連線狀態
 const stats = ref<CaseStatistics | null>(null)
 const modelHealthy = ref<boolean | null>(null)
-const period = ref<'HISTORICAL' | 'ANNUAL' | 'MONTHLY'>('HISTORICAL')
+const period = ref<'HISTORICAL' | 'ANNUAL' | 'MONTHLY' | 'HALF_YEAR'>('HISTORICAL')
 const selectedYear = ref<number | null>(null)
 const selectedMonth = ref<number | null>(new Date ().getMonth () + 1)
+const selectedHalf = ref<1 | 2>(1)
 
 
 const availableYears = computed (() => stats.value?.availableYears ?? [])
@@ -24,10 +25,11 @@ async function loadStats () {
   try {
     const params: Record<string, string | number> = {}
     params.period = period.value
-    if (period.value === 'ANNUAL' || period.value === 'MONTHLY') {
+    if (period.value === 'ANNUAL' || period.value === 'MONTHLY' || period.value === 'HALF_YEAR') {
       if (selectedYear.value) params.year = selectedYear.value
     }
     if (period.value === 'MONTHLY' && selectedMonth.value) params.month = selectedMonth.value
+    if (period.value === 'HALF_YEAR') params.half = selectedHalf.value
     const { data } = await caseApi.statistics (params)
     stats.value = data as CaseStatistics
     // 若尚未選年且有可用年份，預設最新年
@@ -49,7 +51,7 @@ onMounted (async () => {
   }
 })
 
-watch ([period, selectedYear, selectedMonth], () => {
+watch ([period, selectedYear, selectedMonth, selectedHalf], () => {
   loadStats ()
 })
 
@@ -75,12 +77,13 @@ const barClass = (status?: string) =>
     <div class="card shadow-sm mb-4">
       <div class="card-body">
         <div class="row g-2 align-items-end">
-          <div class="col-md-3">
+          <div class="col-md-2">
             <label class="form-label small text-muted mb-1">期別</label>
             <select v-model="period" class="form-select form-select-sm">
               <option value="HISTORICAL">歷史</option>
               <option value="ANNUAL">年度</option>
               <option value="MONTHLY">月度</option>
+              <option value="HALF_YEAR">半年度</option>
             </select>
           </div>
           <div class="col-md-3">
@@ -90,10 +93,17 @@ const barClass = (status?: string) =>
             </select>
             <div v-if="availableYears.length === 0" class="form-text small text-muted">尚無歷史年份</div>
           </div>
-          <div class="col-md-3">
+          <div class="col-md-2">
             <label class="form-label small text-muted mb-1">月份</label>
             <select v-model="selectedMonth" class="form-select form-select-sm" :disabled="period !== 'MONTHLY'">
               <option v-for="m in 12" :key="m" :value="m">{{ m }} 月</option>
+            </select>
+          </div>
+          <div class="col-md-2">
+            <label class="form-label small text-muted mb-1">半年度</label>
+            <select v-model="selectedHalf" class="form-select form-select-sm" :disabled="period !== 'HALF_YEAR'">
+              <option :value="1">上半年</option>
+              <option :value="2">下半年</option>
             </select>
           </div>
           <div class="col-md-3">
@@ -168,7 +178,7 @@ const barClass = (status?: string) =>
           <div class="card-body">
             <h6 class="text-muted">期別案件數</h6>
             <div class="fs-1 fw-bold">{{ total () }}</div>
-            <div class="small text-muted">{{ period === 'HISTORICAL' ? '歷史' : period === 'ANNUAL' ? `${selectedYear} 年` : `${selectedYear} 年 ${selectedMonth} 月` }}</div>
+            <div class="small text-muted">{{ period === 'HISTORICAL' ? '歷史' : period === 'ANNUAL' ? `${selectedYear} 年` : period === 'MONTHLY' ? `${selectedYear} 年 ${selectedMonth} 月` : `${selectedYear} 年 ${selectedHalf === 1 ? '上半年' : '下半年'}` }}</div>
           </div>
         </div>
       </div>
