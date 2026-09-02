@@ -78,6 +78,12 @@ const router = createRouter ({
       component: () => import ('../views/PestManagementView.vue'),
       meta: { requiresAuth: true, adminOnly: true },
     },
+    {
+      path: '/account',
+      name: 'account',
+      component: () => import ('../views/AccountView.vue'),
+      meta: { requiresAuth: true },
+    },
     { path: '/:pathMatch (.*)*', redirect: '/' },
   ],
 })

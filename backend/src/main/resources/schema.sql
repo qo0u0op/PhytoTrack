@@ -464,10 +464,25 @@ CREATE TABLE IF NOT EXISTS users (
   username     TEXT    NOT NULL UNIQUE,
   display_name TEXT    NOT NULL,
   password     TEXT    NOT NULL,
-  email        TEXT    UNIQUE,
+  email        TEXT,
   role         TEXT    NOT NULL DEFAULT 'ROLE_VIEWER',
   active       INTEGER NOT NULL DEFAULT 1
 );
+DROP INDEX IF EXISTS idx_users_email_nocase;
+
+-- ============================================================
+-- deactivate_requests（停用帳號請求）
+-- ============================================================
+CREATE TABLE IF NOT EXISTS deactivate_requests (
+  request_id INTEGER PRIMARY KEY,
+  user_id    INTEGER NOT NULL REFERENCES users(user_id),
+  status     TEXT    NOT NULL DEFAULT 'PENDING',
+  created_at TEXT    NOT NULL DEFAULT (datetime('now', 'localtime')),
+  reviewed_by INTEGER REFERENCES users(user_id),
+  reviewed_at TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_deactivate_requests_user_id ON deactivate_requests(user_id);
+CREATE INDEX IF NOT EXISTS idx_deactivate_requests_status ON deactivate_requests(status);
 
 -- ============================================================
 -- identifiers（診斷簽名人，可選關聯系統使用者）

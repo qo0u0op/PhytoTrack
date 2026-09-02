@@ -23,7 +23,9 @@ import com.d0w0b.phytotrack.dto.AuthDtos.LoginRequest;
 import com.d0w0b.phytotrack.dto.AuthDtos.RegisterRequest;
 import com.d0w0b.phytotrack.dto.AuthDtos.UserResponse;
 import com.d0w0b.phytotrack.exception.ApiException;
+import com.d0w0b.phytotrack.models.DeactivateRequest;
 import com.d0w0b.phytotrack.models.User;
+import com.d0w0b.phytotrack.repository.DeactivateRequestRepository;
 import com.d0w0b.phytotrack.repository.UserRepository;
 import com.d0w0b.phytotrack.security.JwtTokenProvider;
 import com.d0w0b.phytotrack.security.UserPrincipal;
@@ -42,6 +44,9 @@ class AuthServiceTest {
   private UserRepository userRepository;
 
   @Mock
+  private DeactivateRequestRepository deactivateRequestRepository;
+
+  @Mock
   private PasswordEncoder passwordEncoder;
 
   @Mock
@@ -56,7 +61,7 @@ class AuthServiceTest {
 
   @BeforeEach
   void setUp () {
-    authService = new AuthService (userRepository, passwordEncoder, authenticationManager, jwtTokenProvider);
+    authService = new AuthService (userRepository, deactivateRequestRepository, passwordEncoder, authenticationManager, jwtTokenProvider);
     existingUser = new User ();
     existingUser.setUserId (1L);
     existingUser.setUsername ("admin");
