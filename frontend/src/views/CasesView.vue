@@ -76,7 +76,7 @@ interface CaseFilters {
 const auth = useAuthStore ()
 const router = useRouter ()
 
-const cases = ref<CaseSummary[]>([])
+const allCases = ref<CaseSummary[]>([])
 const total = ref (0)
 const page = ref (0)
 const size = ref (10)
@@ -84,6 +84,58 @@ const sizeOptions = [10, 20, 50, 100]
 const pageInput = ref (1)
 const totalPages = computed (() => Math.max (1, Math.ceil (total.value / size.value)))
 const loading = ref (false)
+
+// 排序（前端本地多欄，依點擊順序，循環 asc→desc→無）
+const sortStates = ref<Array<{ key: string; order: 'asc' | 'desc' }>>([{ key: 'receiveDate', order: 'desc' }])
+function sortBy (key: string) {
+  const idx = sortStates.value.findIndex ((s) => s.key === key)
+  if (idx >= 0) {
+    const cur = sortStates.value[idx]
+    if (cur.order === 'asc') {
+      sortStates.value[idx].order = 'desc'
+    } else {
+      sortStates.value.splice (idx, 1)
+    }
+  } else {
+    sortStates.value.push ({ key, order: 'asc' })
+  }
+}
+function sortIcon (key: string) {
+  const idx = sortStates.value.findIndex ((s) => s.key === key)
+  if (idx < 0) return '↕'
+  const order = sortStates.value[idx].order
+  const num = `${idx + 1}`
+  return order === 'asc' ? `↑${num}` : `↓${num}`
+}
+watch (sortStates, () => {
+  page.value = 0
+  pageInput.value = 1
+}, { deep: true })
+const sortedCases = computed (() => {
+  if (sortStates.value.length === 0) return allCases.value
+  return [...allCases.value].sort ((a, b) => {
+    for (const { key, order } of sortStates.value) {
+      let av: any = (a as any)[key]
+      let bv: any = (b as any)[key]
+      if (key === 'senderLabel') { av = senderLabel (a); bv = senderLabel (b) }
+      if (key === 'pestLabel') { av = pestLabel (a) ?? ''; bv = pestLabel (b) ?? '' }
+      if (av == null) av = ''
+      if (bv == null) bv = ''
+      if (typeof av === 'number' && typeof bv === 'number') {
+        if (av < bv) return order === 'asc' ? -1 : 1
+        if (av > bv) return order === 'asc' ? 1 : -1
+      } else {
+        const cmp = String (av).localeCompare (String (bv))
+        if (cmp !== 0) return order === 'asc' ? cmp : -cmp
+      }
+    }
+    return 0
+  })
+})
+const pagedCases = computed (() => {
+  const start = page.value * size.value
+  return sortedCases.value.slice (start, start + size.value)
+})
 
 watch (page, (v) => { pageInput.value = v + 1 })
 
@@ -110,6 +162,9 @@ function onPageInputConfirm () {
   if (num > totalPages.value) num = totalPages.value
   goToPage (num - 1)
 }
+
+// 篩選抽屜
+const showFilter = ref (false)
 
 // 篩選工具列狀態與選單資料
 const filters = reactive<CaseFilters>({
@@ -171,7 +226,7 @@ watch (() => filters.cropCategoryId, (newCatId) => {
 async function load () {
   loading.value = true
   try {
-    const params: Record<string, string | number> = { page: page.value, size: size.value }
+    const params: Record<string, string | number> = {}
     if (filters.cropId) params.cropId = filters.cropId
     if (filters.serviceId) params.serviceId = filters.serviceId
     if (filters.deliveryId) params.deliveryId = filters.deliveryId
@@ -186,8 +241,10 @@ async function load () {
     if (filters.receiveDateFrom) params.receiveDateFrom = filters.receiveDateFrom
     if (filters.receiveDateTo) params.receiveDateTo = filters.receiveDateTo
     if (filters.status) params.status = filters.status
-    const { data } = await caseApi.list (params as unknown as Record<string, string | number>)
-    cases.value = data.content
+    // 前端全域排序與分頁：一次取回所有篩選結果（避免後端 sort 500 與分頁影響排序）
+    const fetchParams = { ...params, page: 0, size: 10000 }
+    const { data } = await caseApi.list (fetchParams as unknown as Record<string, string | number>)
+    allCases.value = data.content
     total.value = data.totalElements
     // 若篩選後總頁數縮小導致當前頁越界，自動回到>>
     if (total.value > 0 && page.value >= totalPages.value) {
@@ -195,8 +252,9 @@ async function load () {
       pageInput.value = page.value + 1
       const retryParams = { ...params, page: page.value }
       const { data: retryData } = await caseApi.list (retryParams as unknown as Record<string, string | number>)
-      cases.value = retryData.content
+      allCases.value = retryData.content
       total.value = retryData.totalElements
+      // total will be updated via computed, but keep for pagination
     }
   } catch {
     // 錯誤由攔截器處理
@@ -393,14 +451,15 @@ async function confirmDelete (id: number) {
   <div class="container py-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
       <h4>案件管理</h4>
-      <div>
-        <button v-if="auth.isStaff" class="btn btn-outline-success me-1" @click="exportCsv">匯出 CSV</button>
-        <router-link v-if="auth.isStaff" class="btn btn-success" to="/cases/new">建立案件</router-link>
+      <div class="d-flex gap-1">
+        <button class="btn btn-outline-primary btn-sm" :aria-expanded="showFilter" aria-controls="caseFilterCard" @click="showFilter = !showFilter">篩選</button>
+        <button v-if="auth.isStaff" class="btn btn-outline-success btn-sm me-1" @click="exportCsv">匯出 CSV</button>
+        <router-link v-if="auth.isStaff" class="btn btn-success btn-sm" to="/cases/new">建立案件</router-link>
       </div>
     </div>
 
     <!-- 篩選工具列：條件同時存在時為 AND 組合 (經 v_case_search，LEFT JOIN + 頓號聚合) -->
-    <div class="card shadow-sm mb-3">
+    <div v-show="showFilter" id="caseFilterCard" class="card shadow-sm mb-3">
       <div class="card-body">
         <div class="row g-2 align-items-end">
           <div class="col-md-3">
@@ -547,13 +606,13 @@ async function confirmDelete (id: number) {
         <table class="table table-hover align-middle mb-0 text-nowrap" style="min-width:1000px;table-layout:fixed">
           <thead class="table-light">
             <tr>
-              <th style="width:70px;min-width:70px">編號</th>
-              <th style="width:110px;min-width:110px">收件日期</th>
-              <th style="width:100px;min-width:100px">送件方式</th>
-              <th style="width:110px;min-width:110px">作物</th>
-              <th style="width:140px;min-width:140px">送件人</th>
-              <th style="width:160px;min-width:160px">害物</th>
-              <th style="width:90px;min-width:90px">狀態</th>
+              <th style="width:70px;min-width:70px;cursor:pointer" @click="sortBy('caseId')">編號 {{ sortIcon('caseId') }}</th>
+              <th style="width:110px;min-width:110px;cursor:pointer" @click="sortBy('receiveDate')">收件日期 {{ sortIcon('receiveDate') }}</th>
+              <th style="width:100px;min-width:100px;cursor:pointer" @click="sortBy('deliveryName')">送件方式 {{ sortIcon('deliveryName') }}</th>
+              <th style="width:110px;min-width:110px;cursor:pointer" @click="sortBy('cropName')">作物 {{ sortIcon('cropName') }}</th>
+              <th style="width:140px;min-width:140px;cursor:pointer" @click="sortBy('senderLabel')">送件人 {{ sortIcon('senderLabel') }}</th>
+              <th style="width:160px;min-width:160px;cursor:pointer" @click="sortBy('pestLabel')">害物 {{ sortIcon('pestLabel') }}</th>
+              <th style="width:90px;min-width:90px;cursor:pointer" @click="sortBy('status')">狀態 {{ sortIcon('status') }}</th>
               <th class="text-end" style="width:130px;min-width:130px">操作</th>
             </tr>
           </thead>
@@ -561,10 +620,10 @@ async function confirmDelete (id: number) {
             <tr v-if="loading">
               <td colspan="8" class="text-center text-muted py-4">載入中…</td>
             </tr>
-            <tr v-else-if="cases.length === 0">
+            <tr v-else-if="pagedCases.length === 0">
               <td colspan="8" class="text-center text-muted py-4">尚無案件</td>
             </tr>
-            <tr v-for="c in cases" :key="c.caseId">
+            <tr v-for="c in pagedCases" :key="c.caseId">
               <td style="width:70px">{{ c.caseId }}</td>
               <td style="width:110px">{{ c.receiveDate }}</td>
               <td style="width:100px" class="text-truncate" :title="c.deliveryName ?? '—'">{{ c.deliveryName ?? '—' }}</td>

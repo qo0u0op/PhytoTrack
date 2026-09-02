@@ -25,6 +25,7 @@ const searchQ = ref ('')
 const filterSenderTypeId = ref<number | undefined>(undefined)
 const filterCityId = ref<number | undefined>(undefined)
 const filterDistrictId = ref<number | undefined>(undefined)
+const showFilter = ref (false)
 // 實際套用的篩選條件（按「篩選」後才更新）
 const appliedQ = ref ('')
 const appliedSenderTypeId = ref<number | undefined>(undefined)
@@ -99,6 +100,43 @@ const filteredSenders = computed (() => {
   })
 })
 
+// 排序（除操作外）
+const sortStates = ref<Array<{ key: string; order: 'asc' | 'desc' }>>([{ key: 'senderId', order: 'desc' }])
+function sortBy (key: string) {
+  const idx = sortStates.value.findIndex ((s) => s.key === key)
+  if (idx >= 0) {
+    const cur = sortStates.value[idx]
+    if (cur.order === 'asc') sortStates.value[idx].order = 'desc'
+    else sortStates.value.splice (idx, 1)
+  } else {
+    sortStates.value.push ({ key, order: 'asc' })
+  }
+}
+function sortIcon (key: string) {
+  const idx = sortStates.value.findIndex ((s) => s.key === key)
+  if (idx < 0) return '↕'
+  const order = sortStates.value[idx].order
+  const num = `${idx + 1}`
+  return order === 'asc' ? `↑${num}` : `↓${num}`
+}
+const sortedSenders = computed (() => {
+  if (sortStates.value.length === 0) return filteredSenders.value
+  return [...filteredSenders.value].sort ((a, b) => {
+    for (const { key, order } of sortStates.value) {
+      let av: any = (a as any)[key]
+      let bv: any = (b as any)[key]
+      if (key === 'senderLabel') { av = displayLabel (a); bv = displayLabel (b) }
+      if (av == null) av = ''
+      if (bv == null) bv = ''
+      let cmp = 0
+      if (typeof av === 'number' && typeof bv === 'number') cmp = av - bv
+      else cmp = String (av).localeCompare (String (bv))
+      if (cmp !== 0) return order === 'asc' ? cmp : -cmp
+    }
+    return 0
+  })
+})
+
 function applyFilters () {
   appliedQ.value = searchQ.value
   appliedSenderTypeId.value = filterSenderTypeId.value
@@ -158,8 +196,13 @@ watch ([appliedQ, appliedSenderTypeId, appliedCityId, appliedDistrictId], () => 
 
 const pagedSenders = computed (() => {
   const start = page.value * size.value
-  return filteredSenders.value.slice (start, start + size.value)
+  return sortedSenders.value.slice (start, start + size.value)
 })
+
+watch (sortStates, () => {
+  page.value = 0
+  pageInput.value = 1
+}, { deep: true })
 
 onMounted (async () => {
   await Promise.all ([load (), loadRefs ()])
@@ -267,8 +310,11 @@ async function handleEdit (s: SenderRow) {
 
 <template>
   <div class="container py-4">
-    <h4 class="mb-4">送件人管理</h4>
-    <div class="card shadow-sm mb-3">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h4 class="mb-0">送件人管理</h4>
+      <button class="btn btn-outline-primary btn-sm" :aria-expanded="showFilter" aria-controls="senderFilterCard" @click="showFilter = !showFilter">篩選</button>
+    </div>
+    <div v-show="showFilter" id="senderFilterCard" class="card shadow-sm mb-3">
       <div class="card-body">
         <div class="row g-2 align-items-end">
           <div class="col-md-3">
@@ -329,13 +375,13 @@ async function handleEdit (s: SenderRow) {
         <table class="table table-hover align-middle mb-0 text-nowrap" style="min-width:950px;table-layout:fixed">
           <thead class="table-light">
             <tr>
-              <th style="width:60px;min-width:60px">ID</th>
-              <th style="width:140px;min-width:140px">送件人</th>
-              <th style="width:110px;min-width:110px">電話</th>
-              <th style="width:100px;min-width:100px">身分別</th>
-              <th style="width:80px;min-width:80px">縣市</th>
-              <th style="width:100px;min-width:100px">鄉鎮市區</th>
-              <th style="width:150px;min-width:150px">地址</th>
+              <th style="width:60px;min-width:60px;cursor:pointer" @click="sortBy('senderId')">ID {{ sortIcon('senderId') }}</th>
+              <th style="width:140px;min-width:140px;cursor:pointer" @click="sortBy('senderLabel')">送件人 {{ sortIcon('senderLabel') }}</th>
+              <th style="width:110px;min-width:110px;cursor:pointer" @click="sortBy('phone')">電話 {{ sortIcon('phone') }}</th>
+              <th style="width:100px;min-width:100px;cursor:pointer" @click="sortBy('senderTypeName')">身分別 {{ sortIcon('senderTypeName') }}</th>
+              <th style="width:80px;min-width:80px;cursor:pointer" @click="sortBy('cityName')">縣市 {{ sortIcon('cityName') }}</th>
+              <th style="width:100px;min-width:100px;cursor:pointer" @click="sortBy('districtName')">鄉鎮市區 {{ sortIcon('districtName') }}</th>
+              <th style="width:150px;min-width:150px;cursor:pointer" @click="sortBy('address')">地址 {{ sortIcon('address') }}</th>
               <th class="text-end" style="width:130px;min-width:130px">操作</th>
             </tr>
           </thead>

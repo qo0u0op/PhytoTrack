@@ -1,10 +1,4 @@
-# Case Search Specification
-
-## Purpose
-
-讓案件列表可依作物、診斷員、送件人、日期區間與狀態篩選，滿足診斷站的查詢需求。
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: 案件列表支援篩選參數
 
@@ -29,6 +23,8 @@
 #### Scenario: 展開篩選
 - **WHEN** 點擊篩選按鈕
 - **THEN** 展開顯示所有篩選欄位，再次點擊收合
+
+## ADDED Requirements
 
 ### Requirement: 案件列表排序
 
