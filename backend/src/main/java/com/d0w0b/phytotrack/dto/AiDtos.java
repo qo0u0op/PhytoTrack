@@ -21,7 +21,6 @@ public final class AiDtos {
       List<String> pestCategories,
       List<String> pestNotes,
       String caseDescription,
-      String pestDescription,
       String cropScale,
       String damageScale,
       String cultivationMethod,

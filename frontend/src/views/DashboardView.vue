@@ -94,16 +94,16 @@ const barClass = (status?: string) =>
             <div v-if="availableYears.length === 0" class="form-text small text-muted">尚無歷史年份</div>
           </div>
           <div class="col-md-2">
-            <label class="form-label small text-muted mb-1">月份</label>
-            <select v-model="selectedMonth" class="form-select form-select-sm" :disabled="period !== 'MONTHLY'">
-              <option v-for="m in 12" :key="m" :value="m">{{ m }} 月</option>
-            </select>
-          </div>
-          <div class="col-md-2">
             <label class="form-label small text-muted mb-1">半年度</label>
             <select v-model="selectedHalf" class="form-select form-select-sm" :disabled="period !== 'HALF_YEAR'">
               <option :value="1">上半年</option>
               <option :value="2">下半年</option>
+            </select>
+          </div>
+          <div class="col-md-2">
+            <label class="form-label small text-muted mb-1">月份</label>
+            <select v-model="selectedMonth" class="form-select form-select-sm" :disabled="period !== 'MONTHLY'">
+              <option v-for="m in 12" :key="m" :value="m">{{ m }} 月</option>
             </select>
           </div>
           <div class="col-md-3">

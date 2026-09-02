@@ -68,10 +68,10 @@ CSRF off (Bearer header 無 cookie 面)、無狀態登出 (前端丟 token)、�
 
 ## 未電子化欄位 (紙本表單保留，待後續評估)
 
-依 `docs/diagnoses.typ` 紙本表單，以下欄位尚未數位化，暫列 backlog：
+依 `docs/diagnoses.typ` 紙本表單，以下欄位處理如下：
 
-- 病蟲害發生地點 (`同寄件人` / `其他：`)
-- 基本資料 電子信箱 (`email`)
-- 被害描述 (獨立於土壤、栽培、用藥紀錄)
-- 送件方式 Email / FB / Line 選項 (現僅 郵寄/親送/電話等)
-- 土壤、栽培、用藥紀錄 (現由 `pestDescription` 承接，後續將更名為 `caseDescription`)
+- 病蟲害發生地點 (`同寄件人` / `其他：`) — 維持現狀（紙本呈現，數位化以 `fieldDistrict` 呈現，暫不新增欄位）
+- 基本資料 電子信箱 (`email`) — 紙本幾乎未用，改以 `displayName` 替代（`Sender.displayName` 已支援）
+- 被害描述 (獨立於土壤、栽培、用藥紀錄) — 現以 `pest_note`/`pestNote` 串接呈現（診斷結果），暫不獨立欄位
+- 送件方式 Email / FB / Line 選項 — 等同 `網路諮詢`（`Delivery` 名稱為網路諮詢，已涵蓋）
+- 土壤、栽培、用藥紀錄 — 已由 `caseDescription`/`case_description` 承接，`pestDescription` 已更名收斂
