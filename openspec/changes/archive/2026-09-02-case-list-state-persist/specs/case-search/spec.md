@@ -1,10 +1,4 @@
-# Case Search Specification
-
-## Purpose
-
-讓案件列表可依作物、診斷員、送件人、日期區間與狀態篩選，滿足診斷站的查詢需求。
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: 案件列表支援篩選參數
 
@@ -70,17 +64,7 @@
 - **WHEN** 使用者變更排序後進入檢視/編輯再返回
 - **THEN** 表頭排序指示與列表順序保持與進入前一致
 
-### Requirement: 案件列表新增按鈕
-
-案件管理頁的標題列 SHALL 顯示「新增」按鈕（原「建立案件」），樣式與其他管理頁一致（`btn-sm btn-success`，右上角與篩選按鈕同列），僅 STAFF 可見。
-
-#### Scenario: 顯示新增按鈕
-- **WHEN** STAFF 進入案件管理頁
-- **THEN** 顯示「新增」按鈕
-
-#### Scenario: VIEWER 不顯示
-- **WHEN** VIEWER 進入案件管理頁
-- **THEN** 不顯示新增按鈕
+## ADDED Requirements
 
 ### Requirement: 案件列表分頁與每頁筆數保持
 
