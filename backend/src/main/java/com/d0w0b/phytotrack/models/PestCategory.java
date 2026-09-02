@@ -26,7 +26,4 @@ public class PestCategory {
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "pest_type_id", nullable = false)
   private PestType pestType;
-
-  @Column(nullable = false)
-  private int sortOrder;
 }

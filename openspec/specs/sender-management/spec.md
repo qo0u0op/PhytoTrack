@@ -141,3 +141,15 @@ VIEWER 角色 SHALL NOT 取得送件人姓名、電話與地址，但 SHALL 可�
 #### Scenario: 操作欄不可排序
 - **WHEN** 檢視操作欄
 - **THEN** 不提供排序
+
+### Requirement: 送件人新增按鈕與統一樣式
+
+送件人管理頁 SHALL 在標題列顯示「新增」按鈕（`btn-sm btn-success`，右上角，與篩選按鈕同列，`v-if="auth.isStaff"`），樣式與案件/作物/害物管理一致。
+
+#### Scenario: 顯示新增
+- **WHEN** STAFF 進入送件人管理頁
+- **THEN** 顯示「新增」按鈕
+
+#### Scenario: 統一樣式
+- **WHEN** 檢視任意管理頁的新增區塊
+- **THEN** 按鈕大小顏色位置一致（右上角，`btn-sm btn-success`）

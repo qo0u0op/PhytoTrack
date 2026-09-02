@@ -14,7 +14,9 @@ function escapeHtml (s: string) {
 }
 
 const loading = ref (true)
+const showFilter = ref (false)
 const filterQ = ref ('')
+const filterCategoryId = ref<number | null>(null)
 const crops = ref<CropRow[]>([])
 const cropCategories = ref<CropCat[]>([])
 
@@ -32,8 +34,8 @@ onMounted (loadAll)
 
 const filtered = computed (() => {
   const q = filterQ.value.trim ().toLowerCase ()
-  if (!q) return crops.value
-  return crops.value.filter ((c) => c.name.toLowerCase ().includes (q))
+  const catId = filterCategoryId.value
+  return crops.value.filter ((c) => (!catId || c.cropCategoryId === catId) && (!q || c.name.toLowerCase ().includes (q)))
 })
 
 // 分頁
@@ -55,7 +57,7 @@ function onPageInputConfirm () {
   if (num > totalPages.value) num = totalPages.value
   goToPage (num - 1)
 }
-watch (filterQ, () => { page.value = 0; pageInput.value = 1 })
+watch ([filterQ, filterCategoryId], () => { page.value = 0; pageInput.value = 1 })
 const paged = computed (() => filtered.value.slice (page.value * size.value, page.value * size.value + size.value))
 
 async function handleCreate () {
@@ -109,12 +111,16 @@ async function handleDelete (item: CropRow) {
   <div class="container py-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
       <h4 class="mb-0">作物管理</h4>
-      <button v-if="auth.isStaff" class="btn btn-success" @click="handleCreate">新增</button>
+      <div class="d-flex gap-1">
+        <button v-if="auth.isStaff" class="btn btn-success btn-sm" @click="handleCreate">新增</button>
+        <button class="btn btn-outline-primary btn-sm" :aria-expanded="showFilter" aria-controls="cropFilterCard" @click="showFilter = !showFilter">篩選</button>
+      </div>
     </div>
-    <div class="card shadow-sm mb-3">
+    <div v-show="showFilter" id="cropFilterCard" class="card shadow-sm mb-3">
       <div class="card-body py-2">
         <div class="row g-2 align-items-center">
           <div class="col-md-4"><input v-model="filterQ" type="text" class="form-control form-control-sm" placeholder="篩選名稱" /></div>
+          <div class="col-md-4"><select v-model.number="filterCategoryId" class="form-select form-select-sm"><option :value="null">全部分類</option><option v-for="c in cropCategories" :key="c.id" :value="c.id">{{ c.name }}</option></select></div>
           <div class="col-md-4 text-muted small">{{ filtered.length }} 筆</div>
         </div>
       </div>
