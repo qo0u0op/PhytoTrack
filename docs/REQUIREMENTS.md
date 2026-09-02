@@ -8,19 +8,20 @@
 |---|---|---|---|
 | security-hardening | `security-hardening` | AI 輸出轉義、`open-in-view: false`、JWT fail-fast | ✅ 已實作 (Phase 0) |
 | api-observability | `api-observability` | 統一錯誤形狀 (`details`＋`requestId`)、requestId 進日誌 | ✅ 已實作 (僅含已交付項) |
-| case-search | `case-search` | 案件列表依作物／服務／送件人／日期區間／狀態篩選 | ✅ 已實作 (Phase 1，已 archive) |
+| case-search | `case-search` | 案件列表 17 欄篩選（收件日期區間/狀態/田區縣市鄉鎮/送件人/身分別/服務/送件方式/耕種方式/作物類別作物/被害部位/害物/害物類別/建議類別，5 列換行）且篩選穿透至 CSV | ✅ 已實作 (Phase 1，已 archive 2026-09-02) |
 | case-lifecycle | `case-lifecycle` | 狀態列舉 (PENDING/RESOLVED/CLOSED)、轉移規則、更新契約補全、int→列舉遷移 | ✅ 已實作 (Phase 1) |
 | case-statistics | `case-statistics` | 統計 API (總數／本月／待處理／topN／比例／趨勢)＋ Dashboard 視圖 | ✅ 已實作 (Phase 1) |
-| case-report | `case-report` | 案件明細頁、`@media print` 診斷單、CSV 匯出 (僅登入) | ✅ 已實作 (Phase 1) |
+| case-report | `case-report` | 案件明細/預覽/列印診斷單（田區位置/身分別更名）、CSV 匯出（田區位置/身分別、5 列邏輯、全欄位引號、收件編號 asc、狀態中文） | ✅ 已實作 (Phase 1，已 archive 2026-09-02) |
 | user-admin | `user-admin` | ADMIN 改角色、啟停用 (含既有 token 拒絕)、重設密碼 | ✅ 已實作 (Phase 1) |
 | reference-data-admin | `reference-data-admin` | ADMIN CRUD 參照資料 (被引用拒刪)＋管理頁 | ✅ 已實作 (Phase 1) |
 | sender-management | `sender-management` | 送件人管理：displayName、去重合併 (人工確認)、ADMIN 硬刪除 (被引用拒刪)、VIEWER 個資遮蔽 (保留縣市鄉鎮)、統計去重鍵 `COALESCE (phone, displayName)` | ✅ 已實作 (Phase 1) |
-| ops-backup | `ops-backup` | SQLite 帶時間戳備份腳本＋文件 | ❌ Phase 1 |
+| ops-backup | `ops-backup` | SQLite 帶時間戳備份腳本＋文件 | ✅ 已實作 (Phase 1，已 archive 2026-08-27) |
 
 ## Phase 1 範圍
 
-- **8 能力**：case-search、case-lifecycle、case-statistics、case-report、user-admin、reference-data-admin、sender-management、ops-backup
-- 每能力一個獨立 OpenSpec change (spec 已在主規格，`skip_specs: true`)，建議順序：case-search (已交付)→ case-lifecycle (已交付)→ case-statistics (已交付)→ case-report (已交付)→ user-admin (已交付)→ reference-data-admin (已交付)→ sender-management (已交付)→ ops-backup
+- **8 能力**：case-search、case-lifecycle、case-statistics、case-report、user-admin、reference-data-admin、sender-management、ops-backup（已全數 archive 至 2026-09-02）
+- 每能力一個獨立 OpenSpec change (spec 已在主規格，`skip_specs: true`)，建議順序：case-search (已交付)→ case-lifecycle (已交付)→ case-statistics (已交付)→ case-report (已交付)→ user-admin (已交付)→ reference-data-admin (已交付)→ sender-management (已交付)→ ops-backup (已交付)
+- 後續增量：`csv-export-format` (2026-09-02) 與 `case-display-filter-export` (2026-09-02) 已於 Phase 1 後交付，涵蓋 CSV 17 項格式與篩選 5 列重排
 - **排除**：security-hardening (已交付)、api-observability 剩餘項 (Actuator 精簡、滾動 logback 日誌) 歸 **Phase 2**
 
 ## 能力間依賴與遷移注意

@@ -1,24 +1,24 @@
-#set page (margin: (x: 1.8cm, y: 1.8cm),)
-#set text (font: ("Noto Sans CJK TC", "Noto Serif CJK TC"),
+#set page(margin: (x: 1.8cm, y: 1.8cm),)
+#set text(font: ("Noto Sans CJK TC", "Noto Serif CJK TC"),
   size: 10pt,
   lang: "zh",
   region: "tw",)
-#set heading (numbering: "1.1")
-#set par (justify: true)
+#set heading(numbering: "1.1")
+#set par(justify: true)
 
-#align (center)[
-  #text (size: 16pt, weight: "bold")[PhytoTrack 系統操作手冊]\
-  #v (0.2em)
-  #text (size: 11pt)[農作物病蟲害診斷諮詢服務系統]\
-  #v (0.5em)
-  #text (size: 9pt, fill: gray)[本手冊適用對象：診斷站現場工作人員 (非技術人員)]
+#align(center)[
+  #text(size: 16pt, weight: "bold")[PhytoTrack 系統操作手冊]\
+  #v(0.2em)
+  #text(size: 11pt)[農作物病蟲害診斷諮詢服務系統]\
+  #v(0.5em)
+  #text(size: 9pt, fill: gray)[本手冊適用對象：診斷站現場工作人員 (非技術人員)]
 ]
 
-#line (length: 100%, stroke: 0.5pt)
+#line(length: 100%, stroke: 0.5pt)
 
-#outline (title: "目錄", indent: auto)
+#outline(title: "目錄", indent: auto)
 
-#pagebreak ()
+#pagebreak()
 
 = 認識系統
 
@@ -67,11 +67,11 @@ PhytoTrack 是一套用來記錄「農作物病蟲害診斷案件」的電腦系
 1. 點選上方選單「案件管理」→ 點「建立案件」。
 2. 依序填寫各欄位：
 
-#table (columns: (30%, 70%),
+#table(columns: (30%, 70%),
   inset: 5pt,
   align: horizon,
   stroke: 0.5pt,
-  table.header ([欄位], [填寫說明]),
+  table.header([欄位], [填寫說明]),
   [送件人資料], [姓名、電話、身分別 (農民／農藥商／其他)、縣市鄉鎮、地址。若同一人再次送件，系統會自動帶出已填過的資料。],
   [作物], [從下拉選單選擇作物種類，例如「柑橘」；找不到時可選擇「其他」。],
   [被害部位], [可勾選多項，例如「葉」與「果」同時被害。],
@@ -149,16 +149,16 @@ PhytoTrack 是一套用來記錄「農作物病蟲害診斷案件」的電腦系
 
 = 常見問題
 
-#set enum (numbering: "1.")
+#set enum(numbering: "1.")
 + *忘記密碼怎麼辦？* 請洽管理者重設。
 + *AI 診斷按下去沒有反應？* 請確認 AI 服務是否已啟動，或稍後再試。
 + *登入後看不到「案件管理」？* 您的帳號可能是「檢視者」，只能查看案件，無法新增或修改。請與管理者確認權限。
 + *不小心刪除案件？* 刪除無法復原，請於刪除前再三確認。
 
-#v (1em)
+#v(1em)
 
-#line (length: 100%, stroke: 0.5pt)
+#line(length: 100%, stroke: 0.5pt)
 
-#align (center)[
-  #text (size: 8pt, fill: gray)[PhytoTrack 操作手冊 — 版本 1.6]
+#align(center)[
+  #text(size: 8pt, fill: gray)[PhytoTrack 操作手冊 — 版本 1.6]
 ]
