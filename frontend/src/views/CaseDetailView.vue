@@ -1,13 +1,23 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { aiApi, caseApi } from '../api'
 import { useAuthStore } from '../stores/auth'
 import { statusBadgeClass, statusLabel } from '../utils/caseStatus'
 import type { components } from '../types/api'
 
 const route = useRoute ()
+const router = useRouter ()
 const auth = useAuthStore ()
+
+function goBack () {
+  // 保持列表篩選/分頁/排序：優先使用保留的 query 返回
+  if (route.query && Object.keys (route.query).length > 0) {
+    router.push ({ path: '/cases', query: route.query as any })
+  } else {
+    router.push ('/cases')
+  }
+}
 
 type CaseResponse = components['schemas']['CaseResponse']
 
@@ -124,18 +134,19 @@ function showAiTip () {
 
     <div v-else-if="notFound || !detail" class="text-center text-muted py-5">
       找不到案件 #{{ id }}
-      <router-link class="d-block mt-2" to="/cases">返回案件列表</router-link>
+      <a class="d-block mt-2" role="button" @click="goBack">返回案件列表</a>
     </div>
 
     <template v-else>
       <div class="d-flex justify-content-between align-items-center mb-3 no-print">
         <h4 class="mb-0">案件 #{{ detail.caseId }}</h4>
         <div class="d-flex align-items-center gap-1">
+          <button class="btn btn-outline-secondary btn-sm" @click="goBack">返回</button>
           <button class="btn btn-outline-secondary btn-sm" @click="printDetail">列印</button>
           <router-link
             v-if="auth.isStaff && (detail.status !== 'CLOSED' || auth.isAdmin)"
             class="btn btn-outline-primary btn-sm"
-            :to="`/cases/${id}/edit`"
+            :to="{ path: `/cases/${id}/edit`, query: route.query as any }"
           >
             編輯
           </router-link>

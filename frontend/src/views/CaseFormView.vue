@@ -492,7 +492,7 @@ async function loadCase (id: number) {
       icon: 'warning',
       title: '案件已結案',
       text: '已結案案件僅管理者可編輯',
-    }).then (() => router.push ('/cases'))
+    }).then (() => router.push ({ path: '/cases', query: route.query as any }))
     return
   }
   form.receiveDate = d.receiveDate ?? ''
@@ -618,7 +618,7 @@ async function submit () {
         identifierIds: form.identifierIds,
       } as any)
       Swal.fire ({ icon: 'success', title: '儲存成功', timer: 1200, showConfirmButton: false }).then (() => {
-        router.push (`/cases/${editId}`)
+        router.push ({ path: `/cases/${editId}`, query: route.query as any })
       })
     } else {
       const pestWithNotes2 = pestRows.value
@@ -647,8 +647,8 @@ async function submit () {
       } as any)
       const newId = (data as any)?.caseId
       Swal.fire ({ icon: 'success', title: '儲存成功', timer: 1200, showConfirmButton: false }).then (() => {
-        if (newId) router.push (`/cases/${newId}`)
-        else router.push ('/cases')
+        if (newId) router.push ({ path: `/cases/${newId}`, query: route.query as any })
+        else router.push ({ path: '/cases', query: route.query as any })
       })
     }
   } catch {
@@ -995,7 +995,7 @@ async function runAi () {
         >
           {{ analyzing ? 'AI 診斷中…' : 'AI 診斷' }}
         </button>
-        <router-link class="btn btn-outline-secondary" to="/cases">取消</router-link>
+        <router-link class="btn btn-outline-secondary" :to="{ path: '/cases', query: route.query as any }">取消</router-link>
         <button
           type="submit"
           class="btn btn-success"

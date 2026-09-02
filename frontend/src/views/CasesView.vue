@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import Swal from 'sweetalert2'
 import { caseApi, refApi } from '../api'
 import { useAuthStore } from '../stores/auth'
@@ -77,6 +77,7 @@ interface CaseFilters {
 
 const auth = useAuthStore ()
 const router = useRouter ()
+const route = useRoute ()
 
 const allCases = ref<CaseSummary[]>([])
 const total = ref (0)
@@ -186,6 +187,81 @@ const damageOptions = ref<{ id: number; name: string }[]>([])
 const senderTypeOptions = ref<{ id?: number; name?: string }[]>([])
 const methodOptions = ref<{ id?: number; name?: string }[]>([])
 const allCropCategories = ref<components['schemas']['CropCategoryResponse'][]>([])
+
+// --- Query 雙向同步（1.1）---
+function buildQueryFromState (): Record<string, string> {
+  const q: Record<string, string> = {}
+  if (filters.receiveDateFrom) q.receiveDateFrom = filters.receiveDateFrom
+  if (filters.receiveDateTo) q.receiveDateTo = filters.receiveDateTo
+  if (filters.status) q.status = filters.status
+  if (filters.cityId) q.cityId = String (filters.cityId)
+  if (filters.districtId) q.districtId = String (filters.districtId)
+  if (!auth.isViewer && filters.senderName.trim ()) q.senderQuery = filters.senderName.trim ()
+  if (filters.senderTypeId) q.senderTypeId = String (filters.senderTypeId)
+  if (filters.serviceId) q.serviceId = String (filters.serviceId)
+  if (filters.deliveryId) q.deliveryId = String (filters.deliveryId)
+  if (filters.methodId) q.methodId = String (filters.methodId)
+  if (filters.cropCategoryId) q.cropCategoryId = String (filters.cropCategoryId)
+  if (filters.cropId) q.cropId = String (filters.cropId)
+  if (filters.damageId) q.damageId = String (filters.damageId)
+  if (filters.pestTypeId) q.pestTypeId = String (filters.pestTypeId)
+  if (filters.pestCategoryId) q.pestCategoryId = String (filters.pestCategoryId)
+  if (filters.hintId) q.hintId = String (filters.hintId)
+  if (page.value !== 0) q.page = String (page.value)
+  if (size.value !== 10) q.size = String (size.value)
+  if (sortStates.value.length > 0) q.sort = sortStates.value.map (s => `${s.key},${s.order}`).join (';')
+  return q
+}
+function restoreStateFromQuery () {
+  const q = route.query as Record<string, string | string[] | undefined>
+  const num = (v: unknown) => {
+    const s = Array.isArray (v) ? v[0] : v
+    const n = Number (s)
+    return Number.isFinite (n) ? n : undefined
+  }
+  const str = (v: unknown) => Array.isArray (v) ? v[0] as string : v as string | undefined
+  if (str (q.receiveDateFrom)) filters.receiveDateFrom = str (q.receiveDateFrom) as string
+  if (str (q.receiveDateTo)) filters.receiveDateTo = str (q.receiveDateTo) as string
+  if (str (q.status)) filters.status = str (q.status) as string
+  const city = num (q.cityId); if (city) filters.cityId = city
+  const dist = num (q.districtId); if (dist) filters.districtId = dist
+  if (str (q.senderQuery)) filters.senderName = str (q.senderQuery) as string
+  else if (str (q.senderName)) filters.senderName = str (q.senderName) as string
+  const st = num (q.senderTypeId); if (st) filters.senderTypeId = st
+  const svc = num (q.serviceId); if (svc) filters.serviceId = svc
+  const del = num (q.deliveryId); if (del) filters.deliveryId = del
+  const met = num (q.methodId); if (met) filters.methodId = met
+  const cc = num (q.cropCategoryId); if (cc) filters.cropCategoryId = cc
+  const cp = num (q.cropId); if (cp) filters.cropId = cp
+  const dmg = num (q.damageId); if (dmg) filters.damageId = dmg
+  const pt = num (q.pestTypeId); if (pt) filters.pestTypeId = pt
+  const pc = num (q.pestCategoryId); if (pc) filters.pestCategoryId = pc
+  const h = num (q.hintId); if (h) filters.hintId = h
+  const p = num (q.page); if (p !== undefined) page.value = p
+  const s = num (q.size); if (s !== undefined) { size.value = s; pageInput.value = page.value + 1 }
+  const sortStr = str (q.sort)
+  if (sortStr) {
+    const parts = sortStr.split (';').map (x => x.split (',')).filter (x => x.length === 2)
+    if (parts.length > 0) sortStates.value = parts.map (([k, o]) => ({ key: k, order: o as 'asc' | 'desc' }))
+  }
+  // 若有任一篩選條件，保持卡片開啟
+  const hasFilter = !!(filters.receiveDateFrom || filters.receiveDateTo || filters.status || filters.cityId || filters.districtId || filters.senderName.trim () || filters.senderTypeId || filters.serviceId || filters.deliveryId || filters.methodId || filters.cropCategoryId || filters.cropId || filters.damageId || filters.pestTypeId || filters.pestCategoryId || filters.hintId)
+  if (hasFilter) showFilter.value = true
+}
+let syncingQuery = false
+function syncQuery () {
+  if (syncingQuery) return
+  const q = buildQueryFromState ()
+  // 僅在 query 真有變更時 replace，避免無限循環
+  const cur = route.query as Record<string, any>
+  const same = Object.keys (q).length === Object.keys (cur).length && Object.keys (q).every (k => String (cur[k]) === q[k])
+  if (same && Object.keys (q).length === 0 && Object.keys (cur).length === 0) return
+  // 簡易比較：若完全相同則不 push
+  const curStr = JSON.stringify (cur)
+  const nextStr = JSON.stringify (q)
+  if (curStr === nextStr) return
+  router.replace ({ query: q })
+}
 
 const filteredDistricts = computed (() => {
   if (!filters.cityId) return []
@@ -326,8 +402,13 @@ function clearFilters () {
 }
 
 onMounted (() => {
+  syncingQuery = true
+  restoreStateFromQuery ()
+  syncingQuery = false
   load ()
   loadFilterOptions ()
+  // 狀態變更時同步至 URL
+  watch ([() => ({ ...filters }), page, size, sortStates], () => syncQuery (), { deep: true })
 })
 
 // 預覽案件詳細：彈窗快速瀏覽，可進一步跳轉明細頁 (列印診斷單)
@@ -401,7 +482,7 @@ async function viewDetail (id: number) {
     cancelButtonText: '關閉',
   })
   if (result.isConfirmed) {
-    router.push (`/cases/${id}`)
+    router.push ({ path: `/cases/${id}`, query: buildQueryFromState () })
   }
 }
 
@@ -469,7 +550,7 @@ async function confirmDelete (id: number) {
       <div class="d-flex gap-1">
         <button class="btn btn-outline-primary btn-sm" :aria-expanded="showFilter" aria-controls="caseFilterCard" @click="showFilter = !showFilter">篩選</button>
         <button v-if="auth.isStaff" class="btn btn-outline-success btn-sm me-1" @click="exportCsv">匯出 CSV</button>
-        <router-link v-if="auth.isStaff" class="btn btn-success btn-sm" to="/cases/new">新增</router-link>
+        <router-link v-if="auth.isStaff" class="btn btn-success btn-sm" :to="{ path: '/cases/new', query: route.query as any }">新增</router-link>
       </div>
     </div>
 
@@ -681,7 +762,7 @@ async function confirmDelete (id: number) {
                   <router-link
                     v-if="c.status !== 'CLOSED' || auth.isAdmin"
                     class="btn btn-sm btn-outline-primary me-1"
-                    :to="`/cases/${c.caseId}/edit`"
+                    :to="{ path: `/cases/${c.caseId}/edit`, query: route.query as any }"
                   >
                     編輯
                   </router-link>
