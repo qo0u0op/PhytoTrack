@@ -14,6 +14,7 @@ export const authApi = {
   register: (data: RegisterRequest) => http.post ('/auth/register', data),
   me: () => http.post ('/auth/me'),
   logout: () => http.post ('/auth/logout'),
+  abandonDeactivate: (data: LoginRequest) => http.post ('/auth/abandon-deactivate', data),
 }
 
 /** 案件 (Case) API */
@@ -149,9 +150,22 @@ export const refAdminApi = {
     http.put (`/admin/ref/crop-categories/${id}`, data),
   deleteCropCategory: (id: number) => http.delete (`/admin/ref/crop-categories/${id}`),
   // pest-categories
-  createPestCategory: (data: { code: string; name: string; pestTypeId: number; sortOrder: number }) =>
+  createPestCategory: (data: { code: string; name: string; pestTypeId: number }) =>
     http.post ('/admin/ref/pest-categories', data),
-  updatePestCategory: (id: number, data: { code: string; name: string; pestTypeId: number; sortOrder: number }) =>
+  updatePestCategory: (id: number, data: { code: string; name: string; pestTypeId: number }) =>
     http.put (`/admin/ref/pest-categories/${id}`, data),
   deletePestCategory: (id: number) => http.delete (`/admin/ref/pest-categories/${id}`),
+}
+
+/** 帳號自助管理 API */
+export const accountApi = {
+  getProfile: () => http.get ('/account'),
+  updateProfile: (data: { displayName: string; email?: string | null }) => http.put ('/account/profile', data),
+  checkEmail: (email: string) => http.get ('/account/check-email', { params: { email } }),
+  changePassword: (data: { currentPassword?: string; newPassword: string }) => http.put ('/account/password', data),
+  requestDeactivate: () => http.post ('/account/deactivate-request'),
+  getMyDeactivateRequest: () => http.get ('/account/deactivate-request'),
+  cancelDeactivate: () => http.delete ('/account/deactivate-request'),
+  listDeactivateRequests: () => http.get ('/admin/deactivate-requests'),
+  reviewDeactivateRequest: (id: number, status: string) => http.put (`/admin/deactivate-requests/${id}`, { status }),
 }

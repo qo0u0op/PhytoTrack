@@ -14,6 +14,7 @@ import com.d0w0b.phytotrack.dto.AuthDtos.LoginRequest;
 import com.d0w0b.phytotrack.dto.AuthDtos.RegisterRequest;
 import com.d0w0b.phytotrack.dto.AuthDtos.UserResponse;
 import com.d0w0b.phytotrack.security.UserPrincipal;
+import com.d0w0b.phytotrack.service.AccountService;
 import com.d0w0b.phytotrack.service.AuthService;
 
 /**
@@ -27,9 +28,11 @@ import com.d0w0b.phytotrack.service.AuthService;
 public class AuthController {
 
   private final AuthService authService;
+  private final AccountService accountService;
 
-  public AuthController (AuthService authService) {
+  public AuthController (AuthService authService, AccountService accountService) {
     this.authService = authService;
+    this.accountService = accountService;
   }
 
   /** 註冊新使用者 (公開端點) */
@@ -53,6 +56,13 @@ public class AuthController {
   /** 登出 (無狀態 JWT：前端丟棄 token 即完成) */
   @PostMapping ("/logout")
   public ResponseEntity<Void> logout () {
+    return ResponseEntity.noContent ().build ();
+  }
+
+  /** 放棄停用申請（未登入時，憑帳密取消待審核請求） */
+  @PostMapping ("/abandon-deactivate")
+  public ResponseEntity<Void> abandonDeactivate (@RequestBody LoginRequest request) {
+    accountService.abandonDeactivateByUsername (request.username (), request.password ());
     return ResponseEntity.noContent ().build ();
   }
 }

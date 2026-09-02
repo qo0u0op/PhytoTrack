@@ -21,8 +21,36 @@ async function submit () {
     Swal.fire ({ icon: 'success', title: '登入成功', timer: 1200, showConfirmButton: false })
     router.push (String (route.query.redirect ?? '/dashboard'))
   } catch (e: any) {
+    const code = e.response?.data?.code || e.response?.data?.error?.code
+    const msg = e.response?.data?.message || e.response?.data?.error?.message
+    if (code === 'DEACTIVATE_PENDING') {
+      const result = await Swal.fire ({
+        icon: 'warning',
+        title: '有待審核的停用申請',
+        text: '是否放棄申請停用並繼續登入？',
+        showCancelButton: true,
+        confirmButtonText: '是，放棄申請',
+        cancelButtonText: '否，禁止登入',
+      })
+      if (result.isConfirmed) {
+        try {
+          await authApi.abandonDeactivate ({ ...form })
+          const { data } = await authApi.login ({ ...form })
+          auth.setAuth (data.token!, data.user!)
+          Swal.fire ({ icon: 'success', title: '已放棄停用申請並登入', timer: 1200, showConfirmButton: false })
+          router.push (String (route.query.redirect ?? '/dashboard'))
+          return
+        } catch (e2: any) {
+          Swal.fire ({ icon: 'error', title: '放棄失敗', text: e2.response?.data?.message ?? '請稍後再試' })
+          return
+        }
+      } else {
+        Swal.fire ({ icon: 'info', title: '已禁止登入', text: '如需放棄請再次登入並選擇是' })
+        return
+      }
+    }
     // 401 等錯誤由攔截器處理；在此補充顯示登入失敗訊息
-    Swal.fire ({ icon: 'error', title: '登入失敗', text: e.response?.data?.error?.message ?? '帳號或密碼錯誤' })
+    Swal.fire ({ icon: 'error', title: '登入失敗', text: msg ?? '帳號或密碼錯誤' })
   } finally {
     loading.value = false
   }

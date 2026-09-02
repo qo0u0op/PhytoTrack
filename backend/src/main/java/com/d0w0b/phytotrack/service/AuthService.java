@@ -14,7 +14,9 @@ import com.d0w0b.phytotrack.dto.AuthDtos.LoginRequest;
 import com.d0w0b.phytotrack.dto.AuthDtos.RegisterRequest;
 import com.d0w0b.phytotrack.dto.AuthDtos.UserResponse;
 import com.d0w0b.phytotrack.exception.ApiException;
+import com.d0w0b.phytotrack.models.DeactivateRequest;
 import com.d0w0b.phytotrack.models.User;
+import com.d0w0b.phytotrack.repository.DeactivateRequestRepository;
 import com.d0w0b.phytotrack.repository.UserRepository;
 import com.d0w0b.phytotrack.security.JwtTokenProvider;
 import com.d0w0b.phytotrack.security.UserPrincipal;
@@ -33,15 +35,18 @@ import java.util.List;
 public class AuthService {
 
   private final UserRepository userRepository;
+  private final DeactivateRequestRepository deactivateRequestRepository;
   private final PasswordEncoder passwordEncoder;
   private final AuthenticationManager authenticationManager;
   private final JwtTokenProvider jwtTokenProvider;
 
   public AuthService (UserRepository userRepository,
+                     DeactivateRequestRepository deactivateRequestRepository,
                      PasswordEncoder passwordEncoder,
                      AuthenticationManager authenticationManager,
                      JwtTokenProvider jwtTokenProvider) {
     this.userRepository = userRepository;
+    this.deactivateRequestRepository = deactivateRequestRepository;
     this.passwordEncoder = passwordEncoder;
     this.authenticationManager = authenticationManager;
     this.jwtTokenProvider = jwtTokenProvider;
@@ -58,10 +63,7 @@ public class AuthService {
     if (userRepository.findByUsername (request.username ()).isPresent ()) {
       throw new ApiException ("USERNAME_TAKEN", HttpStatus.CONFLICT, "帳號已存在");
     }
-    if (request.email () != null && !request.email ().isBlank ()
-        && userRepository.findByEmail (request.email ()).isPresent ()) {
-      throw new ApiException ("EMAIL_TAKEN", HttpStatus.CONFLICT, "電子信箱已被使用");
-    }
+    // 信箱不再全域唯一檢查，僅由前端檢查按鈕提示
 
     User user = new User ();
     user.setUsername (request.username ());
@@ -84,6 +86,14 @@ public class AuthService {
    */
   @Transactional (readOnly = true)
   public AuthResponse login (LoginRequest request) {
+    // 若有待審核的停用請求，先阻擋登入並提示是否放棄
+    var preUser = userRepository.findByUsername (request.username ());
+    if (preUser.isPresent ()) {
+      boolean hasPending = deactivateRequestRepository.existsByUserUserIdAndStatus (preUser.get ().getUserId (), DeactivateRequest.Status.PENDING);
+      if (hasPending) {
+        throw new ApiException ("DEACTIVATE_PENDING", HttpStatus.CONFLICT, "帳號有待審核的停用申請，請選擇是否放棄");
+      }
+    }
     // 停用帳號由 CustomUserDetailsService 的 isEnabled ()==active 觸發 DisabledException，
     // 統一由 GlobalExceptionHandler 轉 403 ACCOUNT_DISABLED；此處不再重複檢查 (避免 dead code)
     Authentication authentication = authenticationManager.authenticate (new UsernamePasswordAuthenticationToken (request.username (), request.password ()));
