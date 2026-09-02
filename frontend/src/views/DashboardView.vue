@@ -160,7 +160,7 @@ const barClass = (status?: string) =>
           <div class="card-body">
             <h6 class="text-muted">複合因素</h6>
             <div class="fs-1 fw-bold">{{ stats?.compositeFactorCases ?? stats?.compositeCases ?? '…' }}</div>
-            <div class="small text-muted">害物 &gt;1 組</div>
+            <div class="small text-muted">害物、因素 &gt;1 組</div>
           </div>
         </div>
       </div>
