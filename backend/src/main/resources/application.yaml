@@ -49,6 +49,19 @@ spring:
           temperature: 0.7
           max-tokens: 512
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
+      show-components: always
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
 # ============================================================
 # 應用程式自訂設定
 # ============================================================

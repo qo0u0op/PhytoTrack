@@ -60,6 +60,9 @@ public class SecurityConfig {
             .requestMatchers ("/api/ai/health").permitAll ()
             // 公開：OpenAPI 文件與 Swagger UI
             .requestMatchers ("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll ()
+            // Actuator：health/info 公開，metrics 僅 ADMIN（非 dev 限權，見 api-observability Phase2）
+            .requestMatchers ("/actuator/health", "/actuator/info").permitAll ()
+            .requestMatchers ("/actuator/**").hasRole ("ADMIN")
             // 其餘一律需登入
             .anyRequest ().authenticated ())
         // 在標準使用者名稱密碼驗證過濾器之前掛上 JWT 過濾器
