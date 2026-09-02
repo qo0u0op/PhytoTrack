@@ -1,5 +1,7 @@
 package com.d0w0b.phytotrack.dto;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
+
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -184,7 +186,7 @@ public final class CaseDtos {
       String serviceName,
       String deliveryName,
       String status,
-      LocalDateTime createdAt,
+      @JsonFormat (pattern = "yyyy-MM-dd'T'HH:mm:ss") LocalDateTime createdAt,
       Integer pestCategoryCount,
       String pestCategoryNames,
       String pestTypeNames) {
@@ -207,8 +209,8 @@ public final class CaseDtos {
       String caseDescription,
       String hintDescription,
       String status,
-      LocalDateTime createdAt,
-      LocalDateTime updatedAt,
+      @JsonFormat (pattern = "yyyy-MM-dd'T'HH:mm:ss") LocalDateTime createdAt,
+      @JsonFormat (pattern = "yyyy-MM-dd'T'HH:mm:ss") LocalDateTime updatedAt,
       Long senderId,
       String senderName,
       String senderDisplayName,
