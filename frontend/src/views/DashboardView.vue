@@ -82,8 +82,8 @@ const barClass = (status?: string) =>
             <select v-model="period" class="form-select form-select-sm">
               <option value="HISTORICAL">歷史</option>
               <option value="ANNUAL">年度</option>
-              <option value="MONTHLY">月度</option>
               <option value="HALF_YEAR">半年度</option>
+              <option value="MONTHLY">月度</option>
             </select>
           </div>
           <div class="col-md-3">
