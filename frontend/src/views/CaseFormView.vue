@@ -952,7 +952,8 @@ async function runAi () {
                 <button type="button" class="btn btn-sm btn-outline-danger" @click="pestRows.splice (idx, 1)">刪除</button>
               </div>
             </div>
-            <button type="button" class="btn btn-sm btn-outline-primary" @click="pestRows.push ({ pestTypeId: pestTypes[0]?.id ?? 0, pestCategoryId: pestTypes[0]?.categories[0]?.id ?? 0, pestNote: '' })">＋新增因素</button>
+            <div class="w-100"></div>
+            <button type="button" class="btn btn-sm btn-outline-primary mt-2" @click="pestRows.push ({ pestTypeId: pestTypes[0]?.id ?? 0, pestCategoryId: pestTypes[0]?.categories[0]?.id ?? 0, pestNote: '' })">＋新增因素</button>
           </div>
           <div class="col-12">
             <label class="form-label">建議採取措施</label>

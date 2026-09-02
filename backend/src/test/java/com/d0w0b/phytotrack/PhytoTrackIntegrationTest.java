@@ -67,7 +67,7 @@ class PhytoTrackIntegrationTest {
     caseBody.put ("receiveDate", "2026-08-18");
     caseBody.put ("cropScale", "2 分地");
     caseBody.put ("damageScale", "約 3 成");
-    caseBody.put ("pestDescription", "葉片出現斑點");
+    caseBody.put ("caseDescription", "葉片出現斑點");
     caseBody.put ("senderName", "張三");
     caseBody.put ("senderPhone", "0912345678");
     caseBody.put ("senderAddress", "測試路 1 號");
