@@ -359,7 +359,7 @@ const tabs: { key: TabKey; label: string }[] = [
   { key: 'services', label: '服務類別' },
   { key: 'identifiers', label: '簽名人' },
   { key: 'senderTypes', label: '身分別' },
-  { key: 'cropCategories', label: '作物分類' },
+  { key: 'cropCategories', label: '作物類別' },
 ]
 
 const currentList = computed<any[]>(() => {
@@ -434,7 +434,7 @@ const pagedList = computed (() => {
   <div class="container py-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
       <h4 class="mb-0">參照資料管理</h4>
-      <button class="btn btn-success" @click="handleCreate">新增</button>
+      <button class="btn btn-success btn-sm" @click="handleCreate">新增</button>
     </div>
 
     <ul class="nav nav-tabs mb-3">

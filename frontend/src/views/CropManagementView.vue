@@ -112,15 +112,15 @@ async function handleDelete (item: CropRow) {
     <div class="d-flex justify-content-between align-items-center mb-4">
       <h4 class="mb-0">作物管理</h4>
       <div class="d-flex gap-1">
-        <button v-if="auth.isStaff" class="btn btn-success btn-sm" @click="handleCreate">新增</button>
         <button class="btn btn-outline-primary btn-sm" :aria-expanded="showFilter" aria-controls="cropFilterCard" @click="showFilter = !showFilter">篩選</button>
+        <button v-if="auth.isStaff" class="btn btn-success btn-sm" @click="handleCreate">新增</button>
       </div>
     </div>
     <div v-show="showFilter" id="cropFilterCard" class="card shadow-sm mb-3">
       <div class="card-body py-2">
         <div class="row g-2 align-items-center">
           <div class="col-md-4"><input v-model="filterQ" type="text" class="form-control form-control-sm" placeholder="篩選名稱" /></div>
-          <div class="col-md-4"><select v-model.number="filterCategoryId" class="form-select form-select-sm"><option :value="null">全部分類</option><option v-for="c in cropCategories" :key="c.id" :value="c.id">{{ c.name }}</option></select></div>
+          <div class="col-md-4"><select v-model.number="filterCategoryId" class="form-select form-select-sm"><option :value="null">全部類別</option><option v-for="c in cropCategories" :key="c.id" :value="c.id">{{ c.name }}</option></select></div>
           <div class="col-md-4 text-muted small">{{ filtered.length }} 筆</div>
         </div>
       </div>
@@ -150,7 +150,7 @@ async function handleDelete (item: CropRow) {
     <div v-else class="card shadow-sm">
       <div class="table-responsive position-relative" style="overflow-x:auto;-webkit-overflow-scrolling:touch">
         <table class="table table-hover align-middle mb-0 text-nowrap" style="min-width:600px;table-layout:fixed">
-          <thead class="table-light"><tr><th style="width:60px;min-width:60px">ID</th><th style="width:200px;min-width:200px">名稱</th><th style="width:120px;min-width:120px">分類</th><th class="text-end" style="width:130px;min-width:130px">操作</th></tr></thead>
+          <thead class="table-light"><tr><th style="width:60px;min-width:60px">ID</th><th style="width:200px;min-width:200px">名稱</th><th style="width:120px;min-width:120px">類別</th><th class="text-end" style="width:130px;min-width:130px">操作</th></tr></thead>
           <tbody>
             <tr v-if="filtered.length === 0"><td colspan="4" class="text-center text-muted py-4">尚無資料</td></tr>
             <tr v-for="item in paged" :key="item.id"><td>{{ item.id }}</td><td class="text-truncate" style="max-width:200px" :title="item.name">{{ item.name }}</td><td class="text-truncate" style="max-width:120px" :title="cropCategories.find ((c) => c.id === item.cropCategoryId)?.name ?? '—'">{{ cropCategories.find ((c) => c.id === item.cropCategoryId)?.name ?? '—' }}</td><td class="text-end"><button v-if="auth.isStaff" class="btn btn-sm btn-outline-primary me-1" @click="handleEdit (item)">編輯</button><button v-if="auth.isAdmin" class="btn btn-sm btn-outline-danger" @click="handleDelete (item)">刪除</button></td></tr>
