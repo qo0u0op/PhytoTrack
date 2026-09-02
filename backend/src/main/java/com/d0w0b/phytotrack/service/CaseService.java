@@ -717,47 +717,43 @@ public class CaseService {
   }
 
   /**
-   * CSV 匯出 (見 spec case-report)：依篩選查詢全部案件 (不分頁，收件日期升序)
+   * CSV 匯出 (見 spec case-report)：依篩選查詢全部案件 (不分頁，收件編號升序)
    * 組 CSV，輸出含 UTF-8 BOM 供 Excel 開啟中文。篩選語意與列表 (case-search) 一致。
    */
   @Transactional (readOnly = true)
   public String exportCsv (CaseFilter filter) {
     CaseStatus status = filter.status () != null ? parseStatus (filter.status ()) : null;
     if (filter.isEmpty ()) {
-      List<Case> cases = caseRepository.findAll (Sort.by ("receiveDate"));
+      List<Case> cases = caseRepository.findAll (Sort.by ("caseId"));
       return toCsv (cases);
     }
     List<com.d0w0b.phytotrack.models.CaseSearchView> viewList =
-        caseSearchViewRepository.findAll (CaseSpecifications.buildView (filter, status), Sort.by ("receiveDate"));
+        caseSearchViewRepository.findAll (CaseSpecifications.buildView (filter, status), Sort.by ("caseId"));
     List<Long> ids = viewList.stream ().map (com.d0w0b.phytotrack.models.CaseSearchView::getCaseId).toList ();
     if (ids.isEmpty ()) {
       return toCsv (List.of ());
     }
     List<Case> cases = caseRepository.findAllById (ids);
-    // 保持收件日期升序
-    cases.sort (java.util.Comparator.comparing (Case::getReceiveDate));
+    // 保持收件編號升序
+    cases.sort (java.util.Comparator.comparing (Case::getCaseId));
     return toCsv (cases);
   }
 
-  /** 組 CSV 內容：首列為欄位名，含 UTF-8 BOM，對齊 diagnoses.typ (Q1-Q5 定版) */
+  /** 組 CSV 內容：首列為欄位名，含 UTF-8 BOM，對齊 diagnoses.typ (Q1-Q5 定版，含 7 項調整) */
   private String toCsv (List<Case> cases) {
     StringBuilder sb = new StringBuilder ("\uFEFF");
     sb.append (join ("收件編號", "收件日期", "狀態",
-        "病蟲害發生地點_縣市", "病蟲害發生地點_鄉鎮", "是否同寄件人",
-        "送件人身分別", "姓名", "顯示名稱", "電話", "住址",
-        "耕作方式", "作物種類", "作物名稱",
-        "被害部位", "土壤栽培用藥紀錄", "栽培面積", "被害面積", "被害描述",
-        "服務類別", "送件方式", "鑑定者",
-        "病害", "蟲害", "有害動物", "生理因子", "其他",
-        "建議事項", "防治描述", "建立者", "建立時間", "更新時間"));
+        "病蟲害發生地", "送件人身分別", "姓名", "顯示名稱", "電話", "住址",
+        "服務類別", "送件方式", "耕作方式", "作物種類", "作物名稱",
+        "被害部位", "栽培面積", "被害面積", "土壤栽培用藥紀錄",
+        "病害", "蟲害", "有害動物", "生理因子", "其他", "診斷結果",
+        "建議事項", "防治描述", "鑑定者", "建立者", "建立時間", "更新時間"));
     for (Case c : cases) {
       String fieldCity = Optional.ofNullable (c.getFieldDistrict ()).map (District::getCity).map (City::getCity).orElse ("");
       String fieldDistrict = Optional.ofNullable (c.getFieldDistrict ()).map (District::getDistrict).orElse ("");
-      boolean sameAsSender = Optional.ofNullable (c.getFieldDistrict ()).map (District::getDistrictId).orElse (-1L)
-          .equals (Optional.ofNullable (c.getSender ().getDistrict ()).map (District::getDistrictId).orElse (-2L));
-      String isSame = sameAsSender ? "是" : "否";
+      String fieldLocation = fieldCity + fieldDistrict;
       String senderAddressFull = (Optional.ofNullable (c.getSender ().getDistrict ()).map (District::getCity).map (City::getCity).orElse ("") + Optional.ofNullable (c.getSender ().getDistrict ()).map (District::getDistrict).orElse ("") + Optional.ofNullable (c.getSender ().getAddress ()).orElse (""));
-      // Q1：被害描述 ≒ pest_note 串接 (caseDescription 已為土壤紀錄)，此處以 pest_notes 呈現
+      // 診斷結果：pest_note 串接 (caseDescription 已為土壤紀錄)，此處以 pest_notes 呈現
       String pestNotes = c.getCasePestCategories ().stream ()
           .map (j -> {
             String note = j.getPestNote ();
@@ -773,29 +769,27 @@ public class CaseService {
       }).collect (Collectors.joining ("、"));
       sb.append ('\n').append (join (String.valueOf (c.getCaseId ()),
           String.valueOf (c.getReceiveDate ()),
-          c.getStatus ().name (),
-          fieldCity,
-          fieldDistrict,
-          isSame,
+          statusDisplay (c.getStatus ()),
+          fieldLocation,
           senderTypeNameOf (c),
           c.getSender ().getName (),
           c.getSender ().getDisplayName (),
           c.getSender ().getPhone (),
           senderAddressFull,
+          c.getService () != null ? c.getService ().getService () : null,
+          c.getDelivery () != null ? c.getDelivery ().getDeliver () : null,
           c.getMethod () != null ? c.getMethod ().getMethod () : null,
           Optional.ofNullable (c.getCrop ()).map (Crop::getCropCategory).map (cat -> cat.getCropCategory ()).orElse (null),
           c.getCrop ().getCrop (),
           names (c.getCaseDamages (), d -> d.getDamage ().getDamage ()),
-          c.getCaseDescription (),
           c.getCropScale (),
           c.getDamageScale (),
-          pestNotes,
-          c.getService () != null ? c.getService ().getService () : null,
-          c.getDelivery () != null ? c.getDelivery ().getDeliver () : null,
-          names (c.getCaseIdentifiers (), j -> j.getIdentifier ().getIdentifier ()),
+          c.getCaseDescription (),
           pestByType[0], pestByType[1], pestByType[2], pestByType[3], pestByType[4],
+          pestNotes,
           hints,
           c.getHintDescription (),
+          names (c.getCaseIdentifiers (), j -> j.getIdentifier ().getIdentifier ()),
           c.getCreatedBy () != null ? c.getCreatedBy ().getDisplayName () : null,
           String.valueOf (c.getCreatedAt ()),
           String.valueOf (c.getUpdatedAt ())));
@@ -834,13 +828,20 @@ public class CaseService {
     return Arrays.stream (fields).map (CaseService::csvEscape).collect (Collectors.joining (","));
   }
 
-  /** CSV 欄位轉義：含逗號／引號／換行時以引號包覆，內部引號重複 */
+  /** 狀態中文顯示 */
+  private static String statusDisplay (CaseStatus status) {
+    if (status == null) return "";
+    return switch (status) {
+      case PENDING -> "待處理";
+      case RESOLVED -> "已處理";
+      case CLOSED -> "已結案";
+    };
+  }
+
+  /** CSV 欄位轉義：全欄位以引號包覆，內部引號以 "" 轉義（電話與中文皆為字串） */
   private static String csvEscape (String value) {
     String v = value == null ? "" : value;
-    if (v.contains (",") || v.contains ("\"") || v.contains ("\n") || v.contains ("\r")) {
-      return "\"" + v.replace ("\"", "\"\"") + "\"";
-    }
-    return v;
+    return "\"" + v.replace ("\"", "\"\"") + "\"";
   }
 
   // ------------------------------------------------------------------

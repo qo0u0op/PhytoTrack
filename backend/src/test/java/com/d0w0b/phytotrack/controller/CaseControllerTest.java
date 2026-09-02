@@ -172,14 +172,14 @@ class CaseControllerTest {
   @Test
   @WithMockUser (roles = "STAFF")
   void export_shouldReturnCsvWithDownloadHeaders () throws Exception {
-    when (caseService.exportCsv (any ())).thenReturn ("\uFEFF收件編號\n1,2026-08-18");
+    when (caseService.exportCsv (any ())).thenReturn ("\uFEFF\"收件編號\"\n\"1\",\"2026-08-18\"");
 
     mockMvc.perform (get ("/api/cases/export"))
         .andExpect (status ().isOk ())
         .andExpect (header ().string (HttpHeaders.CONTENT_TYPE, "text/csv;charset=UTF-8"))
         .andExpect (header ().string (HttpHeaders.CONTENT_DISPOSITION,
             startsWith ("attachment; filename=\"case-export-")))
-        .andExpect (content ().string (startsWith ("\uFEFF收件編號")));
+        .andExpect (content ().string (startsWith ("\uFEFF\"收件編號\"")));
   }
 
   @Test
