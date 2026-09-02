@@ -368,13 +368,13 @@ async function viewDetail (id: number) {
         <p><strong>送件人：</strong>${displaySender}</p>
         <hr />
 
+        <p><strong>服務類別：</strong>${esc (data.serviceName)} <strong class="ms-3">送件方式：</strong>${esc (data.deliveryName)}</p>
         <p><strong>耕種方式：</strong>${esc (data.methodName)}</p>
-        <p><strong>作物種類：</strong>${esc (cropCategory)} <strong class="ms-3">作物名稱：</strong>${esc (data.cropName)}</p>
+        <p><strong>作物類別：</strong>${esc (cropCategory)} <strong class="ms-3">作物：</strong>${esc (data.cropName)}</p>
         <p><strong>被害部位：</strong>${join (data.damages)}</p>
         <p><strong>栽培面積：</strong>${esc (data.cropScale ?? '無')} <strong class="ms-3">被害面積：</strong>${esc (data.damageScale ?? '無')}</p>
 
         <hr />
-        <p><strong>服務類別：</strong>${esc (data.serviceName)} <strong class="ms-3">送件方式：</strong>${esc (data.deliveryName)}</p>
         <p><strong>鑑定者：</strong>${join (data.identifiers)}</p>
         <p><strong>診斷結果：</strong></p>
         ${pestPreviewHtml (data.pestCategories)}

@@ -117,15 +117,15 @@ async function handleDelete (item: any) {
     <div class="d-flex justify-content-between align-items-center mb-4">
       <h4 class="mb-0">害物管理</h4>
       <div class="d-flex gap-1">
-        <button v-if="auth.isAdmin" class="btn btn-success btn-sm" @click="handleCreate">新增</button>
         <button class="btn btn-outline-primary btn-sm" :aria-expanded="showFilter" aria-controls="pestFilterCard" @click="showFilter = !showFilter">篩選</button>
+        <button v-if="auth.isAdmin" class="btn btn-success btn-sm" @click="handleCreate">新增</button>
       </div>
     </div>
     <div v-show="showFilter" id="pestFilterCard" class="card shadow-sm mb-3">
       <div class="card-body py-2">
         <div class="row g-2 align-items-center">
           <div class="col-md-4"><input v-model="filterQ" type="text" class="form-control form-control-sm" placeholder="篩選名稱／代碼" /></div>
-          <div class="col-md-4"><select v-model.number="filterPestTypeId" class="form-select form-select-sm"><option :value="null">全部類型</option><option v-for="p in pestTypes" :key="p.id" :value="p.id">{{ p.name }}</option></select></div>
+          <div class="col-md-4"><select v-model.number="filterPestTypeId" class="form-select form-select-sm"><option :value="null">全部因素</option><option v-for="p in pestTypes" :key="p.id" :value="p.id">{{ p.name }}</option></select></div>
           <div class="col-md-4 text-muted small">{{ filtered.length }} 筆</div>
         </div>
       </div>
@@ -155,7 +155,7 @@ async function handleDelete (item: any) {
     <div v-else class="card shadow-sm">
       <div class="table-responsive position-relative" style="overflow-x:auto;-webkit-overflow-scrolling:touch">
         <table class="table table-hover align-middle mb-0 text-nowrap" style="min-width:680px;table-layout:fixed">
-          <thead class="table-light"><tr><th style="width:60px;min-width:60px">ID</th><th style="width:90px;min-width:90px">代碼</th><th :style="{ width: nameColWidth + 'px', minWidth: nameColWidth + 'px' }">名稱</th><th style="width:100px;min-width:100px">類型</th><th class="text-end" style="width:130px;min-width:130px">操作</th></tr></thead>
+          <thead class="table-light"><tr><th style="width:60px;min-width:60px">ID</th><th style="width:90px;min-width:90px">代碼</th><th :style="{ width: nameColWidth + 'px', minWidth: nameColWidth + 'px' }">名稱</th><th style="width:100px;min-width:100px">因素</th><th class="text-end" style="width:130px;min-width:130px">操作</th></tr></thead>
           <tbody>
             <tr v-if="filtered.length === 0"><td colspan="5" class="text-center text-muted py-4">尚無資料</td></tr>
             <tr v-for="item in paged" :key="item.id"><td>{{ item.id }}</td><td class="text-truncate" style="max-width:90px" :title="item.code">{{ item.code }}</td><td class="text-truncate" :style="{ maxWidth: nameColWidth + 'px' }" :title="item.name">{{ item.name }}</td><td>{{ pestTypes.find ((p) => p.id === item.pestTypeId)?.name ?? '—' }}</td><td class="text-end"><button class="btn btn-sm btn-outline-primary me-1" @click="handleEdit (item)">編輯</button><button v-if="auth.isAdmin" class="btn btn-sm btn-outline-danger" @click="handleDelete (item)">刪除</button></td></tr>
