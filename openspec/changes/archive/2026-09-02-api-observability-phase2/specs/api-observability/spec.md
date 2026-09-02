@@ -1,10 +1,4 @@
-# API Observability Specification
-
-## Purpose
-
-統一錯誤回應契約並提供伺服器端可追蹤性 (requestId 串接日誌)，滿足除錯與監控需求。
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: 錯誤回應含 details 欄位
 
@@ -25,6 +19,8 @@
 #### Scenario: 5xx 系統錯誤
 - **WHEN** 發生未預期例外
 - **THEN** 回應為泛化訊息，伺服器日誌以同一 requestId 記錄完整堆疊
+
+## ADDED Requirements
 
 ### Requirement: Actuator 健康與指標端點
 
