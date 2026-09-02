@@ -36,6 +36,7 @@ build/
 *.db
 *.sqlite
 backups/
+logs/
 
 ### Environment ###
 backend/.env
