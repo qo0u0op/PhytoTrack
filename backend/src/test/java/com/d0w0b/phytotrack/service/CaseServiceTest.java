@@ -650,20 +650,28 @@ class CaseServiceTest {
 
     String csv = caseService.exportCsv (new CaseFilter (null, null, null, null, null, null));
 
-    // 首列欄位名並以 BOM 開頭 (Excel 開啟中文正常)，對齊 diagnoses.typ (Q1-Q5，地址合併僅字串)
-    assertThat (csv).startsWith ("\uFEFF收件編號");
-    assertThat (csv).contains ("收件日期");
-    assertThat (csv).contains ("狀態");
-    assertThat (csv).contains ("病蟲害發生地點_縣市");
-    assertThat (csv).contains ("病蟲害發生地點_鄉鎮");
-    assertThat (csv).contains ("住址");
-    assertThat (csv).contains ("作物種類");
-    assertThat (csv).contains ("建議事項");
-    assertThat (csv).contains ("防治描述");
-    // 描述含逗號與引號需轉義 (以引號包覆、內部引號重複)
+    // 首列欄位名並以 BOM 開頭 (Excel 開啟中文正常)，對齊 diagnoses.typ (含 7 項調整，全欄位引號)
+    assertThat (csv).startsWith ("\uFEFF\"收件編號\"");
+    assertThat (csv).contains ("\"收件日期\"");
+    assertThat (csv).contains ("\"狀態\"");
+    assertThat (csv).contains ("\"病蟲害發生地\"");
+    assertThat (csv).doesNotContain ("病蟲害發生地點_縣市");
+    assertThat (csv).doesNotContain ("病蟲害發生地點_鄉鎮");
+    assertThat (csv).doesNotContain ("是否同寄件人");
+    assertThat (csv).contains ("\"住址\"");
+    assertThat (csv).contains ("\"作物種類\"");
+    assertThat (csv).contains ("\"診斷結果\"");
+    assertThat (csv).contains ("\"建議事項\"");
+    assertThat (csv).contains ("\"防治描述\"");
+    assertThat (csv).contains ("\"鑑定者\",\"建立者\"");
+    // 服務/送件應位於耕作方式前
+    assertThat (csv).contains ("\"服務類別\",\"送件方式\",\"耕作方式\"");
+    // 描述含逗號與引號需轉義 (全欄位引號，內部引號重複)
     assertThat (csv).contains ("\"葉片斑點，含逗號,與\"\"引號\"\"\"");
-    assertThat (csv).contains ("王小明");
-    assertThat (csv).contains ("0912345678");
+    assertThat (csv).contains ("\"王小明\"");
+    assertThat (csv).contains ("\"0912345678\"");
+    assertThat (csv).contains ("臺中市霧峰區");
+    assertThat (csv).contains ("\"待處理\"");
     assertThat (csv).contains ("霧峰區");
     assertThat (csv).contains ("柑橘");
     assertThat (csv).contains ("水稻");
@@ -678,8 +686,8 @@ class CaseServiceTest {
 
     ArgumentCaptor<Sort> sortCaptor = ArgumentCaptor.forClass (Sort.class);
     verify (caseSearchViewRepository).findAll (any (Specification.class), sortCaptor.capture ());
-    assertThat (sortCaptor.getValue ().getOrderFor ("receiveDate")).isNotNull ();
-    assertThat (sortCaptor.getValue ().getOrderFor ("receiveDate").isAscending ()).isTrue ();
+    assertThat (sortCaptor.getValue ().getOrderFor ("caseId")).isNotNull ();
+    assertThat (sortCaptor.getValue ().getOrderFor ("caseId").isAscending ()).isTrue ();
   }
 
   // ---------------------------------------------------------------

@@ -151,8 +151,8 @@ class PhytoTrackIntegrationTest {
             startsWith ("attachment; filename=\"case-export-")))
         .andReturn ();
     String csv = export.getResponse ().getContentAsString (StandardCharsets.UTF_8);
-    assertThat (csv).startsWith ("\uFEFF收件編號");
-    assertThat (csv).contains (String.valueOf (caseId));
+    assertThat (csv).startsWith ("\uFEFF\"收件編號\"");
+    assertThat (csv).contains ("\"" + String.valueOf (caseId) + "\"");
 
     // 8. 註冊一般檢視員 (VIEWER) 並登入
     String viewerUsername = "viewer_it_" + System.nanoTime ();
