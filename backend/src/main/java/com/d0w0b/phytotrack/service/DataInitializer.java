@@ -3,6 +3,7 @@ package com.d0w0b.phytotrack.service;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import com.d0w0b.phytotrack.models.Identifier;
@@ -14,9 +15,10 @@ import com.d0w0b.phytotrack.repository.UserRepository;
  * 啟動時資料初始化 (Data Initializer)
  *
  * 若資料庫沒有管理者/員工帳號，則依 application.yaml 的 app.bootstrap
- * 建立預設帳號 (可覆寫)，方便首次登入。
+ * 建立預設帳號 (可覆寫)，方便首次登入。僅於 dev/test 啟用，避免 production 預設密碼落入正式環境。
  */
 @Configuration
+@Profile ({"dev", "test"})
 public class DataInitializer implements CommandLineRunner {
 
   private final UserRepository userRepository;

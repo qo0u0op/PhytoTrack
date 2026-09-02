@@ -49,6 +49,7 @@ public class JwtTokenProvider {
     Date now = new Date ();
     Date expiry = new Date (now.getTime () + expirationMs);
     return Jwts.builder ()
+        .issuer ("phytotrack")
         .subject (user.getUsername ())
         .claim ("userId", user.getUserId ())
         .claim ("role", user.getRole ().name ())
@@ -67,12 +68,13 @@ public class JwtTokenProvider {
   public Claims parseToken (String token) {
     try {
       return Jwts.parser ()
+          .requireIssuer ("phytotrack")
           .verifyWith (key)
           .build ()
           .parseSignedClaims (token)
           .getPayload ();
     } catch (Exception e) {
-      // 簽章錯誤、格式錯誤或過期等，一律視為無效
+      // 簽章錯誤、格式錯誤、過期或 issuer 不符等，一律視為無效
       return null;
     }
   }
