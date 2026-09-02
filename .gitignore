@@ -54,4 +54,5 @@ docs/notebook/
 .playwright-cli/
 .playwright/*
 !.playwright/cli.config.json
+!.playwright/cli.config.terminal.json
 
