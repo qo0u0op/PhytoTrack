@@ -54,7 +54,7 @@ async function handleLogout () {
         <ul class="navbar-nav ms-auto">
           <template v-if="auth.isAuthenticated">
             <li class="nav-item">
-              <span class="nav-link d-flex align-items-center gap-1">
+              <router-link class="nav-link d-flex align-items-center gap-1" to="/account">
                 {{ auth.user?.displayName }}
                 <span
                   class="badge bg-light rounded-pill p-1 d-inline-flex align-items-center justify-content-center"
@@ -78,7 +78,7 @@ async function handleLogout () {
                     <path d="M9.5 6.5a1.5 1.5 0 0 1-1 1.415l.385 1.99a.5.5 0 0 1-.491.595h-.788a.5.5 0 0 1-.49-.595l.384-1.99a1.5 1.5 0 1 1 2-1.415z"/>
                   </svg>
                 </span>
-              </span>
+              </router-link>
             </li>
             <li class="nav-item">
               <button class="btn btn-outline-light btn-sm ms-2" @click="handleLogout">

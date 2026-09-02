@@ -44,6 +44,9 @@ class AuthControllerTest {
   private AuthService authService;
 
   @MockitoBean
+  private com.d0w0b.phytotrack.service.AccountService accountService;
+
+  @MockitoBean
   private JwtAuthenticationFilter jwtAuthenticationFilter;
 
   @BeforeEach
