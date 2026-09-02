@@ -24,12 +24,12 @@
   align: horizon,
   [收件日期\ ], [], [收件編號\ ], [],
 
-  [病蟲害發生地點],
+  [田區位置],
   table.cell(colspan: 3)[
     #checkbox 同寄件人 #h(1em) #checkbox 其他：
   ],
 
-  [送件人\ ],
+  [身分別\ ],
   table.cell(colspan: 3)[
     #checkbox 1.農民#h(1em) #checkbox 2.農藥商 #h(1em) #checkbox 3.其他
   ],
