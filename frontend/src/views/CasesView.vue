@@ -454,7 +454,7 @@ async function confirmDelete (id: number) {
       <div class="d-flex gap-1">
         <button class="btn btn-outline-primary btn-sm" :aria-expanded="showFilter" aria-controls="caseFilterCard" @click="showFilter = !showFilter">篩選</button>
         <button v-if="auth.isStaff" class="btn btn-outline-success btn-sm me-1" @click="exportCsv">匯出 CSV</button>
-        <router-link v-if="auth.isStaff" class="btn btn-success btn-sm" to="/cases/new">建立案件</router-link>
+        <router-link v-if="auth.isStaff" class="btn btn-success btn-sm" to="/cases/new">新增</router-link>
       </div>
     </div>
 

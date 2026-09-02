@@ -11,9 +11,10 @@ function escapeHtml (s: string) {
 }
 
 const loading = ref (true)
+const showFilter = ref (false)
 const filterQ = ref ('')
 const filterPestTypeId = ref<number | null>(null)
-const pestCategories = ref<{ id: number; code: string; name: string; pestTypeId: number; sortOrder: number }[]>([])
+const pestCategories = ref<{ id: number; code: string; name: string; pestTypeId: number }[]>([])
 const pestTypes = ref<{ id: number; name: string }[]>([])
 
 async function loadAll () {
@@ -22,7 +23,7 @@ async function loadAll () {
     const pestTypeRes = await refApi.pestTypes ()
     const pts = pestTypeRes.data as { id: number; name: string; categories: { id: number; code: string; name: string; sortOrder: number }[] }[]
     pestTypes.value = pts.map ((p) => ({ id: p.id, name: p.name }))
-    pestCategories.value = pts.flatMap ((p) => p.categories.map ((cat) => ({ id: cat.id, code: cat.code, name: cat.name, pestTypeId: p.id, sortOrder: cat.sortOrder })))
+    pestCategories.value = pts.flatMap ((p) => p.categories.map ((cat) => ({ id: cat.id, code: cat.code, name: cat.name, pestTypeId: p.id })))
   } catch {} finally { loading.value = false }
 }
 
@@ -67,7 +68,7 @@ async function handleCreate () {
   if (pestTypes.value.length === 0) { Swal.fire ({ icon: 'warning', title: '無害物類型可選' }); return }
   const { value: form } = await Swal.fire ({
     title: '新增病蟲害分類',
-    html: `<input id="swal-pc-code" class="swal2-input" placeholder="代碼" /><input id="swal-pc-name" class="swal2-input" placeholder="名稱" /><select id="swal-pc-type" class="swal2-select">${pestTypes.value.map ((p) => `<option value="${p.id}">${escapeHtml (p.name)}</option>`).join ('')}</select><input id="swal-pc-order" class="swal2-input" placeholder="排序" type="number" value="0" />`,
+    html: `<input id="swal-pc-code" class="swal2-input" placeholder="代碼" /><input id="swal-pc-name" class="swal2-input" placeholder="名稱" /><select id="swal-pc-type" class="swal2-select">${pestTypes.value.map ((p) => `<option value="${p.id}">${escapeHtml (p.name)}</option>`).join ('')}</select>`,
     showCancelButton: true,
     confirmButtonText: '新增',
     cancelButtonText: '取消',
@@ -75,11 +76,9 @@ async function handleCreate () {
       const code = (document.getElementById ('swal-pc-code') as HTMLInputElement).value.trim ()
       const name = (document.getElementById ('swal-pc-name') as HTMLInputElement).value.trim ()
       const pestTypeId = Number ((document.getElementById ('swal-pc-type') as HTMLSelectElement).value)
-      const sortOrder = Number ((document.getElementById ('swal-pc-order') as HTMLInputElement).value)
       if (!code) return Swal.showValidationMessage ('代碼不可為空白')
       if (!name) return Swal.showValidationMessage ('名稱不可為空白')
-      if (!Number.isFinite (sortOrder) || sortOrder < 0) return Swal.showValidationMessage ('排序不可為負')
-      return { code, name, pestTypeId, sortOrder }
+      return { code, name, pestTypeId }
     },
   })
   if (!form) return
@@ -89,7 +88,7 @@ async function handleCreate () {
 async function handleEdit (item: any) {
   const { value: form } = await Swal.fire ({
     title: '編輯病蟲害分類',
-    html: `<input id="swal-pc-code" class="swal2-input" value="${escapeHtml (item.code)}" /><input id="swal-pc-name" class="swal2-input" value="${escapeHtml (item.name)}" /><select id="swal-pc-type" class="swal2-select">${pestTypes.value.map ((p) => `<option value="${p.id}" ${p.id === item.pestTypeId ? 'selected' : ''}>${escapeHtml (p.name)}</option>`).join ('')}</select><input id="swal-pc-order" class="swal2-input" type="number" value="${item.sortOrder}" />`,
+    html: `<input id="swal-pc-code" class="swal2-input" value="${escapeHtml (item.code)}" /><input id="swal-pc-name" class="swal2-input" value="${escapeHtml (item.name)}" /><select id="swal-pc-type" class="swal2-select">${pestTypes.value.map ((p) => `<option value="${p.id}" ${p.id === item.pestTypeId ? 'selected' : ''}>${escapeHtml (p.name)}</option>`).join ('')}</select>`,
     showCancelButton: true,
     confirmButtonText: '儲存',
     cancelButtonText: '取消',
@@ -97,11 +96,9 @@ async function handleEdit (item: any) {
       const code = (document.getElementById ('swal-pc-code') as HTMLInputElement).value.trim ()
       const name = (document.getElementById ('swal-pc-name') as HTMLInputElement).value.trim ()
       const pestTypeId = Number ((document.getElementById ('swal-pc-type') as HTMLSelectElement).value)
-      const sortOrder = Number ((document.getElementById ('swal-pc-order') as HTMLInputElement).value)
       if (!code) return Swal.showValidationMessage ('代碼不可為空白')
       if (!name) return Swal.showValidationMessage ('名稱不可為空白')
-      if (!Number.isFinite (sortOrder) || sortOrder < 0) return Swal.showValidationMessage ('排序不可為負')
-      return { code, name, pestTypeId, sortOrder }
+      return { code, name, pestTypeId }
     },
   })
   if (!form) return
@@ -119,9 +116,12 @@ async function handleDelete (item: any) {
   <div class="container py-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
       <h4 class="mb-0">害物管理</h4>
-      <button v-if="auth.isAdmin" class="btn btn-success" @click="handleCreate">新增</button>
+      <div class="d-flex gap-1">
+        <button v-if="auth.isAdmin" class="btn btn-success btn-sm" @click="handleCreate">新增</button>
+        <button class="btn btn-outline-primary btn-sm" :aria-expanded="showFilter" aria-controls="pestFilterCard" @click="showFilter = !showFilter">篩選</button>
+      </div>
     </div>
-    <div class="card shadow-sm mb-3">
+    <div v-show="showFilter" id="pestFilterCard" class="card shadow-sm mb-3">
       <div class="card-body py-2">
         <div class="row g-2 align-items-center">
           <div class="col-md-4"><input v-model="filterQ" type="text" class="form-control form-control-sm" placeholder="篩選名稱／代碼" /></div>
@@ -153,12 +153,12 @@ async function handleDelete (item: any) {
 
     <div v-if="loading" class="text-center text-muted py-4">載入中…</div>
     <div v-else class="card shadow-sm">
-      <div class="table-responsive" style="overflow-x:auto;-webkit-overflow-scrolling:touch">
-        <table class="table table-hover align-middle mb-0 text-nowrap" style="min-width:750px;table-layout:fixed">
-          <thead class="table-light"><tr><th style="width:60px;min-width:60px">ID</th><th style="width:90px;min-width:90px">代碼</th><th :style="{ width: nameColWidth + 'px', minWidth: nameColWidth + 'px' }">名稱</th><th style="width:100px;min-width:100px">類型</th><th style="width:70px;min-width:70px">排序</th><th class="text-end" style="width:130px;min-width:130px">操作</th></tr></thead>
+      <div class="table-responsive position-relative" style="overflow-x:auto;-webkit-overflow-scrolling:touch">
+        <table class="table table-hover align-middle mb-0 text-nowrap" style="min-width:680px;table-layout:fixed">
+          <thead class="table-light"><tr><th style="width:60px;min-width:60px">ID</th><th style="width:90px;min-width:90px">代碼</th><th :style="{ width: nameColWidth + 'px', minWidth: nameColWidth + 'px' }">名稱</th><th style="width:100px;min-width:100px">類型</th><th class="text-end" style="width:130px;min-width:130px">操作</th></tr></thead>
           <tbody>
-            <tr v-if="filtered.length === 0"><td colspan="6" class="text-center text-muted py-4">尚無資料</td></tr>
-            <tr v-for="item in paged" :key="item.id"><td>{{ item.id }}</td><td class="text-truncate" style="max-width:90px" :title="item.code">{{ item.code }}</td><td class="text-truncate" :style="{ maxWidth: nameColWidth + 'px' }" :title="item.name">{{ item.name }}</td><td>{{ pestTypes.find ((p) => p.id === item.pestTypeId)?.name ?? '—' }}</td><td>{{ item.sortOrder }}</td><td class="text-end"><button class="btn btn-sm btn-outline-primary me-1" @click="handleEdit (item)">編輯</button><button v-if="auth.isAdmin" class="btn btn-sm btn-outline-danger" @click="handleDelete (item)">刪除</button></td></tr>
+            <tr v-if="filtered.length === 0"><td colspan="5" class="text-center text-muted py-4">尚無資料</td></tr>
+            <tr v-for="item in paged" :key="item.id"><td>{{ item.id }}</td><td class="text-truncate" style="max-width:90px" :title="item.code">{{ item.code }}</td><td class="text-truncate" :style="{ maxWidth: nameColWidth + 'px' }" :title="item.name">{{ item.name }}</td><td>{{ pestTypes.find ((p) => p.id === item.pestTypeId)?.name ?? '—' }}</td><td class="text-end"><button class="btn btn-sm btn-outline-primary me-1" @click="handleEdit (item)">編輯</button><button v-if="auth.isAdmin" class="btn btn-sm btn-outline-danger" @click="handleDelete (item)">刪除</button></td></tr>
           </tbody>
         </table>
       </div>
