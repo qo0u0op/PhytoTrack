@@ -55,6 +55,12 @@ public final class CaseSpecifications {
             .replace ("_", "\\_");
         predicates.add (cb.like (root.get ("sender").get ("name"), "%" + escaped + "%", '\\'));
       }
+      if (filter.senderTypeId () != null) {
+        predicates.add (cb.equal (root.get ("sender").get ("senderType").get ("senderTypeId"), filter.senderTypeId ()));
+      }
+      if (filter.methodId () != null) {
+        predicates.add (cb.equal (root.get ("method").get ("methodId"), filter.methodId ()));
+      }
       if (filter.receiveDateFrom () != null) {
         predicates.add (cb.greaterThanOrEqualTo (root.get ("receiveDate"), filter.receiveDateFrom ()));
       }
@@ -89,6 +95,12 @@ public final class CaseSpecifications {
       }
       if (filter.cropCategoryId () != null) {
         predicates.add (cb.equal (root.get ("cropCategoryId"), filter.cropCategoryId ()));
+      }
+      if (filter.senderTypeId () != null) {
+        predicates.add (cb.equal (root.get ("senderTypeId"), filter.senderTypeId ()));
+      }
+      if (filter.methodId () != null) {
+        predicates.add (cb.equal (root.get ("methodId"), filter.methodId ()));
       }
       String senderQuery = filter.senderQuery () != null && !filter.senderQuery ().isBlank ()
           ? filter.senderQuery () : filter.senderName ();

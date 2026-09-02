@@ -1,10 +1,4 @@
-# Case Report Specification
-
-## Purpose
-
-提供單一案件的明細檢視、可列印診斷單與 CSV 匯出，作為紙本診斷記錄表的前端對應。
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: 案件明細檢視
 
@@ -29,18 +23,6 @@
 #### Scenario: 明細頁用語更名
 - **WHEN** 使用者檢視明細頁欄位標籤
 - **THEN** `病蟲害發生地點` 顯示為 `田區位置`，`送件人身分別` 顯示為 `身分別`
-
-### Requirement: 列印診斷單
-
-明細頁 SHALL 支援列印輸出，以 `@media print` 呈現診斷記錄表樣式，列印內容僅含診斷單本體，且欄位順序與「案件明細檢視」一致。
-
-#### Scenario: 觸發列印
-- **WHEN** 使用者於明細頁觸發列印
-- **THEN** 輸出僅含診斷單內容的版式
-
-#### Scenario: 觸發列印順序一致
-- **WHEN** 使用者於明細頁觸發列印
-- **THEN** 輸出僅含診斷單本體且欄位順序與上述一致
 
 ### Requirement: CSV 匯出
 

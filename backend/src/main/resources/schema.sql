@@ -872,6 +872,7 @@ SELECT
   s.name AS sender_name,
   s.display_name AS sender_display_name,
   s.phone AS sender_phone,
+  s.sender_type_id AS sender_type_id,
   fd.district_id AS district_id,
   fd.city_id AS city_id,
   cr.crop_id,
@@ -894,4 +895,4 @@ LEFT JOIN case_hints ch ON ch.case_id = c.case_id
 LEFT JOIN hints h ON h.hint_id = ch.hint_id
 LEFT JOIN case_damages cd ON cd.case_id = c.case_id
 LEFT JOIN damages dm ON dm.damage_id = cd.damage_id
-GROUP BY c.case_id, c.receive_date, c.status, c.created_at, s.name, s.display_name, s.phone, fd.district_id, fd.city_id, cr.crop_id, cc.crop_category_id, c.service_id, c.deliver_id, c.method_id;
+GROUP BY c.case_id, c.receive_date, c.status, c.created_at, s.name, s.display_name, s.phone, s.sender_type_id, fd.district_id, fd.city_id, cr.crop_id, cc.crop_category_id, c.service_id, c.deliver_id, c.method_id;
