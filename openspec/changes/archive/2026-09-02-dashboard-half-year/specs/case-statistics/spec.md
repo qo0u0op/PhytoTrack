@@ -1,10 +1,4 @@
-# Case Statistics Specification
-
-## Purpose
-
-提供案件統計總覽與 Dashboard 視圖，讓診斷站掌握案件量、作物與病蟲害分布及趨勢。
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: 統計總覽 API
 
