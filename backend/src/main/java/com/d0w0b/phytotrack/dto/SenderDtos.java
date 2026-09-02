@@ -30,6 +30,6 @@ public final class SenderDtos {
       String phone,
       @NotBlank (message = "送件人地址不可為空白") String address,
       @NotNull (message = "送件人鄉鎮市區不可為空") Long districtId,
-      @NotNull (message = "送件人身分別不可為空") Long senderTypeId) {
+      @NotNull (message = "身分別不可為空") Long senderTypeId) {
   }
 }

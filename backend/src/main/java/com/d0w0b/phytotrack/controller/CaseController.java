@@ -62,6 +62,8 @@ public class CaseController {
       @RequestParam (required = false) Long serviceId,
       @RequestParam (required = false) String senderName,
       @RequestParam (required = false) String senderQuery,
+      @RequestParam (required = false) Long senderTypeId,
+      @RequestParam (required = false) Long methodId,
       @RequestParam (required = false) LocalDate receiveDateFrom,
       @RequestParam (required = false) LocalDate receiveDateTo,
       @RequestParam (required = false) String status,
@@ -76,7 +78,7 @@ public class CaseController {
       @PageableDefault (size = 20, sort = "receiveDate", direction = Sort.Direction.DESC) Pageable pageable) {
     String effectiveSenderQuery = senderQuery != null ? senderQuery : senderName;
     CaseFilter filter = new CaseFilter (cropId, serviceId, senderName, effectiveSenderQuery,
-        receiveDateFrom, receiveDateTo, status, cityId, districtId, cropCategoryId, pestTypeId, pestCategoryId, hintId, deliveryId, damageId);
+        receiveDateFrom, receiveDateTo, status, cityId, districtId, cropCategoryId, pestTypeId, pestCategoryId, hintId, deliveryId, damageId, senderTypeId, methodId);
     return ResponseEntity.ok (caseService.list (filter, pageable));
   }
 
@@ -99,6 +101,8 @@ public class CaseController {
       @RequestParam (required = false) Long serviceId,
       @RequestParam (required = false) String senderName,
       @RequestParam (required = false) String senderQuery,
+      @RequestParam (required = false) Long senderTypeId,
+      @RequestParam (required = false) Long methodId,
       @RequestParam (required = false) LocalDate receiveDateFrom,
       @RequestParam (required = false) LocalDate receiveDateTo,
       @RequestParam (required = false) String status,
@@ -112,7 +116,7 @@ public class CaseController {
       @RequestParam (required = false) Long damageId) {
     String effectiveSenderQuery = senderQuery != null ? senderQuery : senderName;
     CaseFilter filter = new CaseFilter (cropId, serviceId, senderName, effectiveSenderQuery,
-        receiveDateFrom, receiveDateTo, status, cityId, districtId, cropCategoryId, pestTypeId, pestCategoryId, hintId, deliveryId, damageId);
+        receiveDateFrom, receiveDateTo, status, cityId, districtId, cropCategoryId, pestTypeId, pestCategoryId, hintId, deliveryId, damageId, senderTypeId, methodId);
     byte[] body = caseService.exportCsv (filter).getBytes (StandardCharsets.UTF_8);
     String filename = "case-export-" + LocalDate.now () + ".csv";
     return ResponseEntity.ok ()

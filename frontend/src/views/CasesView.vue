@@ -54,12 +54,14 @@ function isComposite (c: CaseSummary) {
   return names ? names.split ('、').length > 1 : false
 }
 
-// 篩選條件 (對應後端 GET /api/cases 查詢參數，經 v_case_search 15 欄)
+// 篩選條件 (對應後端 GET /api/cases 查詢參數，經 v_case_search)
 interface CaseFilters {
   cropId?: number
   serviceId?: number
   senderName: string
   senderQuery?: string
+  senderTypeId?: number
+  methodId?: number
   receiveDateFrom: string
   receiveDateTo: string
   status: string
@@ -181,6 +183,8 @@ const pestTypeOptions = ref<{ id: number; name: string; categories: { id: number
 const hintOptions = ref<{ id: number; name: string }[]>([])
 const deliveryOptions = ref<{ id: number; name: string }[]>([])
 const damageOptions = ref<{ id: number; name: string }[]>([])
+const senderTypeOptions = ref<{ id?: number; name?: string }[]>([])
+const methodOptions = ref<{ id?: number; name?: string }[]>([])
 const allCropCategories = ref<components['schemas']['CropCategoryResponse'][]>([])
 
 const filteredDistricts = computed (() => {
@@ -227,20 +231,22 @@ async function load () {
   loading.value = true
   try {
     const params: Record<string, string | number> = {}
-    if (filters.cropId) params.cropId = filters.cropId
-    if (filters.serviceId) params.serviceId = filters.serviceId
-    if (filters.deliveryId) params.deliveryId = filters.deliveryId
-    if (filters.cropCategoryId) params.cropCategoryId = filters.cropCategoryId
-    if (filters.cityId) params.cityId = filters.cityId
-    if (filters.districtId) params.districtId = filters.districtId
-    if (filters.pestTypeId) params.pestTypeId = filters.pestTypeId
-    if (filters.pestCategoryId) params.pestCategoryId = filters.pestCategoryId
-    if (filters.hintId) params.hintId = filters.hintId
-    if (filters.damageId) params.damageId = filters.damageId
-    if (!auth.isViewer && filters.senderName.trim ()) params.senderQuery = filters.senderName.trim ()
     if (filters.receiveDateFrom) params.receiveDateFrom = filters.receiveDateFrom
     if (filters.receiveDateTo) params.receiveDateTo = filters.receiveDateTo
     if (filters.status) params.status = filters.status
+    if (filters.cityId) params.cityId = filters.cityId
+    if (filters.districtId) params.districtId = filters.districtId
+    if (!auth.isViewer && filters.senderName.trim ()) params.senderQuery = filters.senderName.trim ()
+    if (filters.senderTypeId) params.senderTypeId = filters.senderTypeId
+    if (filters.serviceId) params.serviceId = filters.serviceId
+    if (filters.deliveryId) params.deliveryId = filters.deliveryId
+    if (filters.methodId) params.methodId = filters.methodId
+    if (filters.cropCategoryId) params.cropCategoryId = filters.cropCategoryId
+    if (filters.cropId) params.cropId = filters.cropId
+    if (filters.damageId) params.damageId = filters.damageId
+    if (filters.pestTypeId) params.pestTypeId = filters.pestTypeId
+    if (filters.pestCategoryId) params.pestCategoryId = filters.pestCategoryId
+    if (filters.hintId) params.hintId = filters.hintId
     // 前端全域排序與分頁：一次取回所有篩選結果（避免後端 sort 500 與分頁影響排序）
     const fetchParams = { ...params, page: 0, size: 10000 }
     const { data } = await caseApi.list (fetchParams as unknown as Record<string, string | number>)
@@ -263,10 +269,10 @@ async function load () {
   }
 }
 
-// 載入篩選下拉選單 (LEFT JOIN 視圖 15 欄所需參照)
+// 載入篩選下拉選單 (視圖多欄所需參照)
 async function loadFilterOptions () {
   try {
-    const [cropRes, serviceRes, cityRes, pestRes, hintRes, deliveryRes, damageRes] = await Promise.all ([
+    const [cropRes, serviceRes, cityRes, pestRes, hintRes, deliveryRes, damageRes, senderTypeRes, methodRes] = await Promise.all ([
       refApi.cropCategories (),
       refApi.services (),
       refApi.cities (),
@@ -274,6 +280,8 @@ async function loadFilterOptions () {
       refApi.hints (),
       refApi.deliveries (),
       refApi.damages (),
+      refApi.senderTypes (),
+      refApi.methods (),
     ])
     allCropCategories.value = cropRes.data as any
     cropOptions.value = (cropRes.data as components['schemas']['CropCategoryResponse'][]).flatMap ((cat) => cat.crops ?? [],)
@@ -284,6 +292,8 @@ async function loadFilterOptions () {
     hintOptions.value = hintRes.data as any
     deliveryOptions.value = deliveryRes.data as any
     damageOptions.value = damageRes.data as any
+    senderTypeOptions.value = senderTypeRes.data as any
+    methodOptions.value = methodRes.data as any
   } catch {
     // 錯誤由攔截器處理
   }
@@ -295,20 +305,22 @@ function applyFilters () {
 }
 
 function clearFilters () {
-  filters.cropId = undefined
-  filters.serviceId = undefined
-  filters.deliveryId = undefined
-  filters.cropCategoryId = undefined
-  filters.cityId = undefined
-  filters.districtId = undefined
-  filters.pestTypeId = undefined
-  filters.pestCategoryId = undefined
-  filters.hintId = undefined
-  filters.damageId = undefined
-  filters.senderName = ''
   filters.receiveDateFrom = ''
   filters.receiveDateTo = ''
   filters.status = ''
+  filters.cityId = undefined
+  filters.districtId = undefined
+  filters.senderName = ''
+  filters.senderTypeId = undefined
+  filters.serviceId = undefined
+  filters.deliveryId = undefined
+  filters.methodId = undefined
+  filters.cropCategoryId = undefined
+  filters.cropId = undefined
+  filters.damageId = undefined
+  filters.pestTypeId = undefined
+  filters.pestCategoryId = undefined
+  filters.hintId = undefined
   page.value = 0
   load ()
 }
@@ -363,8 +375,8 @@ async function viewDetail (id: number) {
     html: `
       <div class="text-start small">
         <p><strong>收件日期：</strong>${esc (data.receiveDate)} <strong class="ms-3">收件編號：</strong>#${data.caseId}</p>
-        <p><strong>病蟲害發生地點：</strong>${esc (fieldCity)}${esc (fieldDistrict)}${fieldSame ? ' (同寄件人)' : ''}</p>
-        <p><strong>送件人身分別：</strong>${esc (senderTypeName)}</p>
+        <p><strong>田區位置：</strong>${esc (fieldCity)}${esc (fieldDistrict)}${fieldSame ? ' (同寄件人)' : ''}</p>
+        <p><strong>身分別：</strong>${esc (senderTypeName)}</p>
         <p><strong>送件人：</strong>${displaySender}</p>
         <hr />
 
@@ -393,23 +405,26 @@ async function viewDetail (id: number) {
   }
 }
 
-// 匯出 CSV：依目前篩選條件下載 (blob 避免觸發瀏覽器跳頁)
+// 匯出 CSV：依目前篩選條件下載 (blob 避免觸發瀏覽器跳頁)，與列表篩選同參
 async function exportCsv () {
   try {
     const params: Record<string, string | number> = {}
-    if (filters.cropId) params.cropId = filters.cropId
-    if (filters.serviceId) params.serviceId = filters.serviceId
-    if (filters.deliveryId) params.deliveryId = filters.deliveryId
-    if (filters.cropCategoryId) params.cropCategoryId = filters.cropCategoryId
-    if (filters.cityId) params.cityId = filters.cityId
-    if (filters.districtId) params.districtId = filters.districtId
-    if (filters.pestTypeId) params.pestTypeId = filters.pestTypeId
-    if (filters.pestCategoryId) params.pestCategoryId = filters.pestCategoryId
-    if (filters.hintId) params.hintId = filters.hintId
-    if (!auth.isViewer && filters.senderName.trim ()) params.senderQuery = filters.senderName.trim ()
     if (filters.receiveDateFrom) params.receiveDateFrom = filters.receiveDateFrom
     if (filters.receiveDateTo) params.receiveDateTo = filters.receiveDateTo
     if (filters.status) params.status = filters.status
+    if (filters.cityId) params.cityId = filters.cityId
+    if (filters.districtId) params.districtId = filters.districtId
+    if (!auth.isViewer && filters.senderName.trim ()) params.senderQuery = filters.senderName.trim ()
+    if (filters.senderTypeId) params.senderTypeId = filters.senderTypeId
+    if (filters.serviceId) params.serviceId = filters.serviceId
+    if (filters.deliveryId) params.deliveryId = filters.deliveryId
+    if (filters.methodId) params.methodId = filters.methodId
+    if (filters.cropCategoryId) params.cropCategoryId = filters.cropCategoryId
+    if (filters.cropId) params.cropId = filters.cropId
+    if (filters.damageId) params.damageId = filters.damageId
+    if (filters.pestTypeId) params.pestTypeId = filters.pestTypeId
+    if (filters.pestCategoryId) params.pestCategoryId = filters.pestCategoryId
+    if (filters.hintId) params.hintId = filters.hintId
     const res = await caseApi.exportCsv (params as unknown as Record<string, string | number>)
     const url = URL.createObjectURL (res.data as Blob)
     const a = document.createElement ('a')
@@ -458,48 +473,35 @@ async function confirmDelete (id: number) {
       </div>
     </div>
 
-    <!-- 篩選工具列：條件同時存在時為 AND 組合 (經 v_case_search，LEFT JOIN + 頓號聚合) -->
+    <!-- 篩選工具列：依指示換行
+         第1列：收件日期區間、狀態
+         第2列：田區縣市、田區鄉鎮、送件人、身分別
+         第3列：服務類別、送件方式、耕種方式
+         第4列：作物類別、作物、被害部位
+         第5列：害物、害物類別、建議類別 -->
     <div v-show="showFilter" id="caseFilterCard" class="card shadow-sm mb-3">
       <div class="card-body">
         <div class="row g-2 align-items-end">
           <div class="col-md-3">
-            <label class="form-label small text-muted mb-1">送件人 (姓名/顯示/電話)</label>
-            <input v-model="filters.senderName" type="text" class="form-control form-control-sm" :disabled="auth.isViewer" :placeholder="auth.isViewer ? '檢視者無權限篩選' : '輸入關鍵字'" :title="auth.isViewer ? '檢視者無權限篩選送件人' : ''" />
-          </div>
-          <div class="col-md-2">
-            <label class="form-label small text-muted mb-1">服務類別</label>
-            <select v-model="filters.serviceId" class="form-select form-select-sm">
-              <option :value="undefined">全部</option>
-              <option v-for="service in serviceOptions" :key="service.id" :value="service.id">
-                {{ service.name }}
-              </option>
-            </select>
-          </div>
-          <div class="col-md-2">
-            <label class="form-label small text-muted mb-1">送件方式</label>
-            <select v-model="filters.deliveryId" class="form-select form-select-sm">
-              <option :value="undefined">全部</option>
-              <option v-for="d in deliveryOptions" :key="d.id" :value="d.id">{{ d.name }}</option>
-            </select>
-          </div>
-          <div class="col-md-2">
-            <label class="form-label small text-muted mb-1">作物類別</label>
-            <select v-model="filters.cropCategoryId" class="form-select form-select-sm">
-              <option :value="undefined">全部</option>
-              <option v-for="cc in cropCategoryOptions" :key="cc.id" :value="cc.id">{{ cc.name }}</option>
-            </select>
+            <label class="form-label small text-muted mb-1">收件日期起</label>
+            <input v-model="filters.receiveDateFrom" type="date" class="form-control form-control-sm" />
           </div>
           <div class="col-md-3">
-            <label class="form-label small text-muted mb-1">作物</label>
-            <select v-model="filters.cropId" class="form-select form-select-sm">
-              <option :value="undefined">全部</option>
-              <option v-for="crop in filteredCrops" :key="crop.id" :value="crop.id">
-                {{ crop.name }}
+            <label class="form-label small text-muted mb-1">收件日期迄</label>
+            <input v-model="filters.receiveDateTo" type="date" class="form-control form-control-sm" />
+          </div>
+          <div class="col-md-3">
+            <label class="form-label small text-muted mb-1">狀態</label>
+            <select v-model="filters.status" class="form-select form-select-sm">
+              <option value="">全部</option>
+              <option v-for="opt in STATUS_OPTIONS" :key="opt.value" :value="opt.value">
+                {{ opt.label }}
               </option>
             </select>
           </div>
+          <div class="col-md-3"></div>
         </div>
-        <div class="row g-2 align-items-end mt-1">
+        <div class="row g-2 align-items-end mt-2">
           <div class="col-md-3">
             <label class="form-label small text-muted mb-1">田區縣市</label>
             <select v-model="filters.cityId" class="form-select form-select-sm">
@@ -515,6 +517,69 @@ async function confirmDelete (id: number) {
             </select>
           </div>
           <div class="col-md-3">
+            <label class="form-label small text-muted mb-1">送件人 (姓名/顯示/電話)</label>
+            <input v-model="filters.senderName" type="text" class="form-control form-control-sm" :disabled="auth.isViewer" :placeholder="auth.isViewer ? '檢視者無權限篩選' : '輸入關鍵字'" :title="auth.isViewer ? '檢視者無權限篩選送件人' : ''" />
+          </div>
+          <div class="col-md-3">
+            <label class="form-label small text-muted mb-1">身分別</label>
+            <select v-model="filters.senderTypeId" class="form-select form-select-sm">
+              <option :value="undefined">全部</option>
+              <option v-for="st in senderTypeOptions" :key="st.id" :value="st.id">{{ st.name }}</option>
+            </select>
+          </div>
+        </div>
+        <div class="row g-2 align-items-end mt-2">
+          <div class="col-md-4">
+            <label class="form-label small text-muted mb-1">服務類別</label>
+            <select v-model="filters.serviceId" class="form-select form-select-sm">
+              <option :value="undefined">全部</option>
+              <option v-for="service in serviceOptions" :key="service.id" :value="service.id">
+                {{ service.name }}
+              </option>
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label small text-muted mb-1">送件方式</label>
+            <select v-model="filters.deliveryId" class="form-select form-select-sm">
+              <option :value="undefined">全部</option>
+              <option v-for="d in deliveryOptions" :key="d.id" :value="d.id">{{ d.name }}</option>
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label small text-muted mb-1">耕種方式</label>
+            <select v-model="filters.methodId" class="form-select form-select-sm">
+              <option :value="undefined">全部</option>
+              <option v-for="m in methodOptions" :key="m.id" :value="m.id">{{ m.name }}</option>
+            </select>
+          </div>
+        </div>
+        <div class="row g-2 align-items-end mt-2">
+          <div class="col-md-4">
+            <label class="form-label small text-muted mb-1">作物類別</label>
+            <select v-model="filters.cropCategoryId" class="form-select form-select-sm">
+              <option :value="undefined">全部</option>
+              <option v-for="cc in cropCategoryOptions" :key="cc.id" :value="cc.id">{{ cc.name }}</option>
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label small text-muted mb-1">作物</label>
+            <select v-model="filters.cropId" class="form-select form-select-sm">
+              <option :value="undefined">全部</option>
+              <option v-for="crop in filteredCrops" :key="crop.id" :value="crop.id">
+                {{ crop.name }}
+              </option>
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label small text-muted mb-1">被害部位</label>
+            <select v-model="filters.damageId" class="form-select form-select-sm">
+              <option :value="undefined">全部</option>
+              <option v-for="d in damageOptions" :key="d.id" :value="d.id">{{ d.name }}</option>
+            </select>
+          </div>
+        </div>
+        <div class="row g-2 align-items-end mt-2">
+          <div class="col-md-3">
             <label class="form-label small text-muted mb-1">害物</label>
             <select v-model="filters.pestTypeId" class="form-select form-select-sm">
               <option :value="undefined">全部</option>
@@ -528,40 +593,15 @@ async function confirmDelete (id: number) {
               <option v-for="pc in filteredPestCategories" :key="pc.id" :value="pc.id">{{ pc.name }}</option>
             </select>
           </div>
-        </div>
-        <div class="row g-2 align-items-end mt-1">
-          <div class="col-md-2">
-            <label class="form-label small text-muted mb-1">被害部位</label>
-            <select v-model="filters.damageId" class="form-select form-select-sm">
-              <option :value="undefined">全部</option>
-              <option v-for="d in damageOptions" :key="d.id" :value="d.id">{{ d.name }}</option>
-            </select>
-          </div>
-          <div class="col-md-2">
+          <div class="col-md-3">
             <label class="form-label small text-muted mb-1">建議類別</label>
             <select v-model="filters.hintId" class="form-select form-select-sm">
               <option :value="undefined">全部</option>
               <option v-for="h in hintOptions" :key="h.id" :value="h.id">{{ h.name }}</option>
             </select>
           </div>
-          <div class="col-md-2">
-            <label class="form-label small text-muted mb-1">收件日期起</label>
-            <input v-model="filters.receiveDateFrom" type="date" class="form-control form-control-sm" />
-          </div>
-          <div class="col-md-2">
-            <label class="form-label small text-muted mb-1">收件日期迄</label>
-            <input v-model="filters.receiveDateTo" type="date" class="form-control form-control-sm" />
-          </div>
-          <div class="col-md-2">
-            <label class="form-label small text-muted mb-1">狀態</label>
-            <select v-model="filters.status" class="form-select form-select-sm">
-              <option value="">全部</option>
-              <option v-for="opt in STATUS_OPTIONS" :key="opt.value" :value="opt.value">
-                {{ opt.label }}
-              </option>
-            </select>
-          </div>
-          <div class="col-md-2 text-md-end">
+          <div class="col-md-3 text-md-end">
+            <label class="form-label small text-muted mb-1 d-block">&nbsp;</label>
             <button class="btn btn-sm btn-primary me-1" @click="applyFilters">篩選</button>
             <button class="btn btn-sm btn-outline-secondary border-0 text-secondary" @click="clearFilters">清除</button>
           </div>
