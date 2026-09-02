@@ -4,53 +4,58 @@
 
 ## 指令
 
-- 後端所有驗證：`cd backend && mvn test` (已安裝 mise) 或 `./mvnw test` (Unix/macOS，無 mise 時)/ `.\mvnw.cmd test` (Windows，無 mise 時)；單一測試：`mvn test -Dtest=CaseControllerTest` / `./mvnw test -Dtest=CaseControllerTest` / `.\mvnw.cmd test -Dtest=CaseControllerTest`
-- 後端啟動 (dev)：`mvn spring-boot:run -Dspring-boot.run.profiles=dev` (mise) 或 `./mvnw spring-boot:run -Dspring-boot.run.profiles=dev` (Unix/macOS，無 mise 時)/ `.\mvnw.cmd spring-boot:run -Dspring-boot.run.profiles=dev` (Windows，無 mise 時)，Swagger UI 於 <http://localhost:8080/swagger-ui.html>
-- 前端建置 (含 vue-tsc 型別檢查)：`cd frontend && npm run build`；開發伺服器 `npm run dev` (已將 `/api` 代理至 8080)；前端測試 `npm test` (vitest，happy-dom)
-- E2E：`playwright-cli` (`microsoft/playwright-cli`，mise 提供 `npm:@playwright/cli`) 與 `terminal-browser` (`zenbu-labs/terminal-browser`，二進位)— 前置需 `mise run dev` 啟動前後端，詳見 `docs/E2E.md`
-- 操作手冊：`typst compile docs/manual.typ docs/manual.pdf` (PDF 為產物，`*.pdf` 已 gitignore，勿提交)
-- 本機 shell 慣例以 `rtk` 開頭執行指令 (如 `rtk ./mvnw test`)，一般指令亦可直接執行
-- 同時啟動前後端：`mise run dev` (`dev:backend` 走 `mvn`，`mise.toml` 另有 `dev:frontend` / `d2`；無 mise 時分開執行 `./mvnw` (Unix/macOS)/ `.\mvnw.cmd` (Windows) 與 `npm run dev`)
-- 前端 `npm install` 免 flag：`frontend/.npmrc` 已設 `legacy-peer-deps=true` (`openapi-typescript@7` 只支援 TS^5，專案用 TS 6)，勿移除該設定
+- 後端驗證：`cd backend && mvn test`（mise）或 `./mvnw test`（無 mise, Unix/macOS）/ `.\mvnw.cmd test`（Windows）；單測：`mvn test -Dtest=CaseControllerTest`
+- 後端啟動 dev：`mvn spring-boot:run -Dspring-boot.run.profiles=dev`（`http://localhost:8080/swagger-ui.html`）
+- 前端建置（含 vue-tsc）：`cd frontend && npm run build`；開發：`npm run dev`（`/api` 代理至 8080）；測試：`npm test`（vitest, happy-dom）
+- 同時啟動：`mise run dev`（`dev:backend`/`dev:frontend`/`d2`）；無 mise 時分開執行 `./mvnw` 與 `npm run dev`
+- E2E：`playwright-cli`（`mise` 提供 `@playwright/cli`，預設 `chromium`，見 `.playwright/cli.config.json`）與 `terminal-browser`（二進位，需 `mise run dev` 就緒），詳見 `docs/E2E.md`
+- 操作手冊：`typst compile docs/manual.typ docs/manual.pdf`（PDF 為產物，已 gitignore，勿提交）；`typst compile docs/diagnoses.typ /tmp/diagnoses.pdf` 驗證
+- 本機 shell 以 `rtk` 開頭可選（如 `rtk ./mvnw test`）；`frontend/.npmrc` 已設 `legacy-peer-deps=true`，勿移除
 
 ## 架構重點
 
-- 三層 (Controller → Service → Repository，`backend/src/main/java/com/d0w0b/phytotrack/`)，DTO 隔在 API 邊界，實體不進出 Controller (ADR-003 / ADR-005)
-- `spring.jpa.open-in-view: false`：交易外不得 Lazy 載入，回傳需 DTO 投影或 FETCH JOIN，否則 `LazyInitializationException` / N+1
-- 認證：JWT + BCrypt + RBAC (VIEWER / STAFF / ADMIN)，`@PreAuthorize` 集中宣告。非 dev profile 需環境變數 `JWT_SECRET` (`JwtSecretValidator` fail-fast)；dev 預設帳號由 `app.bootstrap.*` 建立 (admin/admin123、staff/staff123、viewer/viewer123)
-- SQLite 特性：`hibernate-community-dialects` 的 `SQLiteDialect`、Hikari `maximum-pool-size: 1`、`LocalDate`/`LocalDateTime` 需自訂 JPA 轉換器 (`converter/`)
-- AI：llama-server / LlamaStash proxy 於 **11435** (避開 Spring Boot 的 8080)，Spring AI 以 OpenAI 相容格式串接 (`api-key` 為 dummy)；模型名稱需對應 `GET /v1/models`。機台特定值 (`AI_BASE_URL`/`AI_MODEL`/`AI_API_KEY`) 放 `backend/.env` (gitignored，範本 `backend/.env.example`)，`application.yaml` 以 `${VAR:預設值}` 承接
+- 三層 `Controller → Service → Repository`（`backend/src/main/java/com/d0w0b/phytotrack/`），DTO 隔 API 邊界，實體不進 Controller（ADR-003/005）
+- `spring.jpa.open-in-view: false`：交易外不得 Lazy，需 DTO/FETCH JOIN
+- 認證：JWT + BCrypt(12) + RBAC（VIEWER/STAFF/ADMIN），`@PreAuthorize` 集中；非 dev 需 `JWT_SECRET`（`JwtSecretValidator` fail-fast）；dev 預設帳號 `app.bootstrap.*`（admin/admin123 等）
+- SQLite：`hibernate-community-dialects` `SQLiteDialect`、Hikari `maximum-pool-size:1`、`LocalDate/LocalDateTime` 自訂 `converter/`；`v_case_search` 視圖 `@Subselect`（含 `sender_type_id`，17 欄，5 列換行篩選卡）
+- AI：llama-server 於 **11435**（避開 8080），Spring AI 以 OpenAI 相容格式串接（`api-key` dummy）；`AI_BASE_URL/AI_MODEL/AI_API_KEY` 放 `backend/.env`（gitignored, 見 `.env.example`），`application.yaml` 以 `${VAR:default}` 承接
+- 日誌/監控：`logback-spring.xml` 滾動 `logs/phytotrack-%d{yyyy-MM-dd}.%i.log.gz`（10MB/30日/500MB）；Actuator `health,info` 公開、`metrics` 僅 ADMIN
 
-## 測試 (Spring Boot 4 特有的坑)
+## 測試（Boot 4 坑）
 
-- `@MockBean` 已移除 → `@MockitoBean` (`org.springframework.test.context.bean.override.mockito`)
-- `@WebMvcTest` / `@DataJpaTest` / `@AutoConfigureTestDatabase` 已搬遷至 `org.springframework.boot.{webmvc,data.jpa,jdbc}.test.autoconfigure`
-- `@WithMockUser` 於 web slice 需自行註冊 `TestSecurityContextHolderStrategyAdapter` bean + MockMvc `springSecurity ()` configurer (範例見 `CaseControllerTest`)
-- 測試走獨立 SQLite (`application-test.yaml` → `./target/phytotrack-test.db`)，須加 `@ActiveProfiles ("test")`
-- JPA Auditing 於 `@DataJpaTest` 仍會覆寫 `createdAt` → 斷言 `isNotNull ()`，勿斷言確切時間
-- seed 資料的 `senders` 有 `name+phone` UNIQUE，測試送件人資料別撞值
+- `@MockBean` → `@MockitoBean`（`org.springframework.test.context.bean.override.mockito`）
+- `@WebMvcTest`/`@DataJpaTest` 已搬至 `org.springframework.boot.{webmvc,data.jpa,jdbc}.test.autoconfigure`
+- `@WithMockUser` 需自註冊 `TestSecurityContextHolderStrategyAdapter` + `springSecurity()`（見 `CaseControllerTest`）
+- 測試走獨立 SQLite（`application-test.yaml` → `./target/phytotrack-test.db`），須 `@ActiveProfiles("test")`
+- JPA Auditing 會覆寫 `createdAt` → 斷言 `isNotNull()` 即可；`senders` 有 `name+phone` 部分唯一，測試別撞值
+- 時間格式僅至秒：`@JsonFormat(pattern="yyyy-MM-dd'T'HH:mm:ss")`，CSV `fmtTs` 截斷至秒
 
 ## Git 慣例
 
-- Conventional Commits：英文標題 + 中文內文 (`refactor:`、`test:`、`docs:`、`feat:`、`chore:`)
-- **預設提交新 commit**。僅當 binary 或「面試相關」等不該進 git 的內容誤入版本控制時，才以原地重寫處理 (`git reset --soft <基點>` 依原訊息重新 commit，不新增 commit、不 amend、不 push)
-- 分支不主動推送，由使用者決定 PR 時機；Phase 0 已合併 `main`，Phase 1 由 `main` 開新分支進行
-- `docs/notebook/` (個人學習筆記) 與 `*.pdf` 已 gitignore，不要提交
-- `.opencode/` 為本機設定 (gitignored)，含 OpenSpec 技能 (openspec-propose / apply / archive / update / sync)
+- Conventional Commits：英文標題 + 中文內文（`feat:/fix:/docs:/chore:`）；預設提交新 commit，僅 binary 誤入才 `git reset --soft` 重寫
+- 分支不主動推送；`docs/notebook/` 與 `*.pdf`、`logs/`、`backups/` 已 gitignore
+- `.opencode/` 為本機設定（gitignored）
 
 ## OpenSpec 操作
 
-- 主規格 `openspec/specs/`：10 份能力 spec (security-hardening、api-observability、case-search、case-lifecycle、case-statistics、case-report、user-admin、reference-data-admin、sender-management、ops-backup)；security-hardening 已實作交付、api-observability 僅含已交付項 (Actuator/logback 歸 Phase 2)
-- 工作流：`openspec new change` → proposal → apply (實作＋驗證)→ archive；Phase 1 採**每能力一個獨立 change** (spec 已在主規格，新 change 只需 proposal+tasks，不需 delta spec，於 `.openspec.yaml` 設 `skip_specs: true`)
-- 常用指令：`openspec list` / `status --change <name>` / `validate --specs` / `validate --changes`
-- umbrella change `hardening-and-operational-features` 與 `case-search` 已 archive 至 `openspec/changes/archive/2026-08-19-.../` (proposal/design/tasks 歷史保留，`.openspec.yaml` 隨目錄移動)；`case-lifecycle` 已 archive 至 `openspec/changes/archive/2026-08-20-case-lifecycle/`；`case-statistics` 已 archive 至 `openspec/changes/archive/2026-08-20-case-statistics/`；`case-report` 已 archive 至 `openspec/changes/archive/2026-08-21-case-report/`；`user-admin` 已 archive 至 `openspec/changes/archive/2026-08-21-user-admin/`；`reference-data-admin` 已 archive 至 `openspec/changes/archive/2026-08-21-reference-data-admin/`；`sender-management` 已 archive 至 `openspec/changes/archive/2026-08-22-sender-management/`；`case-form-enhancements` 已 archive 至 `openspec/changes/archive/2026-08-26-case-form-enhancements/`；`ops-backup` 已 archive 至 `openspec/changes/archive/2026-08-27-ops-backup/`；目前無 active change
-- Phase 1 範圍 = 8 能力：case-search (已交付)、case-lifecycle (已交付)、case-statistics (已交付)、case-report (已交付)、user-admin (已交付)、reference-data-admin (已交付)、sender-management (已交付)、ops-backup (已交付，含 `scripts/backup.sh`)；建議下一階段由 `api-observability` 剩餘 (Phase 2) 或新能力開始
-- 需求總覽：`docs/REQUIREMENTS.md` (10 能力狀態、Phase 1 範圍、能力間依賴與遷移注意)
+- 主規格 `openspec/specs/` 11 份（`security-hardening/security-review`、`api-observability`、`case-search`、`case-lifecycle`、`case-statistics`、`case-report`、`user-admin`、`reference-data-admin`、`sender-management`、`ops-backup`）
+- 工作流：`openspec new change` → proposal → apply → archive；Phase 1 每能力一獨立 change（`skip_specs:true`），常用：`openspec list`/`status --change <name>`/`validate --specs`/`validate --changes`
+- 已全數 archive 至 `openspec/changes/archive/2026-09-02-*`（含 `csv-export-format`/`case-display-filter-export`/`case-list-state-persist`/`docs-sync`/`dashboard-half-year`/`api-observability-phase2`/`security-hardening-phase2`/`case-form-rename-and-layout`/`playwright-cli-fix` 等），目前可能有 0-1 個 active change
+- 需求總覽：`docs/REQUIREMENTS.md`（能力狀態與依賴）
+
+## 文件同步（spec ↔ markdown/typst）
+
+- 單一真相源為 `openspec/specs/*`；改動 spec 後 **必須**同步：
+  - `docs/REQUIREMENTS.md` 能力表與未電子化清單
+  - `docs/ARCHITECTURE.md` 資料模型/篩選/API 一覽/監控與日誌
+  - `docs/DEPLOY.md` CSV 歷史表與監控章節（如涉 Actuator/logback）
+  - `docs/manual.typ` 操作步驟（篩選 5 列、CSV 說明、狀態等）與 `docs/diagnoses.typ` 紙本欄位（`田區位置/身分別`）
+  - `README.md` 功能一覽（如涉使用者可見變更）
+- `manual.typ`/`diagnoses.typ` 為 typst 0.13+：函式呼叫不得有空格（`#set page(margin: ...)` 而非 `#set page (margin`；`#align(center)` 而非 `#align (center)`；`table.header([` 而非 `table.header ([`），否則 `typst compile` 報 `expected argument list`
+- 驗證：`typst compile docs/manual.typ docs/manual.pdf` 與 `typst compile docs/diagnoses.typ /tmp/diagnoses.pdf` 皆 exit 0；`openspec validate --specs --changes` 13-14 passed；`grep -rn 病蟲害發生地點 docs` 僅餘歷史段落
 
 ## 文件
 
-- `README.md`：快速啟動的權威來源
-- `docs/adr/ADR-001~011`：架構決策 (前後分離、Boot 4、三層、JWT/RBAC、DTO、JPA Auditing、SQLite→PostgreSQL、OpenAPI、llama 代理、統一錯誤處理、送件人管理)，實作前先查對應 ADR
-- `docs/ARCHITECTURE.md`、`docs/DEPLOY.md`、`docs/E2E.md` (E2E：terminal-browser / playwright-cli)
-- `docs/REQUIREMENTS.md`：10 能力需求總覽與 Phase 1 範圍 (見「OpenSpec 操作」)
-- `openspec/specs`：Phase 1 能力契約基準 (見「OpenSpec 操作」)
+- `README.md`：快速啟動權威來源
+- `docs/adr/ADR-001~011`：架構決策，實作前先查
+- `docs/ARCHITECTURE.md`/`DEPLOY.md`/`E2E.md`、`docs/REQUIREMENTS.md`、`openspec/specs` 為契約基準
