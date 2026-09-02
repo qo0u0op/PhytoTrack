@@ -28,6 +28,8 @@ import com.d0w0b.phytotrack.models.CasePestCategory;
 import com.d0w0b.phytotrack.models.CaseStatus;
 import com.d0w0b.phytotrack.models.Crop;
 import com.d0w0b.phytotrack.models.Damage;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import com.d0w0b.phytotrack.models.Delivery;
 import com.d0w0b.phytotrack.models.City;
 import com.d0w0b.phytotrack.models.District;
@@ -807,8 +809,8 @@ public class CaseService {
           c.getHintDescription (),
           names (c.getCaseIdentifiers (), j -> j.getIdentifier ().getIdentifier ()),
           c.getCreatedBy () != null ? c.getCreatedBy ().getDisplayName () : null,
-          String.valueOf (c.getCreatedAt ()),
-          String.valueOf (c.getUpdatedAt ())));
+          fmtTs (c.getCreatedAt ()),
+          fmtTs (c.getUpdatedAt ())));
     }
     return sb.toString ();
   }
@@ -858,6 +860,13 @@ public class CaseService {
   private static String csvEscape (String value) {
     String v = value == null ? "" : value;
     return "\"" + v.replace ("\"", "\"\"") + "\"";
+  }
+
+  private static final DateTimeFormatter CSV_DT_FMT = DateTimeFormatter.ofPattern ("yyyy-MM-dd'T'HH:mm:ss");
+
+  private static String fmtTs (java.time.LocalDateTime dt) {
+    if (dt == null) return "";
+    return dt.truncatedTo (ChronoUnit.SECONDS).format (CSV_DT_FMT);
   }
 
   // ------------------------------------------------------------------
