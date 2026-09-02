@@ -1,6 +1,5 @@
 package com.d0w0b.phytotrack.dto;
 
-import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -26,7 +25,7 @@ public final class ReferenceDtos {
 
   /** 害物類型回應：包含其下的病蟲害小分類清單 */
   public record PestTypeResponse (Long id, String name, List<PestCategoryItem> categories) {
-    public record PestCategoryItem (Long id, String code, String name, int sortOrder) {
+    public record PestCategoryItem (Long id, String code, String name) {
     }
   }
 
@@ -85,10 +84,7 @@ public final class ReferenceDtos {
       @Size (max = 100, message = "名稱不可超過 100 字元")
       String name,
       @NotNull (message = "害物類型不可為空")
-      Long pestTypeId,
-      @NotNull (message = "排序不可為空")
-      @Min (value = 0, message = "排序不可為負")
-      Integer sortOrder) {
+      Long pestTypeId) {
   }
 
   public record PestCategoryUpdateRequest (@NotBlank (message = "代碼不可為空白")
@@ -98,9 +94,6 @@ public final class ReferenceDtos {
       @Size (max = 100, message = "名稱不可超過 100 字元")
       String name,
       @NotNull (message = "害物類型不可為空")
-      Long pestTypeId,
-      @NotNull (message = "排序不可為空")
-      @Min (value = 0, message = "排序不可為負")
-      Integer sortOrder) {
+      Long pestTypeId) {
   }
 }

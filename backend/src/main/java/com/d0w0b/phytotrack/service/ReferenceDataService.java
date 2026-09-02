@@ -102,7 +102,7 @@ public class ReferenceDataService {
         .toList ();
   }
 
-  /** 害物類型 (含小分類清單，依 sortOrder 排序) */
+  /** 害物類型 (含小分類清單，依代碼降冪排序) */
   @Transactional (readOnly = true)
   public List<PestTypeResponse> pestTypes () {
     return pestTypeRepository.findAllByOrderByPestTypeIdAsc ().stream ()
@@ -431,7 +431,7 @@ public class ReferenceDataService {
   }
 
   @Transactional
-  public IdNameResponse createPestCategory (String code, String name, Long pestTypeId, Integer sortOrder) {
+  public IdNameResponse createPestCategory (String code, String name, Long pestTypeId) {
     PestType pestType = pestTypeRepository.findById (pestTypeId)
         .orElseThrow (() -> new ApiException ("REFERENCE_NOT_FOUND", HttpStatus.NOT_FOUND, "害物類型不存在"));
     if (pestCategoryRepository.existsByPestTypePestTypeIdAndPestCategoryCodeIgnoreCase (pestTypeId, code.trim ())) {
@@ -444,13 +444,12 @@ public class ReferenceDataService {
     e.setPestCategoryCode (code.trim ());
     e.setPestCategory (name.trim ());
     e.setPestType (pestType);
-    e.setSortOrder (sortOrder);
     pestCategoryRepository.save (e);
     return new IdNameResponse (e.getPestCategoryId (), e.getPestCategory ());
   }
 
   @Transactional
-  public IdNameResponse updatePestCategory (Long id, String code, String name, Long pestTypeId, Integer sortOrder) {
+  public IdNameResponse updatePestCategory (Long id, String code, String name, Long pestTypeId) {
     PestCategory e = pestCategoryRepository.findById (id)
         .orElseThrow (() -> new ApiException ("REFERENCE_NOT_FOUND", HttpStatus.NOT_FOUND, "病蟲害分類不存在"));
     PestType pestType = pestTypeRepository.findById (pestTypeId)
@@ -468,7 +467,6 @@ public class ReferenceDataService {
     e.setPestCategoryCode (code.trim ());
     e.setPestCategory (name.trim ());
     e.setPestType (pestType);
-    e.setSortOrder (sortOrder);
     return new IdNameResponse (e.getPestCategoryId (), e.getPestCategory ());
   }
 
@@ -491,8 +489,8 @@ public class ReferenceDataService {
 
   private PestTypeResponse toPestTypeResponse (PestType pestType) {
     List<PestTypeResponse.PestCategoryItem> categories = pestType.getCategories ().stream ()
-        .sorted (Comparator.comparingInt (c -> c.getSortOrder ()))
-        .map (c -> new PestTypeResponse.PestCategoryItem (c.getPestCategoryId (), c.getPestCategoryCode (), c.getPestCategory (), c.getSortOrder ()))
+        .sorted (Comparator.comparing (PestCategory::getPestCategoryCode).reversed ())
+        .map (c -> new PestTypeResponse.PestCategoryItem (c.getPestCategoryId (), c.getPestCategoryCode (), c.getPestCategory ()))
         .toList ();
     return new PestTypeResponse (pestType.getPestTypeId (), pestType.getPestType (), categories);
   }
