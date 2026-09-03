@@ -1,14 +1,15 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref, watch } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import Swal from 'sweetalert2'
-import { accountApi, authApi } from '../api'
+import { accountApi, authApi, EMAIL_PATTERN } from '../api'
 import { useAuthStore } from '../stores/auth'
 
 const auth = useAuthStore ()
 const router = useRouter ()
 
 const loading = ref (true)
+const loaded = ref (false)
 const profile = reactive ({ displayName: '', email: '' })
 const originalDisplayName = ref<string | null>(null)
 const originalEmail = ref<string | null>(null)
@@ -26,12 +27,19 @@ const savingPassword = ref (false)
 const requestingDeactivate = ref (false)
 const isAdmin = auth.isAdmin
 
-const displayNameDirty = () => originalDisplayName.value !== null && profile.displayName.trim () !== (originalDisplayName.value ?? '')
+const displayNameDirty = () => loaded.value && profile.displayName.trim () !== (originalDisplayName.value ?? '').trim ()
+const emailDirty = () => loaded.value && profile.email.trim () !== (originalEmail.value ?? '').trim ()
+// 信箱非空且格式不符即時提示（空值視為解除綁定，不報錯）
+const emailFormatErr = computed (() => {
+  const v = profile.email.trim ()
+  return v && !EMAIL_PATTERN.test (v) ? '電子信箱格式不正確' : ''
+})
+// 儲存鈕僅在檢查通過後顯示：有改即需通過對應檢查（空信箱免檢），以可見性取代送出時 alert
 const canSave = () => {
-  const dnOk = displayNameCheckResult.value === true
-  const emailVal = profile.email.trim ()
-  const emailOk = !emailVal ? true : emailCheckResult.value === true
-  return dnOk && emailOk
+  if (!displayNameDirty () && !emailDirty ()) return false
+  if (displayNameDirty () && displayNameCheckResult.value !== true) return false
+  if (emailDirty () && profile.email.trim () && emailCheckResult.value !== true) return false
+  return true
 }
 
 async function loadProfile () {
@@ -44,6 +52,7 @@ async function loadProfile () {
     originalEmail.value = data.email ?? null
     displayNameCheckResult.value = null
     emailCheckResult.value = null
+    loaded.value = true
   } catch {} finally { loading.value = false }
 }
 
@@ -55,35 +64,41 @@ function cancelDisplayName () {
   displayNameCheckResult.value = null
 }
 
-async function checkDisplayName () {
+function cancelEmail () {
+  profile.email = originalEmail.value ?? ''
+  emailCheckResult.value = null
+}
+
+async function checkDisplayName (): Promise<boolean> {
   const dn = profile.displayName.trim ()
   if (!dn) {
     Swal.fire ({ icon: 'warning', title: '顯示名稱不可為空白' })
-    return
+    return false
   }
   if (dn.length > 50) {
     Swal.fire ({ icon: 'warning', title: '顯示名稱不可超過 50 字元' })
-    return
+    return false
   }
   checkingDisplayName.value = true
   try {
     // 顯示名稱目前無全域唯一限制，僅本地驗證即視為通過；若需後端檢查可在此呼叫
     displayNameCheckResult.value = true
     Swal.fire ({ icon: 'success', title: '顯示名稱可使用', timer: 1200, showConfirmButton: false })
+    return true
   } finally { checkingDisplayName.value = false }
 }
 
 onMounted (loadProfile)
 
-async function checkEmail () {
+async function checkEmail (): Promise<boolean> {
   const email = profile.email.trim ()
   if (!email) {
     Swal.fire ({ icon: 'warning', title: '請先輸入電子信箱' })
-    return
+    return false
   }
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test (email)) {
+  if (!EMAIL_PATTERN.test (email)) {
     Swal.fire ({ icon: 'warning', title: '電子信箱格式不正確' })
-    return
+    return false
   }
   checkingEmail.value = true
   try {
@@ -94,10 +109,12 @@ async function checkEmail () {
     } else {
       Swal.fire ({ icon: 'warning', title: '此信箱已被他人使用' })
     }
+    return emailCheckResult.value === true
   } catch (e: any) {
     emailCheckResult.value = null
     const msg = e?.response?.data?.message || '檢查失敗'
     Swal.fire ({ icon: 'error', title: msg })
+    return false
   } finally { checkingEmail.value = false }
 }
 
@@ -106,10 +123,11 @@ async function saveProfile () {
     Swal.fire ({ icon: 'warning', title: '顯示名稱不可為空白' })
     return
   }
-  if (profile.email.trim () && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test (profile.email.trim ())) {
+  if (profile.email.trim () && !EMAIL_PATTERN.test (profile.email.trim ())) {
     Swal.fire ({ icon: 'warning', title: '電子信箱格式不正確' })
     return
   }
+  // 按鈕可見即代表已通過檢查，此處僅做格式複檢（字符層防線）
   savingProfile.value = true
   try {
     const payload: any = { displayName: profile.displayName.trim (), email: profile.email.trim () || null }
@@ -193,13 +211,16 @@ async function requestDeactivate () {
             <div class="input-group">
               <input v-model.trim="profile.email" type="email" class="form-control" placeholder="example@mail.com" />
               <button class="btn btn-outline-secondary btn-sm" type="button" :disabled="checkingEmail" @click="checkEmail">{{ checkingEmail ? '檢查中…' : '檢查' }}</button>
+              <button v-if="emailDirty()" class="btn btn-outline-warning btn-sm" type="button" @click="cancelEmail">取消</button>
             </div>
-            <div v-if="emailCheckResult === true" class="form-text small text-success">此信箱可使用</div>
+            <div v-if="emailFormatErr" class="form-text small text-danger">{{ emailFormatErr }}</div>
+            <div v-else-if="emailCheckResult === true" class="form-text small text-success">此信箱可使用</div>
             <div v-else-if="emailCheckResult === false" class="form-text small text-danger">此信箱已被他人使用</div>
           </div>
           <div class="col-12 text-end">
             <button v-if="canSave()" class="btn btn-success btn-sm" :disabled="savingProfile" @click="saveProfile">{{ savingProfile ? '儲存中…' : '儲存' }}</button>
-            <span v-else class="small text-muted">請先完成顯示名稱與信箱檢查</span>
+            <span v-else-if="!displayNameDirty() && !emailDirty()" class="small text-muted">尚未修改任何欄位</span>
+            <span v-else class="small text-muted">請先完成修改欄位的檢查</span>
           </div>
         </div>
       </div>
