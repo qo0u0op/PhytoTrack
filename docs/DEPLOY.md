@@ -35,6 +35,21 @@ mvn spring-boot:run                      # 已安裝 mise (mise 提供 maven 3.9
 | `app.jwt.secret` | 開發用密鑰 | JWT 簽章密鑰。正式環境務必以 `JWT_SECRET` 環境變數覆蓋 |
 | `app.bootstrap.*` | admin/admin123、staff/staff123、viewer/viewer123 | 首次啟動自動建立的管理者、診斷員與檢視者帳號 |
 | `app.ai.health-url` | `http://localhost:11435/health` | llama-server 存活檢查端點 |
+| `CORS_ALLOWED_ORIGINS` / `app.cors.allowed-origins` | 空（`dev`→`*`、`prod`→拒絕） | CORS 白名單，逗號分隔。例 `https://app.example.com,https://admin.example.com`。同源部署可空，跨源 `prod` 需明確配置，否則瀏覽器阻擋 |
+| `app.rate-limit.enabled` | `true`（`test`→`false`） | 登入/註冊限流開關。`POST /api/auth/login|register|abandon-deactivate` 每 IP 10/min，超限 `429` + `Retry-After: 60` |
+| `app.security-headers.enabled` | `false`（`prod`→`true`） | 安全標頭（`CSP / HSTS / nosniff / DENY`）開關。`prod` 自動注入，`dev` 不強制 |
+
+驗證：
+
+```bash
+# CORS 白名單
+curl -i -H "Origin: https://app.example.com" http://localhost:8080/api/cases   # 應含 Allow-Origin
+curl -i -H "Origin: https://evil.com" http://localhost:8080/api/cases        # 應無 Allow-Origin
+# 速率限制
+for i in {1..11}; do curl -s -o /dev/null -w "%{http_code}\n" -X POST http://localhost:8080/api/auth/login -H "Content-Type: application/json" -d '{"username":"x","password":"y"}'; done  # 第 11 次 429
+# 安全標頭（prod）
+curl -i http://localhost:8080/api/cases | grep -i -E "Content-Security-Policy|Strict-Transport-Security|X-Content-Type-Options|X-Frame-Options"
+```
 
 ## 3. llama-server 啟動 (AI 診斷)
 
@@ -164,10 +179,17 @@ sqlite3 backend/diagnoses.db "SELECT COUNT (*) FROM cases WHERE field_district_i
 ## 9. 監控與日誌 (Phase 2, api-observability)
 
 - 健康檢查：`GET /actuator/health`（含 `db`，公開）、`GET /actuator/info`（公開）；指標：`GET /actuator/metrics/http.server.requests` 等僅 `ROLE_ADMIN`（`management.endpoints.web.exposure.include=health,info,metrics`）
-- 日誌：`logs/phytotrack.log` 為主檔，依日與大小滾動為 `logs/phytotrack-%d{yyyy-MM-dd}.%i.log.gz`（`maxFileSize 10MB`、`maxHistory 30`、`totalSizeCap 500MB`），pattern 含 `[%X{requestId}]` 供追蹤；`logs/` 已 gitignore，建議納入備份排除
+- 日誌：`logs/phytotrack.log` 為主檔，依日與大小滾動為 `logs/phytotrack-%d{yyyy-MM-dd}.%i.log.gz`（`maxFileSize 10MB`、`maxHistory 30`、`totalSizeCap 500MB`），pattern 含 `[%X{requestId}]` 供追蹤（含 `RATE_LIMITED` 警告）；`logs/` 已 gitignore，建議納入備份排除
 - 驗證：`curl http://localhost:8080/actuator/health` 應回 `{"status":"UP"}`；`ls logs/` 觀察滾動與壓縮
 
-## 10. 升級到 PostgreSQL (選用)
+## 10. 安全加固 (Phase 2, security-review)
+
+- CORS 白名單：`CORS_ALLOWED_ORIGINS` 控制 `Access-Control-Allow-Origin`。`dev` 未配置沿用 `*`，`prod` 未配置預設拒絕（同源不受影響）。詳見 `application.yaml` 與 ADR-012。
+- 速率限制：`POST /api/auth/login|register|abandon-deactivate` 每 IP 10/min，超限 `429` + `Retry-After: 60` + `error.code=RATE_LIMITED` + `requestId`，日誌 `log.warn` 可追溯。`test` 預設關閉。
+- 安全標頭：`prod` 自動注入 `Content-Security-Policy`（`style-src 'unsafe-inline'` 相容 Swagger）、`Strict-Transport-Security`、`X-Content-Type-Options: nosniff`、`X-Frame-Options: DENY`。見 ADR-012。
+- Token 儲存：維持 `localStorage`（無 XSS 面，遷移 `httpOnly` 需恢復 CSRF，見 ADR-012）。
+
+## 11. 升級到 PostgreSQL (選用)
 
 現階段使用 SQLite 起步 (理由見 ADR-007)。若未來資料量與並發需求增加，切換方式：
 

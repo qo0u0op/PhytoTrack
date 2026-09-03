@@ -74,13 +74,16 @@ HTTP 請求
 
 ### 認證授權
 
-- 登入成功後簽發 JWT (含 userId、role)，前端存於 localStorage，之後以 `Authorization: Bearer <token>` 帶入；停用帳號登入被拒 (`ACCOUNT_DISABLED`)
+- 登入成功後簽發 JWT (含 userId、role)，前端存於 localStorage（見 ADR-012：現無 XSS 面，維持 `localStorage`，遷移 `httpOnly` cookie 需恢復 CSRF 屬破壞性），之後以 `Authorization: Bearer <token>` 帶入；停用帳號登入被拒 (`ACCOUNT_DISABLED`)
 - `JwtAuthenticationFilter` 每請求以 `userId` 查 DB 驗證 `active`，停用帳號的既有 token 立即 401，且以 DB 的最新 `role` 覆蓋 token 內 role (角色變更有即時生效)
 - 角色：`ROLE_VIEWER` (檢視者)/ `ROLE_STAFF` (診斷員)/ `ROLE_ADMIN` (管理者)
 - 權限：建立/更新案件與 AI 診斷需 STAFF+；狀態轉移 `RESOLVED → CLOSED` 僅 ADMIN (`PENDING → RESOLVED` 需 STAFF+)；**已結案案件僅 ADMIN 可修改內容** (STAFF 改內容回 403 `CLOSED_CASE_READONLY`，狀態同值 no-op 合法)；刪除案件與使用者管理僅 ADMIN
 - 送件人更新：update 依「有提供的 name/phone (未提供沿用現送件人身分)」比照 create 的去重語意關聯或建立送件人，不直接修改可能被多案件共享的既有 Sender row (避免撞 `UNIQUE (name, phone)`)
 - 密碼一律 BCrypt 單向雜湊，永不存明文；`/api/auth/register` 僅能建立 VIEWER，防止越權提權
 - 安全錯誤語意：**未認證** (無 token／無效／過期) 由 `RestAuthenticationEntryPoint` 回 `401 UNAUTHORIZED` (統一錯誤格式)，前端攔截器據此清除本機 token 並導向登入頁；**已登入但角色不足**由全域例外處理回 `403 ACCESS_DENIED` (見 ADR-010)
+- **CORS 白名單**（見 ADR-012）：`CorsConfig` 由 `app.cors.allowed-origins=${CORS_ALLOWED_ORIGINS:}` 驅動，`dev` 為空沿用 `*`，`prod` 為空預設拒絕跨源（不回 `Allow-Origin`），明確白名單才回 `Access-Control-Allow-Origin` + `Vary: Origin`；方法限 `GET/POST/PUT/PATCH/DELETE/OPTIONS`、暴露 `Authorization/Content-Disposition/X-Request-Id`
+- **速率限制**（見 ADR-012）：`POST /api/auth/login|register|abandon-deactivate` 每 IP 10/min（`app.rate-limit.*`），超限回 `429 RATE_LIMITED` + `Retry-After: 60` + `requestId`，`test` 預設關閉，前端 `api/http.ts` 對 `429` 彈「請求過於頻繁」且不重試
+- **安全標頭**（見 ADR-012）：`SecurityHeadersFilter` 於非 dev（`prod` 或 `app.security-headers.enabled=true`）注入 `Content-Security-Policy`（含 `style-src 'unsafe-inline'` 相容 Swagger）、`Strict-Transport-Security: max-age=31536000; includeSubDomains`、`X-Content-Type-Options: nosniff`、`X-Frame-Options: DENY`
 
 ### AI 診斷流程
 
@@ -176,6 +179,9 @@ types/    openapi-typescript 由 /v3/api-docs 自動生成的 API 型別 (與後
 - `app.jwt.secret`：JWT 簽章密鑰，正式環境以環境變數 `JWT_SECRET` 覆蓋
 - `app.bootstrap.*`：首次啟動自動建立的帳號 (admin / staff / viewer)
 - `spring.ai.openai.*`：llama-server 連線設定
+- `app.cors.allowed-origins`：CORS 白名單（`CORS_ALLOWED_ORIGINS`，逗號分隔；`dev` 空→`*`、`prod` 空→拒絕）
+- `app.rate-limit.*`：`enabled` / `requests-per-minute` / `window-seconds`（登入/註冊限流，`test` 預設 false）
+- `app.security-headers.enabled`：安全標頭開關（`prod` 自動 true）
 - `management.endpoints.web.exposure.include`：`health,info,metrics`（非 dev `metrics` 僅 ADMIN）
 - `application-postgres.yaml`：PostgreSQL 升級 profile (見 ADR-007)
 - 日誌：`logback-spring.xml`（`logs/phytotrack-%d{yyyy-MM-dd}.%i.log.gz`，見上節）

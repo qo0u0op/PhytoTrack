@@ -50,6 +50,9 @@ docs/notebook/
 ### pdf ###
 *.pdf
 
+### Todo ###
+todo.txt
+
 ### Playwright ###
 .playwright-cli/
 .playwright/*

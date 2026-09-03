@@ -1,10 +1,4 @@
-# Security Review Pending Specification
-
-## Purpose
-
-彙整 2026-08-20 OWASP 安全審查待辦（B/C 組），作為後續加固的追蹤清單，與 `security-hardening` 已交付項目區隔。
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: 登入與註冊速率限制
 
@@ -73,11 +67,3 @@ CORS SHALL 由 `app.cors.allowed-origins`（env `CORS_ALLOWED_ORIGINS`，逗號�
 #### Scenario: Token 儲存維持現狀
 - **WHEN** 檢視前端 `stores/auth.ts` 與 `api/http.ts` 的 token 儲存實作
 - **THEN** 仍使用 `localStorage.getItem('token')` / `setItem`，不改為 `httpOnly` cookie，且文件（ADR/ARCHITECTURE）已記錄維持理由與未來遷移條件（需伴隨 CSRF 恢復）
-
-### Requirement: 維持現狀項目
-
-下列項目 SHALL 維持現狀不另行處置：`CSRF` 關閉（Bearer 無 cookie 面）、無狀態登出、登入錯誤訊息統一、`HS256` 固定 HMAC、`JWT_SECRET` fail-fast、500 泛化與 `npm audit` 0 漏洞。
-
-#### Scenario: 維持現狀
-- **WHEN** 檢視上述設定
-- **THEN** 保持現行實作不變
