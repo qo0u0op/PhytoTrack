@@ -15,6 +15,7 @@ import com.d0w0b.phytotrack.dto.AuthDtos.RegisterRequest;
 import com.d0w0b.phytotrack.dto.AuthDtos.UserResponse;
 import com.d0w0b.phytotrack.exception.ApiException;
 import com.d0w0b.phytotrack.models.DeactivateRequest;
+import com.d0w0b.phytotrack.models.Identifier;
 import com.d0w0b.phytotrack.models.User;
 import com.d0w0b.phytotrack.repository.DeactivateRequestRepository;
 import com.d0w0b.phytotrack.repository.IdentifierRepository;
@@ -80,14 +81,18 @@ public class AuthService {
     if (userRepository.findByUsername (request.username ()).isPresent ()) {
       throw new ApiException ("USERNAME_TAKEN", HttpStatus.CONFLICT, "帳號已存在");
     }
-    // 信箱不再全域唯一檢查，僅由前端檢查按鈕提示
+    // 信箱非空時全域唯一（去空白、大小寫不敏感），與個人資料編輯一致
+    String email = request.email () == null ? null : request.email ().trim ();
+    if (email != null && !email.isEmpty () && userRepository.existsByEmailIgnoreCase (email)) {
+      throw new ApiException ("EMAIL_TAKEN", HttpStatus.CONFLICT, "電子信箱已被使用");
+    }
 
     User user = new User ();
     user.setUsername (request.username ());
     user.setDisplayName (request.displayName ());
     // 密碼以 BCrypt 單向雜湊儲存，絕不存明文
     user.setPassword (passwordEncoder.encode (request.password ()));
-    user.setEmail (request.email ());
+    user.setEmail (email == null || email.isEmpty () ? null : email);
     // 新使用者一律為檢視者 (Viewer)，管理員需由既有管理員調整
     user.setRole (User.Role.ROLE_VIEWER);
     user.setActive (true);
@@ -95,6 +100,23 @@ public class AuthService {
     return toResponse (userRepository.save (user));
   }
 
+  /**
+   * 帳號可用性（註冊語境）：去空白後為空視為不可用，避免空帳號被誤判可用。
+   */
+  @Transactional (readOnly = true)
+  public boolean isUsernameAvailable (String username) {
+    if (username == null || username.trim ().isEmpty ()) return false;
+    return !userRepository.existsByUsername (username.trim ());
+  }
+
+  /**
+   * 信箱可用性（註冊語境）：空值視為可用（選填），非空去空白、大小寫不敏感比對。
+   */
+  @Transactional (readOnly = true)
+  public boolean isEmailAvailable (String email) {
+    if (email == null || email.trim ().isEmpty ()) return true;
+    return !userRepository.existsByEmailIgnoreCase (email.trim ());
+  }
   /**
    * 登入：認證成功後簽發 JWT
    *
@@ -140,6 +162,12 @@ public class AuthService {
   /** 管理者調整角色 */
   @Transactional
   public UserResponse updateRole (Long userId, String roleStr) {
+    return updateRole (userId, new com.d0w0b.phytotrack.dto.AuthDtos.RoleUpdateRequest (roleStr));
+  }
+
+  @Transactional
+  public UserResponse updateRole (Long userId, com.d0w0b.phytotrack.dto.AuthDtos.RoleUpdateRequest request) {
+    String roleStr = request.role ();
     User user = userRepository.findById (userId)
         .orElseThrow (() -> new ApiException ("USER_NOT_FOUND", HttpStatus.NOT_FOUND, "使用者不存在"));
     User.Role role;
@@ -155,12 +183,50 @@ public class AuthService {
         throw new ApiException ("LAST_ADMIN_FORBIDDEN", HttpStatus.CONFLICT, "不可移除最後一位管理者");
       }
     }
+    // 若帶 bindIdentifierId，先綁定
+    if (request.bindIdentifierId () != null && identifierService != null) {
+      identifierService.bindToUser (request.bindIdentifierId (), userId);
+    }
+    // 撞名檢查：提權至 STAFF/ADMIN 且 displayName 撞 signer but not user
+    boolean force = Boolean.TRUE.equals (request.force ());
+    // 升權先恢復原筆（憑 former_user_id），自身舊筆恢復後不再誤報撞名
+    if (!force && (role == User.Role.ROLE_STAFF || role == User.Role.ROLE_ADMIN)
+        && identifierRepository != null && identifierService != null && request.bindIdentifierId () == null) {
+      identifierService.restoreFormerSigner (user);
+    }
+    if (!force && (role == User.Role.ROLE_STAFF || role == User.Role.ROLE_ADMIN)
+        && identifierRepository != null && request.bindIdentifierId () == null) {
+      String displayName = user.getDisplayName ();
+      if (displayName != null && !displayName.isBlank ()) {
+        var existingOpt = identifierRepository.findByUserIsNullAndActiveTrue ().stream ()
+            .filter (i -> IdentifierNames.equalsNormalized (i.getIdentifier (), displayName))
+            .sorted (java.util.Comparator.comparing (Identifier::getIdentifierId))
+            .findFirst ();
+        if (existingOpt.isPresent ()) {
+          boolean userHasSame = identifierRepository.findByUserUserIdAndActiveTrueOrderByIdentifierIdAsc (userId).stream ()
+              .anyMatch (i -> IdentifierNames.equalsNormalized (i.getIdentifier (), displayName));
+          if (!userHasSame) {
+            java.util.Map<String, Object> details = java.util.Map.of ("existingIdentifierId", existingOpt.get ().getIdentifierId (), "displayName", IdentifierNames.display (displayName));
+            throw new ApiException ("SIGNER_NAME_CONFLICT", HttpStatus.CONFLICT, "顯示名稱與既有簽名人重名，是否綁定", details);
+          }
+        }
+      }
+    }
+    User.Role oldRole = user.getRole ();
     user.setRole (role);
     User saved = userRepository.save (user);
+    // 降級至 VIEWER 時解綁名下簽名人（保留 active 與 id，記 former_user_id，候選仍可見）
+    if ((oldRole == User.Role.ROLE_STAFF || oldRole == User.Role.ROLE_ADMIN)
+        && role == User.Role.ROLE_VIEWER
+        && identifierRepository != null) {
+      unlinkUserSigners (saved, false);
+    }
     // 升為 STAFF/ADMIN 時確保簽名人存在（VIEWER 不強制），相容舊單測 null 情況
     if ((role == User.Role.ROLE_STAFF || role == User.Role.ROLE_ADMIN)
         && identifierRepository != null && identifierService != null) {
-      if (identifierRepository.findByUserUserId (saved.getUserId ()).isEmpty ()) {
+      // 若已透過 bind 取得，則不需再建
+      boolean hasActive = !identifierRepository.findByUserUserIdAndActiveTrueOrderByIdentifierIdAsc (saved.getUserId ()).isEmpty ();
+      if (!hasActive) {
         identifierService.ensureForUser (saved);
       }
     }
@@ -187,7 +253,29 @@ public class AuthService {
       }
     }
     user.setActive (active);
-    return toResponse (userRepository.save (user));
+    User saved = userRepository.save (user);
+    // 停用帳號時解綁並連動停用名下簽名人（歷史案件仍以 id 顯示）
+    if (!active && identifierRepository != null) {
+      unlinkUserSigners (saved, true);
+    }
+    // 重新啟用 STAFF/ADMIN 時恢復原筆簽名人
+    if (active && (saved.getRole () == User.Role.ROLE_STAFF || saved.getRole () == User.Role.ROLE_ADMIN)
+        && identifierRepository != null && identifierService != null) {
+      identifierService.restoreFormerSigner (saved);
+    }
+    return toResponse (saved);
+  }
+
+  /**
+   * 解綁名下 active 簽名人：user_id 清空、former_user_id 留存，id 不變。
+   * 降權呼叫時維持 active（候選仍可見）；停用呼叫時一併停用。
+   */
+  private void unlinkUserSigners (User user, boolean deactivate) {
+    for (var signer : identifierRepository.findByUserUserIdAndActiveTrueOrderByIdentifierIdAsc (user.getUserId ())) {
+      signer.setUser (null);
+      signer.setFormerUser (user);
+      if (deactivate) signer.setActive (false);
+    }
   }
 
   private Long currentUserId () {

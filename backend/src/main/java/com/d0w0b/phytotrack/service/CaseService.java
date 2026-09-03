@@ -497,7 +497,7 @@ public class CaseService {
     String name = request.senderName () != null ? request.senderName () : caseEntity.getSender ().getName ();
     String displayName = request.senderDisplayName () != null ? request.senderDisplayName () : caseEntity.getSender ().getDisplayName ();
     String phone = request.senderPhone () != null ? request.senderPhone () : caseEntity.getSender ().getPhone ();
-    String address = request.senderAddress () != null ? request.senderAddress () : caseEntity.getSender ().getAddress ();
+    String address = request.senderAddress () != null ? blankToNullAddress (request.senderAddress ()) : caseEntity.getSender ().getAddress ();
     Long districtId = request.senderDistrictId () != null ? request.senderDistrictId () : Optional.ofNullable (caseEntity.getSender ().getDistrict ()).map (District::getDistrictId).orElse (null);
     Long senderTypeId = request.senderTypeId () != null ? request.senderTypeId () : Optional.ofNullable (caseEntity.getSender ().getSenderType ()).map (SenderType::getSenderTypeId).orElse (null);
     boolean hasPhone = phone != null && !phone.isBlank ();
@@ -953,10 +953,16 @@ public class CaseService {
     sender.setName (request.senderName ());
     sender.setDisplayName (displayName);
     sender.setPhone (phone);
-    sender.setAddress (request.senderAddress ());
+    // 送件人地址選填：空值（null/空字串/全空白）正規化為 null
+    sender.setAddress (blankToNullAddress (request.senderAddress ()));
     sender.setDistrict (getRef (districtRepository, request.senderDistrictId (), "鄉鎮市區"));
     sender.setSenderType (getRef (senderTypeRepository, request.senderTypeId (), "身分別"));
     return senderRepository.save (sender);
+  }
+
+  /** 空字串或全空白正規化為 null（與 SenderService.blankToNull 同語意） */
+  private static String blankToNullAddress (String v) {
+    return v == null || v.isBlank () ? null : v.trim ();
   }
 
   /** 建立案件的多對多關聯 (Junction Record)：被害部位 */
