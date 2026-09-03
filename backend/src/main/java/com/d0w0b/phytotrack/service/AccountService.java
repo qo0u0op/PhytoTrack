@@ -4,8 +4,10 @@ import com.d0w0b.phytotrack.dto.AccountDtos.DeactivateRequestResponse;
 import com.d0w0b.phytotrack.dto.AuthDtos.UserResponse;
 import com.d0w0b.phytotrack.exception.ApiException;
 import com.d0w0b.phytotrack.models.DeactivateRequest;
+import com.d0w0b.phytotrack.models.Identifier;
 import com.d0w0b.phytotrack.models.User;
 import com.d0w0b.phytotrack.repository.DeactivateRequestRepository;
+import com.d0w0b.phytotrack.repository.IdentifierRepository;
 import com.d0w0b.phytotrack.repository.UserRepository;
 import com.d0w0b.phytotrack.security.UserPrincipal;
 import org.springframework.http.HttpStatus;
@@ -22,13 +24,27 @@ public class AccountService {
   private final UserRepository userRepository;
   private final DeactivateRequestRepository deactivateRequestRepository;
   private final PasswordEncoder passwordEncoder;
+  private final IdentifierRepository identifierRepository;
+  private final IdentifierService identifierService;
 
+  @org.springframework.beans.factory.annotation.Autowired
   public AccountService (UserRepository userRepository,
                          DeactivateRequestRepository deactivateRequestRepository,
-                         PasswordEncoder passwordEncoder) {
+                         PasswordEncoder passwordEncoder,
+                         @org.springframework.beans.factory.annotation.Autowired (required = false) IdentifierRepository identifierRepository,
+                         @org.springframework.beans.factory.annotation.Autowired (required = false) IdentifierService identifierService) {
     this.userRepository = userRepository;
     this.deactivateRequestRepository = deactivateRequestRepository;
     this.passwordEncoder = passwordEncoder;
+    this.identifierRepository = identifierRepository;
+    this.identifierService = identifierService;
+  }
+
+  // 相容舊呼叫（測試或尚未更新處）
+  public AccountService (UserRepository userRepository,
+                         DeactivateRequestRepository deactivateRequestRepository,
+                         PasswordEncoder passwordEncoder) {
+    this (userRepository, deactivateRequestRepository, passwordEncoder, null, null);
   }
 
   @Transactional(readOnly = true)
@@ -48,7 +64,26 @@ public class AccountService {
     user.setDisplayName (displayName.trim ());
     user.setEmail (trimmedEmail);
     userRepository.save (user);
+    // 同步簽名人：displayName 變更時更名首個 Identifier，無則建立
+    syncIdentifierForDisplayName (user);
     return toResponse (user);
+  }
+
+  private void syncIdentifierForDisplayName (User user) {
+    if (identifierRepository == null) return;
+    String displayName = user.getDisplayName ();
+    if (displayName == null || displayName.isBlank ()) return;
+    // VIEWER 不強制，但有則同步更名
+    List<Identifier> existing = identifierRepository.findByUserUserId (user.getUserId ());
+    if (!existing.isEmpty ()) {
+      Identifier first = existing.get (0);
+      if (!displayName.trim ().equals (first.getIdentifier ())) {
+        first.setIdentifier (displayName.trim ());
+      }
+    } else if ((user.getRole () == User.Role.ROLE_STAFF || user.getRole () == User.Role.ROLE_ADMIN)
+        && identifierService != null) {
+      identifierService.ensureForUser (user);
+    }
   }
 
   @Transactional(readOnly = true)

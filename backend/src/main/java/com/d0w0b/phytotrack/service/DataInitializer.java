@@ -66,6 +66,16 @@ public class DataInitializer implements CommandLineRunner {
       createIdentifier ("林雅惠", staff);
       createIdentifier ("陳建宏", admin);
     }
+    // 補建：確保所有 STAFF/ADMIN 至少有一個以 displayName 命名的簽名人
+    for (User user : userRepository.findAll ()) {
+      if ((user.getRole () == User.Role.ROLE_STAFF || user.getRole () == User.Role.ROLE_ADMIN)
+          && identifierRepository.findByUserUserId (user.getUserId ()).isEmpty ()) {
+        Identifier identifier = new Identifier ();
+        identifier.setIdentifier (user.getDisplayName ());
+        identifier.setUser (user);
+        identifierRepository.save (identifier);
+      }
+    }
   }
 
   private User getOrCreateUser (String username, String displayName, String password, User.Role role) {

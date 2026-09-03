@@ -28,6 +28,7 @@ import com.d0w0b.phytotrack.models.CasePestCategory;
 import com.d0w0b.phytotrack.models.CaseStatus;
 import com.d0w0b.phytotrack.models.Crop;
 import com.d0w0b.phytotrack.models.Damage;
+import com.d0w0b.phytotrack.models.User;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import com.d0w0b.phytotrack.models.Delivery;
@@ -54,6 +55,8 @@ import com.d0w0b.phytotrack.repository.PestCategoryRepository;
 import com.d0w0b.phytotrack.repository.SenderRepository;
 import com.d0w0b.phytotrack.repository.SenderTypeRepository;
 import com.d0w0b.phytotrack.repository.ServiceRepository;
+import com.d0w0b.phytotrack.repository.UserRepository;
+import com.d0w0b.phytotrack.security.UserPrincipal;
 
 import java.time.LocalDate;
 import java.time.YearMonth;
@@ -95,7 +98,10 @@ public class CaseService {
   private final HintRepository hintRepository;
   private final PestCategoryRepository pestCategoryRepository;
   private final IdentifierRepository identifierRepository;
+  private final UserRepository userRepository;
+  private final IdentifierService identifierService;
 
+  @org.springframework.beans.factory.annotation.Autowired
   public CaseService (CaseRepository caseRepository,
                      CaseSearchViewRepository caseSearchViewRepository,
                      SenderRepository senderRepository,
@@ -108,7 +114,9 @@ public class CaseService {
                      DamageRepository damageRepository,
                      HintRepository hintRepository,
                      PestCategoryRepository pestCategoryRepository,
-                     IdentifierRepository identifierRepository) {
+                     IdentifierRepository identifierRepository,
+                     @org.springframework.beans.factory.annotation.Autowired (required = false) UserRepository userRepository,
+                     @org.springframework.beans.factory.annotation.Autowired (required = false) IdentifierService identifierService) {
     this.caseRepository = caseRepository;
     this.caseSearchViewRepository = caseSearchViewRepository;
     this.senderRepository = senderRepository;
@@ -122,6 +130,27 @@ public class CaseService {
     this.hintRepository = hintRepository;
     this.pestCategoryRepository = pestCategoryRepository;
     this.identifierRepository = identifierRepository;
+    this.userRepository = userRepository;
+    this.identifierService = identifierService;
+  }
+
+  // 相容舊單元測試
+  public CaseService (CaseRepository caseRepository,
+                     CaseSearchViewRepository caseSearchViewRepository,
+                     SenderRepository senderRepository,
+                     SenderTypeRepository senderTypeRepository,
+                     DistrictRepository districtRepository,
+                     MethodRepository methodRepository,
+                     CropRepository cropRepository,
+                     ServiceRepository serviceRepository,
+                     DeliveryRepository deliveryRepository,
+                     DamageRepository damageRepository,
+                     HintRepository hintRepository,
+                     PestCategoryRepository pestCategoryRepository,
+                     IdentifierRepository identifierRepository) {
+    this (caseRepository, caseSearchViewRepository, senderRepository, senderTypeRepository, districtRepository,
+        methodRepository, cropRepository, serviceRepository, deliveryRepository, damageRepository, hintRepository,
+        pestCategoryRepository, identifierRepository, null, null);
   }
 
   /** 分頁查詢案件清單 (摘要)；經視圖 `v_case_search` 篩選後回補實體以保留遮蔽 */
@@ -159,9 +188,17 @@ public class CaseService {
     return toDetail (findByIdOrThrow (id));
   }
 
-  /** 建立案件 */
+  /** 建立案件：若 identifierIds 空則自動帶入當前使用者簽名人 */
   @Transactional
   public CaseResponse create (CaseCreateRequest request) {
+    List<Long> identifierIds = request.identifierIds ();
+    if ((identifierIds == null || identifierIds.isEmpty ()) && identifierService != null && userRepository != null) {
+      User current = getCurrentUserOrNull ();
+      if (current != null) {
+        Identifier auto = identifierService.ensureForUser (current);
+        identifierIds = List.of (auto.getIdentifierId ());
+      }
+    }
     // 先驗證所有參照，避免 sender 已落庫後才因其他參照不存在而回滾前的非原子中間狀態 (ACID)
     if (request.senderId () != null) {
       senderRepository.findById (request.senderId ())
@@ -205,8 +242,8 @@ public class CaseService {
         getRef (pestCategoryRepository, id, "病蟲害分類");
       }
     }
-    if (request.identifierIds () != null) {
-      for (Long id : new HashSet<>(request.identifierIds ())) {
+    if (identifierIds != null) {
+      for (Long id : new HashSet<>(identifierIds)) {
         getRef (identifierRepository, id, "診斷簽名人");
       }
     }
@@ -240,7 +277,7 @@ public class CaseService {
     } else {
       addPestCategories (caseEntity, request.pestCategoryIds ());
     }
-    addIdentifiers (caseEntity, request.identifierIds ());
+    addIdentifiers (caseEntity, identifierIds);
 
     caseRepository.save (caseEntity);
     return toDetail (caseEntity);
@@ -257,24 +294,41 @@ public class CaseService {
           "案件已結案，僅管理者可修改內容");
     }
 
+    // identifierIds 空陣列自動帶入當前使用者簽名人（null 則保留原值）
+    CaseUpdateRequest effectiveRequest = request;
+    if (request.identifierIds () != null && request.identifierIds ().isEmpty () && identifierService != null && userRepository != null) {
+      User current = getCurrentUserOrNull ();
+      if (current != null) {
+        Identifier auto = identifierService.ensureForUser (current);
+        effectiveRequest = new CaseUpdateRequest (request.receiveDate (), request.cropScale (), request.damageScale (),
+            request.caseDescription (), request.hintDescription (), request.status (),
+            request.methodId (), request.cropId (), request.serviceId (), request.deliverId (),
+            request.fieldDistrictId (),
+            request.senderId (), request.senderName (), request.senderDisplayName (), request.senderPhone (), request.senderAddress (),
+            request.senderDistrictId (), request.senderTypeId (),
+            request.damageIds (), request.hintIds (), request.pestCategoryIds (), request.pestCategoryWithNotes (),
+            List.of (auto.getIdentifierId ()));
+      }
+    }
+
     // 先驗證所有參照 ID (fail-fast)，避免部分欄位已寫入後才因參照不存在而回滾，確保原子性語意清晰
-    if (request.methodId () != null) {
-      getRef (methodRepository, request.methodId (), "耕種方式");
+    if (effectiveRequest.methodId () != null) {
+      getRef (methodRepository, effectiveRequest.methodId (), "耕種方式");
     }
-    if (request.cropId () != null) {
-      getRef (cropRepository, request.cropId (), "作物");
+    if (effectiveRequest.cropId () != null) {
+      getRef (cropRepository, effectiveRequest.cropId (), "作物");
     }
-    if (request.serviceId () != null) {
-      getRef (serviceRepository, request.serviceId (), "服務類別");
+    if (effectiveRequest.serviceId () != null) {
+      getRef (serviceRepository, effectiveRequest.serviceId (), "服務類別");
     }
-    if (request.deliverId () != null) {
-      getRef (deliveryRepository, request.deliverId (), "送件方式");
+    if (effectiveRequest.deliverId () != null) {
+      getRef (deliveryRepository, effectiveRequest.deliverId (), "送件方式");
     }
-    if (request.senderId () != null) {
-      senderRepository.findById (request.senderId ())
+    if (effectiveRequest.senderId () != null) {
+      senderRepository.findById (effectiveRequest.senderId ())
           .orElseThrow (() -> new ApiException ("SENDER_NOT_FOUND", HttpStatus.NOT_FOUND, "送件人不存在"));
     }
-    validateJunctionRefs (request);
+    validateJunctionRefs (effectiveRequest);
 
     if (request.receiveDate () != null) {
       caseEntity.setReceiveDate (request.receiveDate ());
@@ -309,8 +363,8 @@ public class CaseService {
     if (request.fieldDistrictId () != null) {
       caseEntity.setFieldDistrict (getRef (districtRepository, request.fieldDistrictId (), "田區位置"));
     }
-    applySenderUpdate (caseEntity, request);
-    replaceJunctions (caseEntity, request);
+    applySenderUpdate (caseEntity, effectiveRequest);
+    replaceJunctions (caseEntity, effectiveRequest);
 
     return toDetail (caseEntity);
   }
@@ -385,6 +439,15 @@ public class CaseService {
     Authentication auth = SecurityContextHolder.getContext ().getAuthentication ();
     return auth != null && auth.getAuthorities ().stream ()
         .anyMatch (a -> "ROLE_VIEWER".equals (a.getAuthority ()));
+  }
+
+  private User getCurrentUserOrNull () {
+    if (userRepository == null) return null;
+    Authentication auth = SecurityContextHolder.getContext ().getAuthentication ();
+    if (auth != null && auth.getPrincipal () instanceof UserPrincipal principal) {
+      return userRepository.findById (principal.getUserId ()).orElse (null);
+    }
+    return null;
   }
 
   /** 請求是否帶有任何「非狀態」欄位 (用於 CLOSED 案件的管理者限改判斷) */

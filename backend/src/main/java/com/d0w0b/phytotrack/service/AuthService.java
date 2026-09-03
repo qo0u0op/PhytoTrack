@@ -17,6 +17,7 @@ import com.d0w0b.phytotrack.exception.ApiException;
 import com.d0w0b.phytotrack.models.DeactivateRequest;
 import com.d0w0b.phytotrack.models.User;
 import com.d0w0b.phytotrack.repository.DeactivateRequestRepository;
+import com.d0w0b.phytotrack.repository.IdentifierRepository;
 import com.d0w0b.phytotrack.repository.UserRepository;
 import com.d0w0b.phytotrack.security.JwtTokenProvider;
 import com.d0w0b.phytotrack.security.UserPrincipal;
@@ -39,17 +40,33 @@ public class AuthService {
   private final PasswordEncoder passwordEncoder;
   private final AuthenticationManager authenticationManager;
   private final JwtTokenProvider jwtTokenProvider;
+  private final IdentifierRepository identifierRepository;
+  private final IdentifierService identifierService;
 
+  @org.springframework.beans.factory.annotation.Autowired
   public AuthService (UserRepository userRepository,
                      DeactivateRequestRepository deactivateRequestRepository,
                      PasswordEncoder passwordEncoder,
                      AuthenticationManager authenticationManager,
-                     JwtTokenProvider jwtTokenProvider) {
+                     JwtTokenProvider jwtTokenProvider,
+                     @org.springframework.beans.factory.annotation.Autowired (required = false) IdentifierRepository identifierRepository,
+                     @org.springframework.beans.factory.annotation.Autowired (required = false) IdentifierService identifierService) {
     this.userRepository = userRepository;
     this.deactivateRequestRepository = deactivateRequestRepository;
     this.passwordEncoder = passwordEncoder;
     this.authenticationManager = authenticationManager;
     this.jwtTokenProvider = jwtTokenProvider;
+    this.identifierRepository = identifierRepository;
+    this.identifierService = identifierService;
+  }
+
+  // 相容舊單元測試
+  public AuthService (UserRepository userRepository,
+                     DeactivateRequestRepository deactivateRequestRepository,
+                     PasswordEncoder passwordEncoder,
+                     AuthenticationManager authenticationManager,
+                     JwtTokenProvider jwtTokenProvider) {
+    this (userRepository, deactivateRequestRepository, passwordEncoder, authenticationManager, jwtTokenProvider, null, null);
   }
 
   /**
@@ -139,7 +156,15 @@ public class AuthService {
       }
     }
     user.setRole (role);
-    return toResponse (userRepository.save (user));
+    User saved = userRepository.save (user);
+    // 升為 STAFF/ADMIN 時確保簽名人存在（VIEWER 不強制），相容舊單測 null 情況
+    if ((role == User.Role.ROLE_STAFF || role == User.Role.ROLE_ADMIN)
+        && identifierRepository != null && identifierService != null) {
+      if (identifierRepository.findByUserUserId (saved.getUserId ()).isEmpty ()) {
+        identifierService.ensureForUser (saved);
+      }
+    }
+    return toResponse (saved);
   }
 
   /** 管理者啟停用帳號 */
