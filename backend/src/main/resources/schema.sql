@@ -490,7 +490,9 @@ CREATE INDEX IF NOT EXISTS idx_deactivate_requests_status ON deactivate_requests
 CREATE TABLE IF NOT EXISTS identifiers (
   identifier_id INTEGER PRIMARY KEY,
   identifier    TEXT    NOT NULL,
-  user_id       INTEGER REFERENCES users(user_id)
+  user_id       INTEGER REFERENCES users(user_id),
+  former_user_id INTEGER REFERENCES users(user_id),
+  active        INTEGER NOT NULL DEFAULT 1
 );
 
 -- ============================================================
@@ -775,7 +777,7 @@ CREATE TABLE IF NOT EXISTS senders (
   name           TEXT,
   display_name   TEXT,
   phone          TEXT,
-  address        TEXT    NOT NULL,
+  address        TEXT,
   district_id    INTEGER NOT NULL REFERENCES districts(district_id),
   sender_type_id INTEGER NOT NULL REFERENCES sender_types(sender_type_id)
 );

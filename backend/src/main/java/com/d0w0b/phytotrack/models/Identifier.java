@@ -19,4 +19,15 @@ public class Identifier {
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "user_id")
   private User user;
+
+  /**
+   * 解綁前最後所屬使用者（升權／啟用時恢復原筆的依據）。
+   * 綁定至使用者時清空；既有未綁定簽名人為 null。
+   */
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "former_user_id")
+  private User formerUser;
+
+  @Column(nullable = false)
+  private boolean active = true;
 }

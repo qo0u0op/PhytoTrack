@@ -22,7 +22,7 @@ public class Sender {
   @Column
   private String displayName;
 
-  @Column(nullable = false)
+  @Column (nullable = true)
   private String address;
 
   @ManyToOne(fetch = FetchType.LAZY)
