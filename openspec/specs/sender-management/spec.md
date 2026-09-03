@@ -8,7 +8,7 @@
 
 ### Requirement: 送件人欄位規則
 
-送件人 SHALL 支援 `name`、`displayName`、`phone`、`address`、`district` (含所屬 `city`) 與 `senderType`；`name` MAY 為空，`phone` 與 `displayName` 之間 SHALL 至少一項有值；`displayName` 用於標記來源顯示名稱 (Line/Facebook/Email 暱稱)。
+送件人 SHALL 支援 `name`、`displayName`、`phone`、`address`、`district` (含所屬 `city`) 與 `senderType`；`name` MAY 為空，`phone` 與 `displayName` 之間 SHALL 至少一項有值；`address` MAY 為空（空字串或全空白視為 null，解除／未綁定地址）；`displayName` 用於標記來源顯示名稱 (Line/Facebook/Email 暱稱)。
 
 #### Scenario: 有姓名且有顯示名稱
 - **WHEN** 送件人同時有 `name` 與 `displayName`
@@ -21,6 +21,14 @@
 #### Scenario: 兩者皆空
 - **WHEN** 建立送件人時 `phone` 與 `displayName` 皆未提供
 - **THEN** 回應 4xx，且不建立資料
+
+#### Scenario: 無地址可建檔
+- **WHEN** 以空地址（未傳、null 或全空白）呼叫 `POST /api/cases` 新建送件人或 `POST|PUT /api/senders`
+- **THEN** 回 2xx 且送件人建立／更新成功，地址存為 null，查詢與匯出顯示為空
+
+#### Scenario: 地址仍可正常填寫
+- **WHEN** 以非空地址建立或更新送件人
+- **THEN** 地址去空白後儲存，行為與既有一致
 
 ### Requirement: 送件人去重與合併
 
@@ -145,3 +153,43 @@ VIEWER 角色 SHALL NOT 取得送件人姓名、電話與地址，但 SHALL 可�
 #### Scenario: 操作欄不可排序
 - **WHEN** 檢視操作欄
 - **THEN** 不提供排序
+
+### Requirement: 送件人電話候選 4 碼門檻
+
+送件人候選搜尋中，電話欄位 SHALL 僅在輸入 4 碼以上時觸發後端搜尋；未達門檻 SHALL 不發請求。
+
+#### Scenario: 電話未達門檻不查詢
+- **WHEN** 電話輸入少於 4 碼
+- **THEN** 系統不呼叫送件人搜尋 API
+
+#### Scenario: 電話達門檻查詢
+- **WHEN** 電話輸入 4 碼以上
+- **THEN** 系統可呼叫搜尋並回傳候選
+
+### Requirement: 送件人編輯獨立頁面
+
+送件人編輯 SHALL 由獨立頁面提供，而非 popup，其版面與 `CaseFormView.vue` 的「送件人資料」卡片一致（`card shadow-sm` + `card-header bg-success`，欄位含姓名、顯示名稱、電話、地址（選填）、縣市/鄉鎮連動、身分別，操作按鈕含儲存/更新/取消編輯）。使用者於送件人管理列表點擊「編輯」SHALL 導向編輯頁面，頁面 SHALL 以 `GET /api/senders/:id` 載入既有資料並以 `PUT /api/senders/:id` 提交更新，並提供 inline 驗證與 API 錯誤映射（`400 驗證錯誤`、`409 衝突`）。
+
+#### Scenario: 導向編輯頁面
+- **WHEN** 使用者在送件人管理列表點擊編輯
+- **THEN** 導向獨立編輯頁面並載入該送件人資料，頁面版面與案件編輯的送件人資料卡片一致
+
+#### Scenario: 提交更新成功
+- **WHEN** 使用者在編輯頁面修改欄位並提交且通過驗證
+- **THEN** 呼叫 `PUT /api/senders/:id`，成功後返回列表並顯示更新結果
+
+#### Scenario: 驗證失敗保留頁面
+- **WHEN** 提交資料未通過驗證或發生 `409`
+- **THEN** 錯誤訊息顯示於對應欄位或表單頂部，頁面不跳轉
+
+### Requirement: 送件人編輯頁保持篩選與導航狀態
+
+送件人編輯頁 SHALL 保持列表的篩選結果（關鍵字/身分別/縣市/鄉鎮）、分頁（page/size）與排序狀態（sortStates），支援在當前篩選結果內進行上一筆/下一筆導航，且返回列表時 SHALL 恢復原篩選/分頁/排序而不重置。
+
+#### Scenario: 上一筆下一筆導航保持篩選
+- **WHEN** 使用者在編輯頁點擊上一筆或下一筆
+- **THEN** 依當前列表的篩選與排序結果決定的 ID 序列導向相鄰送件人的編輯頁
+
+#### Scenario: 返回列表恢復狀態
+- **WHEN** 使用者從編輯頁返回列表（儲存後或取消）
+- **THEN** 列表的篩選、分頁與排序恢復為進入編輯前的狀態

@@ -193,3 +193,139 @@ STAFF/ADMIN SHALL 可將案件由 `PENDING` 標記為 `RESOLVED`；ADMIN SHALL �
 #### Scenario: 同名以帳號區分
 - **WHEN** 存在兩筆 `王小明`（帳號 `wang1`、`wang2`）
 - **THEN** 案件表單顯示兩列可辨帳號，勾選後以各自 `id` 提交
+
+### Requirement: 案件表單內內聯參照原子建立
+
+`POST /api/cases` 與 `PUT /api/cases/{id}` 在建立或更新案件時，對於在表單內現場新增的作物與簽名人 SHALL 以內聯欄位於同一交易內原子建立並關聯，交易失敗 SHALL 全回滾且放棄案件時 SHALL 不產生任何參照殘留。具體為：`inlineCrop: {name, cropCategoryId}` 若提供 SHALL 於交易內建立 `Crop`（同分類同名 `409` 去重，成功則復用或新建），`inlineIdentifiers: string[]` 若提供 SHALL 於交易內建立 `Identifier`（`user_id == null`、`active=true`，同名 `active=true` 則復用）；建立後取得之 `id` SHALL 自動加入案件的 `cropId` / `identifierIds` 關聯並與案件一併提交。前端「新增作物／簽名人」在案件提交前 SHALL 僅為本地暫存，不呼叫 `POST /admin/ref/*`，放棄（取消、導回列表、重新整理） SHALL 丟棄暫存且不呼叫後端。
+
+#### Scenario: 空表單新增作物後放棄不落庫
+- **WHEN** STAFF 在新增案件表單內以 `inlineCrop: {name:"新作物A", cropCategoryId:1}` 暫存作物後，未提交而按取消返回列表
+- **THEN** 後端 `crops` 不含「新作物A」，重新進入表單下拉亦無該項
+
+#### Scenario: 內聯作物隨案件一併提交才可見
+- **WHEN** STAFF 以 `inlineCrop: {name:"新作物B", cropCategoryId:1}` 併入 `POST /api/cases` 提交
+- **THEN** 回應 `201` 且 `GET /api/ref/crop-categories` 可見該作物，案件 `cropName` 為「新作物B」，交易內去重生效
+
+#### Scenario: 內聯簽名人原子建立
+- **WHEN** STAFF 以 `inlineIdentifiers: ["新簽名人X"]` 併入 `POST /api/cases` 提交
+- **THEN** `GET /api/ref/identifiers` 可見該簽名人且案件 `identifiers` 含其 `id`，若同名 `active=true` 已存在則復用既有 `id`
+
+#### Scenario: 內聯與既有 id 併用
+- **WHEN** 請求同時含 `cropId: 36` 與 `inlineCrop: {name:"新作物C", ...}` 或同時含 `identifierIds:[1]` 與 `inlineIdentifiers:["新簽名人Y"]`
+- **THEN** 系統 SHALL 以顯式 `cropId`/`identifierIds` 為準或合併兩者（`crop` 以 `inline` 覆蓋顯式，`identifiers` 為並集），文件化其一且不產生重複
+
+#### Scenario: 交易失敗全回滾
+- **WHEN** `POST /api/cases` 含 `inlineCrop` 但案件必填 `receiveDate` 缺失而回 `400`
+- **THEN** `inlineCrop` 對應的作物亦未落庫，`GET /api/ref/crop-categories` 無該項
+
+#### Scenario: 編輯時內聯新增亦原子
+- **WHEN** STAFF 編輯既有案件時以 `inlineIdentifiers: ["編輯新增簽名人"]` 併入 `PUT /api/cases/{id}`
+- **THEN** 僅在更新成功時該簽名人可見，放棄編輯則不產生
+
+#### Scenario: 放棄編輯不殘留
+- **WHEN** STAFF 在編輯頁暫存 `inlineCrop` 後未提交而取消
+- **THEN** 該暫存作物不落庫，列表與管理頁均不可見
+
+### Requirement: 案件表單診斷簽名人區塊獨立
+
+案件新增／編輯表單的「診斷簽名人（可複選）」區塊 SHALL 為獨立卡片（`card shadow-sm`），與「防治建議」上下分離而非左右併排。清單 SHALL 以「顯示名稱-徽章-帳號」為一組，採左右雙欄（`col-md-6`）網格排列，每組含勾選框、顯示名稱、身分別徽章與帳號。既有勾選與新增行為維持不變。
+
+#### Scenario: 簽名人與防治建議併排
+- **WHEN** 開啟案件新增或編輯表單
+- **THEN** 診斷簽名人區塊為獨立卡片，與防治建議區塊上下分離（不再左右併排）
+
+#### Scenario: 三欄表格對齊
+- **WHEN** 檢視診斷簽名人清單
+- **THEN** 每組顯示名稱、徽章與帳號為一體，採左右雙欄排列（取代原三欄表格）
+
+### Requirement: 新增案件田區位置初隱
+
+新增案件（非編輯）時「田區位置」卡 SHALL 預設隱藏，僅在送件人已儲存或已載入（`form.senderId !== null`）後顯示；編輯既有案件時該卡 SHALL 一直可見。隱藏期間 SHALL 不阻擋送件人區塊操作，且案件提交時若田區位置仍未顯示則視為未選（與既有必填驗證一致）。
+
+#### Scenario: 新增時初隱
+- **WHEN** 使用者進入案件新增頁且尚未儲存/載入送件人
+- **THEN** 不顯示「田區位置」卡
+
+#### Scenario: 儲存送件人後顯示
+- **WHEN** 於新增頁點擊「儲存送件人」成功（`POST /api/senders` 回 200 且 `form.senderId` 被賦值）
+- **THEN** 顯示「田區位置」卡，可選縣市/鄉鎮市區與「和送件人相同」
+
+#### Scenario: 載入候選後顯示
+- **WHEN** 於新增頁透過模糊提示或「搜尋候選」選用既有送件人
+- **THEN** 顯示「田區位置」卡，且「和送件人相同」勾選時同步送件人縣市鄉鎮
+
+#### Scenario: 編輯時常顯
+- **WHEN** 進入案件編輯頁（`editId !== null`）
+- **THEN** 無論 `senderId` 狀態皆顯示「田區位置」卡
+
+### Requirement: 送件人取消一鍵清空
+
+新增案件時送件人區塊的「儲存送件人」旁 SHALL 常駐「取消」按鈕；點擊 SHALL 直接清空送件人輸入（`senderName/senderDisplayName/senderPhone/senderAddress` 置空、`senderDistrictId/senderTypeId` 與縣市選取回預設、`senderId` 置 `null`、`fieldDistrictId` 與「和送件人相同」重置），且 SHALL 不彈任何 `alert`/`Swal` 提示，亦不觸發模糊搜尋提示。已選用既有送件人的「取消編輯」（還原快照）按鈕 SHALL 保留，僅在 `form.senderId !== null && senderDirty` 時顯示，二者職責分離。
+
+#### Scenario: 一鍵清空
+- **WHEN** 於新增頁在送件人欄位輸入任意值後點擊「取消」
+- **THEN** 送件人四個文字欄位被清空，縣市/鄉鎮市區與身分別回到初始預設，`senderId` 為 `null`，且田區位置卡再次隱藏（因 `senderId` 已空）
+
+#### Scenario: 無提示
+- **WHEN** 點擊新增模式的「取消」
+- **THEN** 不出現任何 `Swal`/`alert`/`confirm` 彈窗
+
+#### Scenario: 不觸發模糊提示
+- **WHEN** 點擊「取消」後
+- **THEN** 不立即彈出「有相似的資料，是否帶入?」提示
+
+#### Scenario: 編輯模式不顯示此取消
+- **WHEN** 進入案件編輯頁
+- **THEN** 不顯示新增模式的「取消」按鈕（僅依既有邏輯顯示「取消編輯」）
+
+### Requirement: 作物下拉未選分類時禁用
+
+新增案件時，若未選擇作物類別，作物下拉 SHALL 為禁用狀態（`disabled`），且不接受輸入或選擇；選擇分類後 SHALL 啟用並顯示對應作物清單。
+
+#### Scenario: 未選分類禁用
+- **WHEN** 使用者開啟新增案件表單且尚未選擇作物類別
+- **THEN** 作物下拉為禁用，無法選擇
+
+#### Scenario: 選擇分類後啟用
+- **WHEN** 使用者選擇作物類別
+- **THEN** 作物下拉啟用並列出該類別作物
+
+### Requirement: 送件人電話候選門檻與 inline 呈現
+
+案件表單的送件人候選 SHALL 僅在電話輸入 4 碼以上時觸發搜尋；候選結果 SHALL 以 inline 下拉呈現於送件人卡內（與「取消沿用」同區域），而非 popup。候選操作：選擇既有送件人為「使用」，建立新送件人情境的按鈕文案 SHALL 為「使用」而非「沿用」，語意一致。
+
+#### Scenario: 電話未達 4 碼不搜尋
+- **WHEN** 使用者在電話欄輸入少於 4 碼
+- **THEN** 不呼叫候選搜尋
+
+#### Scenario: 電話達 4 碼觸發 inline 候選
+- **WHEN** 電話輸入達 4 碼以上
+- **THEN** 呼叫搜尋並於送件人卡內顯示 inline 候選下拉
+
+#### Scenario: 候選 inline 位置
+- **WHEN** 出現候選結果
+- **THEN** 候選下拉顯示於送件人卡內，與取消沿用提示同區域，而非 popup
+
+#### Scenario: 建立新送件人按鈕文案
+- **WHEN** 候選結果提供「建立新送件人」選項
+- **THEN** 按鈕顯示為「使用」而非「沿用」
+
+### Requirement: 診斷簽名人顯示條件
+
+診斷簽名人區塊 SHALL 僅在診斷結果（病蟲害因素）或防治建議（`hintIds`/`hintDescription`）有編輯時才顯示；預設 SHALL 不勾選任何簽名人，除非診斷內容有變更。
+
+#### Scenario: 未編輯診斷時隱藏
+- **WHEN** 使用者開啟新增案件表單且尚未編輯診斷結果或防治建議
+- **THEN** 診斷簽名人卡片不顯示，且 `identifierIds` 為空
+
+#### Scenario: 編輯診斷後顯示
+- **WHEN** 使用者編輯診斷結果或防治建議
+- **THEN** 診斷簽名人卡片顯示，可勾選簽名人
+
+### Requirement: 防治建議橫式排列
+
+防治建議（`hints`）的呈現 SHALL 由直式改為橫式排列，樣式參考被害部位的橫式多選（`flex-wrap`）。
+
+#### Scenario: 橫式顯示
+- **WHEN** 檢視防治建議區塊
+- **THEN** 選項以橫式多列呈現，而非直式單列
