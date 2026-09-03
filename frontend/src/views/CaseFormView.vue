@@ -449,7 +449,21 @@ async function loadRefs () {
   services.value = sv.data
   cities.value = ct.data
   senderTypes.value = st.data
-  identifiers.value = idf.data
+  identifiers.value = (idf.data as IdName[]) ?? []
+  // 新增案件時自動帶入當前使用者簽名人（後端兜底，前端預選提升 UX）
+  if (!editId && form.identifierIds.length === 0) {
+    try {
+      const me = await refApi.myIdentifier ()
+      const myId = (me.data as any)?.id ?? (me.data as any)?.identifierId
+      if (myId && !form.identifierIds.includes (myId)) form.identifierIds = [myId]
+    } catch {
+      const name = auth.user?.displayName
+      if (name) {
+        const found = identifiers.value.find ((i) => i.name === name)
+        if (found && !form.identifierIds.includes (found.id)) form.identifierIds = [found.id]
+      }
+    }
+  }
 
   // 建立模式：套用合理的預設值
   form.methodId = methods.value[0]?.id ?? 0

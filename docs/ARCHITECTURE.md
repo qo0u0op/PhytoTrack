@@ -65,6 +65,7 @@ HTTP 請求
 
 - 核心實體 **Case** (案件)：`@ManyToOne` 關聯 Sender、Method、Crop、Service、Delivery、User (createdBy)；`status` 為 `CaseStatus` 列舉 (`PENDING`/`RESOLVED`/`CLOSED`)，以 `@Enumerated (EnumType.ORDINAL)` 儲存，既有 `INTEGER 0/1/2` 直接對應 (無資料遷移)；`caseDescription` 為土壤、栽培、用藥紀錄 (對應紙本表單，對應舊 `pestDescription`，BREAKING 直接重建 DB)
 - 多對多關聯透過 Junction 表：CaseDamage、CaseHint、CasePestCategory (含 `pestNote` 學名：描述，同分類可多筆，無 `UNIQUE (case_id, pest_category_id)`)、CaseIdentifier
+- **Identifier**（診斷簽名人）：`@ManyToOne` 關聯 `User`（`user_id`），`IdentifierService.ensureForUser` 確保每位 `STAFF/ADMIN` 至少有一筆以 `displayName` 命名；建案時 `identifierIds` 為空自動帶入當前使用者簽名人（無則即時建立），`GET /api/ref/identifiers/me` 回當前使用者簽名人；`AccountService.updateProfile` 與角色升遷時同步更名
 - **Sender** (送件人)：`name` 可空、`displayName` (Line/FB 暱稱) 可空，`phone` 與 `displayName` 至少一有值 (Service 層檢查)；顯示規則 `name (displayName)` / `displayName` / `name`；`phone` 非空時以部分唯一索引防重；**不以 DB UNIQUE 強制合併**——建案時以前端候選彈窗人工確認沿用 (帶 `senderId`) 或新建；ADMIN 可硬刪除未被引用的送件人 (見 ADR-011)
 - **VIEWER 個資遮蔽**：`CaseService.toDetail/toSummary` 依當前角色判斷，VIEWER 的回應不含送件人姓名/電話/地址，但保留縣市鄉鎮與 `senderId`
 - **統計去重鍵**：不重複送件人以 `COALESCE (phone, displayName)` distinct 計數
@@ -147,6 +148,7 @@ types/    openapi-typescript 由 /v3/api-docs 自動生成的 API 型別 (與後
 | POST | /api/admin/ref/identifiers | ADMIN | 新增簽名人 |
 | PUT | /api/admin/ref/identifiers/{id} | ADMIN | 修改簽名人 |
 | DELETE | /api/admin/ref/identifiers/{id} | ADMIN | 刪除簽名人 (被引用時 409) |
+| GET | /api/ref/identifiers/me | STAFF+ | 當前使用者簽名人（自動確保存在） |
 | POST | /api/admin/ref/sender-types | ADMIN | 新增身分別 |
 | PUT | /api/admin/ref/sender-types/{id} | ADMIN | 修改身分別 |
 | DELETE | /api/admin/ref/sender-types/{id} | ADMIN | 刪除身分別 (被引用時 409) |

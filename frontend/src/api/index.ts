@@ -77,6 +77,7 @@ export const refApi = {
   cities: () => http.get ('/ref/cities'),
   senderTypes: () => http.get ('/ref/sender-types'),
   identifiers: () => http.get ('/ref/identifiers'),
+  myIdentifier: () => http.get ('/ref/identifiers/me'),
 }
 
 /** AI 診斷 API (後端代理 llama.cpp) */

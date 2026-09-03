@@ -1,6 +1,9 @@
 package com.d0w0b.phytotrack.controller;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -9,6 +12,12 @@ import com.d0w0b.phytotrack.dto.ReferenceDtos.CityResponse;
 import com.d0w0b.phytotrack.dto.ReferenceDtos.CropCategoryResponse;
 import com.d0w0b.phytotrack.dto.ReferenceDtos.IdNameResponse;
 import com.d0w0b.phytotrack.dto.ReferenceDtos.PestTypeResponse;
+import com.d0w0b.phytotrack.exception.ApiException;
+import com.d0w0b.phytotrack.models.Identifier;
+import com.d0w0b.phytotrack.models.User;
+import com.d0w0b.phytotrack.repository.UserRepository;
+import com.d0w0b.phytotrack.security.UserPrincipal;
+import com.d0w0b.phytotrack.service.IdentifierService;
 import com.d0w0b.phytotrack.service.ReferenceDataService;
 
 import java.util.List;
@@ -23,9 +32,15 @@ import java.util.List;
 public class ReferenceDataController {
 
   private final ReferenceDataService referenceDataService;
+  private final IdentifierService identifierService;
+  private final UserRepository userRepository;
 
-  public ReferenceDataController (ReferenceDataService referenceDataService) {
+  public ReferenceDataController (ReferenceDataService referenceDataService,
+      IdentifierService identifierService,
+      UserRepository userRepository) {
     this.referenceDataService = referenceDataService;
+    this.identifierService = identifierService;
+    this.userRepository = userRepository;
   }
 
   /** 作物分類 (含作物清單) */
@@ -86,5 +101,15 @@ public class ReferenceDataController {
   @GetMapping ("/identifiers")
   public ResponseEntity<List<IdNameResponse>> identifiers () {
     return ResponseEntity.ok (referenceDataService.identifiers ());
+  }
+
+  /** 當前使用者簽名人（STAFF/ADMIN 自動確保） */
+  @GetMapping ("/identifiers/me")
+  @PreAuthorize ("hasAnyRole ('STAFF','ADMIN')")
+  public ResponseEntity<IdNameResponse> myIdentifier (@AuthenticationPrincipal UserPrincipal principal) {
+    User user = userRepository.findById (principal.getUserId ())
+        .orElseThrow (() -> new ApiException ("USER_NOT_FOUND", HttpStatus.NOT_FOUND, "使用者不存在"));
+    Identifier identifier = identifierService.ensureForUser (user);
+    return ResponseEntity.ok (new IdNameResponse (identifier.getIdentifierId (), identifier.getIdentifier ()));
   }
 }
