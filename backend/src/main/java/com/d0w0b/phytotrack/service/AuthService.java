@@ -80,14 +80,18 @@ public class AuthService {
     if (userRepository.findByUsername (request.username ()).isPresent ()) {
       throw new ApiException ("USERNAME_TAKEN", HttpStatus.CONFLICT, "帳號已存在");
     }
-    // 信箱不再全域唯一檢查，僅由前端檢查按鈕提示
+    // 信箱非空時全域唯一（去空白、大小寫不敏感），與個人資料編輯一致
+    String email = request.email () == null ? null : request.email ().trim ();
+    if (email != null && !email.isEmpty () && userRepository.existsByEmailIgnoreCase (email)) {
+      throw new ApiException ("EMAIL_TAKEN", HttpStatus.CONFLICT, "電子信箱已被使用");
+    }
 
     User user = new User ();
     user.setUsername (request.username ());
     user.setDisplayName (request.displayName ());
     // 密碼以 BCrypt 單向雜湊儲存，絕不存明文
     user.setPassword (passwordEncoder.encode (request.password ()));
-    user.setEmail (request.email ());
+    user.setEmail (email == null || email.isEmpty () ? null : email);
     // 新使用者一律為檢視者 (Viewer)，管理員需由既有管理員調整
     user.setRole (User.Role.ROLE_VIEWER);
     user.setActive (true);
@@ -95,6 +99,23 @@ public class AuthService {
     return toResponse (userRepository.save (user));
   }
 
+  /**
+   * 帳號可用性（註冊語境）：去空白後為空視為不可用，避免空帳號被誤判可用。
+   */
+  @Transactional (readOnly = true)
+  public boolean isUsernameAvailable (String username) {
+    if (username == null || username.trim ().isEmpty ()) return false;
+    return !userRepository.existsByUsername (username.trim ());
+  }
+
+  /**
+   * 信箱可用性（註冊語境）：空值視為可用（選填），非空去空白、大小寫不敏感比對。
+   */
+  @Transactional (readOnly = true)
+  public boolean isEmailAvailable (String email) {
+    if (email == null || email.trim ().isEmpty ()) return true;
+    return !userRepository.existsByEmailIgnoreCase (email.trim ());
+  }
   /**
    * 登入：認證成功後簽發 JWT
    *

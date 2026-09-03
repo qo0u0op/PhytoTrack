@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import Swal from 'sweetalert2'
-import { userApi, accountApi } from '../api'
+import { userApi, accountApi, refAdminApi } from '../api'
 
 // 使用者資料 (對應後端 UserResponse)
 interface UserRow {
@@ -17,12 +17,26 @@ const users = ref<UserRow[]>([])
 const loading = ref (true)
 const deactivateRequests = ref<any[]>([])
 
+// 搜尋與停用顯示（前端本地過濾，疊加於分頁前；預設僅列啟用者）
+const searchQ = ref ('')
+const showInactive = ref (false)
+const filteredUsers = computed (() => {
+  const q = searchQ.value.trim ().toLowerCase ()
+  return users.value.filter ((u) => {
+    if (!showInactive.value && !u.active) return false
+    if (!q) return true
+    return u.username.toLowerCase ().includes (q)
+      || u.displayName.toLowerCase ().includes (q)
+      || (u.email ?? '').toLowerCase ().includes (q)
+  })
+})
+
 // 分頁 - 使用者
 const page = ref (0)
 const size = ref (10)
 const sizeOptions = [10, 20, 50, 100]
 const pageInput = ref (1)
-const total = computed (() => users.value.length)
+const total = computed (() => filteredUsers.value.length)
 const totalPages = computed (() => Math.max (1, Math.ceil (total.value / size.value)))
 watch (page, (v) => { pageInput.value = v + 1 })
 function goToPage (p: number) {
@@ -36,7 +50,8 @@ function onPageInputConfirm () {
   if (num > totalPages.value) num = totalPages.value
   goToPage (num - 1)
 }
-const pagedUsers = computed (() => users.value.slice (page.value * size.value, page.value * size.value + size.value))
+const pagedUsers = computed (() => filteredUsers.value.slice (page.value * size.value, page.value * size.value + size.value))
+watch ([searchQ, showInactive], () => { page.value = 0; pageInput.value = 1 })
 
 // 分頁 - 停用請求
 const reqPage = ref (0)
@@ -122,7 +137,37 @@ async function changeRole (u: UserRow, newRole: string) {
     await userApi.updateRole (u.userId, newRole)
     u.role = newRole
     Swal.fire ({ icon: 'success', title: '角色已更新', timer: 1200, showConfirmButton: false })
-  } catch {
+  } catch (e: any) {
+    const err = e?.response?.data
+    const code = err?.error?.code ?? err?.code
+    if (code === 'SIGNER_NAME_CONFLICT') {
+      const existingId = err?.error?.details?.existingIdentifierId ?? err?.details?.existingIdentifierId
+      const displayName = err?.error?.details?.displayName ?? u.displayName
+      const res2 = await Swal.fire ({
+        icon: 'question',
+        title: '名稱與既有簽名人重名',
+        text: `簽名人「${displayName}」已存在（ID ${existingId}），是否綁定至 ${u.username}？`,
+        showCancelButton: true,
+        confirmButtonText: '綁定',
+        cancelButtonText: '新建',
+      })
+      if (res2.isConfirmed && existingId) {
+        try {
+          await refAdminApi.bindIdentifier (existingId, u.userId)
+          await userApi.updateRole (u.userId, newRole, { force: true })
+          u.role = newRole
+          Swal.fire ({ icon: 'success', title: '已綁定並更新角色', timer: 1500, showConfirmButton: false })
+          return
+        } catch {}
+      } else {
+        try {
+          await userApi.updateRole (u.userId, newRole, { force: true })
+          u.role = newRole
+          Swal.fire ({ icon: 'success', title: '角色已更新（已新建簽名人）', timer: 1500, showConfirmButton: false })
+          return
+        } catch {}
+      }
+    }
     // 失敗時還原下拉
     const sel = document.querySelector (`select[data-user-id="${u.userId}"]`) as HTMLSelectElement | null
     if (sel) sel.value = u.role
@@ -178,6 +223,24 @@ async function resetPassword (u: UserRow) {
   <div class="container py-4">
     <h4 class="mb-4">使用者管理</h4>
 
+    <!-- 搜尋與停用顯示 -->
+    <div class="card shadow-sm mb-3">
+      <div class="card-body py-2">
+        <div class="row g-2 align-items-center">
+          <div class="col-md-4">
+            <input v-model="searchQ" type="text" class="form-control form-control-sm" placeholder="搜尋帳號 / 顯示名稱 / 信箱" />
+          </div>
+          <div class="col-auto">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="showInactiveUsers" v-model="showInactive" />
+              <label class="form-check-label small" for="showInactiveUsers">顯示已停用</label>
+            </div>
+          </div>
+          <div class="col-md-4 text-muted small">{{ total }} 筆</div>
+        </div>
+      </div>
+    </div>
+
     <!-- 分頁（使用者，>20 才顯示） -->
     <div v-if="total > 20" class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-3 mb-3">
       <div class="d-flex align-items-center gap-2">
@@ -216,7 +279,7 @@ async function resetPassword (u: UserRow) {
             <tr v-if="loading">
               <td colspan="7" class="text-center text-muted py-4">載入中…</td>
             </tr>
-            <tr v-else-if="users.length === 0">
+            <tr v-else-if="pagedUsers.length === 0">
               <td colspan="7" class="text-center text-muted py-4">尚無使用者</td>
             </tr>
             <tr v-for="u in pagedUsers" :key="u.userId">

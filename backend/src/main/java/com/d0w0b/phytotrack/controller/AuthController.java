@@ -4,9 +4,11 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.d0w0b.phytotrack.dto.AuthDtos.AuthResponse;
@@ -45,6 +47,20 @@ public class AuthController {
   @PostMapping ("/login")
   public ResponseEntity<AuthResponse> login (@Valid @RequestBody LoginRequest request) {
     return ResponseEntity.ok (authService.login (request));
+  }
+
+  /** 帳號可用性查詢 (公開端點，僅回布林值)：供註冊頁即時檢查 */
+  @GetMapping ("/check-username")
+  public ResponseEntity<java.util.Map<String, Object>> checkUsername (@RequestParam String username) {
+    boolean available = authService.isUsernameAvailable (username);
+    return ResponseEntity.ok (java.util.Map.of ("available", available, "username", username));
+  }
+
+  /** 信箱可用性查詢 (公開端點，僅回布林值)：供註冊頁即時檢查 */
+  @GetMapping ("/check-email")
+  public ResponseEntity<java.util.Map<String, Object>> checkEmail (@RequestParam String email) {
+    boolean available = authService.isEmailAvailable (email);
+    return ResponseEntity.ok (java.util.Map.of ("available", available, "email", email));
   }
 
   /** 查詢目前登入者資訊 */

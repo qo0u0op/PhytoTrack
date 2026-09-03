@@ -8,6 +8,9 @@ type LoginRequest = components['schemas']['LoginRequest']
 type RegisterRequest = components['schemas']['RegisterRequest']
 type AnalyzeRequest = components['schemas']['AnalyzeRequest']
 
+/** 前後端共用信箱格式（與後端 @Email 語意對齊） */
+export const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
 /** 認證相關 API */
 export const authApi = {
   login: (data: LoginRequest) => http.post ('/auth/login', data),
@@ -15,6 +18,8 @@ export const authApi = {
   me: () => http.post ('/auth/me'),
   logout: () => http.post ('/auth/logout'),
   abandonDeactivate: (data: LoginRequest) => http.post ('/auth/abandon-deactivate', data),
+  checkUsername: (username: string) => http.get ('/auth/check-username', { params: { username } }),
+  checkEmail: (email: string) => http.get ('/auth/check-email', { params: { email } }),
 }
 
 /** 案件 (Case) API */
@@ -76,8 +81,9 @@ export const refApi = {
   services: () => http.get ('/ref/services'),
   cities: () => http.get ('/ref/cities'),
   senderTypes: () => http.get ('/ref/sender-types'),
-  identifiers: () => http.get ('/ref/identifiers'),
+  identifiers: (includeInactive?: boolean) => http.get ('/ref/identifiers', { params: includeInactive ? { includeInactive: true } : {} }),
   myIdentifier: () => http.get ('/ref/identifiers/me'),
+  updateMyIdentifierActive: (id: number, active: boolean) => http.patch (`/ref/identifiers/${id}/active`, { active }),
 }
 
 /** AI 診斷 API (後端代理 llama.cpp) */
@@ -89,7 +95,8 @@ export const aiApi = {
 /** 使用者管理 API (限管理者) */
 export const userApi = {
   list: () => http.get ('/admin/users'),
-  updateRole: (id: number, role: string) => http.patch (`/admin/users/${id}/role`, { role }),
+  updateRole: (id: number, role: string, opts?: { bindIdentifierId?: number; force?: boolean }) =>
+    http.patch (`/admin/users/${id}/role`, { role, ...opts }),
   updateActive: (id: number, active: boolean) =>
     http.patch (`/admin/users/${id}/active`, { active }),
   resetPassword: (id: number, newPassword: string) =>
@@ -136,6 +143,8 @@ export const refAdminApi = {
   createIdentifier: (data: { name: string }) => http.post ('/admin/ref/identifiers', data),
   updateIdentifier: (id: number, data: { name: string }) => http.put (`/admin/ref/identifiers/${id}`, data),
   deleteIdentifier: (id: number) => http.delete (`/admin/ref/identifiers/${id}`),
+  updateIdentifierActive: (id: number, active: boolean) => http.patch (`/admin/ref/identifiers/${id}/active`, { active }),
+  bindIdentifier: (id: number, userId: number) => http.post (`/admin/ref/identifiers/${id}/bind`, { userId }),
   // sender-types
   createSenderType: (data: { name: string }) => http.post ('/admin/ref/sender-types', data),
   updateSenderType: (id: number, data: { name: string }) => http.put (`/admin/ref/sender-types/${id}`, data),

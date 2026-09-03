@@ -4,6 +4,7 @@ import { createPinia } from 'pinia'
 // Bootstrap 樣式與 JS (下拉選單、折疊選單等互動元件)
 import 'bootstrap/dist/css/bootstrap.min.css'
 import 'bootstrap/dist/js/bootstrap.bundle.min.js'
+import 'bootstrap-icons/font/bootstrap-icons.css'
 
 import './style.css'
 import App from './App.vue'

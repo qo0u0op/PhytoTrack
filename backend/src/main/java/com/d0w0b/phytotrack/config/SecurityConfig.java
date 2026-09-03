@@ -61,7 +61,7 @@ public class SecurityConfig {
         .exceptionHandling (e -> e.authenticationEntryPoint (new RestAuthenticationEntryPoint ()))
         .authorizeHttpRequests (auth -> auth
             // 公開：註冊與登入、放棄停用申請
-            .requestMatchers ("/api/auth/register", "/api/auth/login", "/api/auth/abandon-deactivate").permitAll ()
+            .requestMatchers ("/api/auth/register", "/api/auth/login", "/api/auth/abandon-deactivate", "/api/auth/check-username", "/api/auth/check-email").permitAll ()
             // 公開：llama-server 健康檢查
             .requestMatchers ("/api/ai/health").permitAll ()
             // 公開：OpenAPI 文件與 Swagger UI

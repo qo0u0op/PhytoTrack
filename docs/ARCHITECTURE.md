@@ -118,7 +118,9 @@ types/    openapi-typescript 由 /v3/api-docs 自動生成的 API 型別 (與後
 
 | 方法 | 路徑 | 權限 | 說明 |
 |------|------|------|------|
-| POST | /api/auth/register | 公開 | 註冊 (預設 VIEWER) |
+| POST | /api/auth/register | 公開 | 註冊 (預設 VIEWER)；帳號重複 409 `USERNAME_TAKEN`，非空信箱重複 409 `EMAIL_TAKEN` |
+| GET | /api/auth/check-username | 公開 | 帳號可用性查詢，僅回 `{ available }`（空值視為不可用） |
+| GET | /api/auth/check-email | 公開 | 信箱可用性查詢，僅回 `{ available }`（空值視為可用） |
 | POST | /api/auth/login | 公開 | 登入並取得 JWT |
 | POST | /api/auth/me | 登入 | 目前使用者 |
 | POST | /api/auth/logout | 登入 | 登出 (JWT 無狀態，前端丟棄 token) |
