@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { aiApi } from '../api'
+import { useAuthStore } from '../stores/auth'
+
+const auth = useAuthStore ()
 
 // llama.cpp 模型健康狀態 (後端代理檢查，公開端點)
 const modelHealthy = ref<boolean | null>(null)
@@ -24,7 +27,7 @@ onMounted (async () => {
       <p class="mb-4">
         協助農友辨識病蟲害、記錄診斷案件，並以本機 AI 模型 (llama.cpp) 提供初步防治建議。
       </p>
-      <div class="d-flex justify-content-center gap-2">
+      <div v-if="!auth.isAuthenticated" class="d-flex justify-content-center gap-2">
         <router-link class="btn btn-light btn-lg" to="/login">立即登入</router-link>
         <router-link class="btn btn-outline-light btn-lg" to="/register">建立帳號</router-link>
       </div>
