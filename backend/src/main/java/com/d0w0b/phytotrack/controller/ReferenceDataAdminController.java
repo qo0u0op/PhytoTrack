@@ -4,6 +4,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -11,6 +12,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.d0w0b.phytotrack.dto.ReferenceDtos.ActiveUpdateRequest;
+import com.d0w0b.phytotrack.dto.ReferenceDtos.BindSignerRequest;
 import com.d0w0b.phytotrack.dto.ReferenceDtos.CropCreateRequest;
 import com.d0w0b.phytotrack.dto.ReferenceDtos.CropUpdateRequest;
 import com.d0w0b.phytotrack.dto.ReferenceDtos.CropCategoryCreateRequest;
@@ -20,6 +23,11 @@ import com.d0w0b.phytotrack.dto.ReferenceDtos.IdNameResponse;
 import com.d0w0b.phytotrack.dto.ReferenceDtos.IdNameUpdateRequest;
 import com.d0w0b.phytotrack.dto.ReferenceDtos.PestCategoryCreateRequest;
 import com.d0w0b.phytotrack.dto.ReferenceDtos.PestCategoryUpdateRequest;
+import com.d0w0b.phytotrack.exception.ApiException;
+import com.d0w0b.phytotrack.models.Identifier;
+import com.d0w0b.phytotrack.repository.IdentifierRepository;
+import com.d0w0b.phytotrack.security.UserPrincipal;
+import com.d0w0b.phytotrack.service.IdentifierService;
 import com.d0w0b.phytotrack.service.ReferenceDataService;
 
 import jakarta.validation.Valid;
@@ -35,9 +43,15 @@ import jakarta.validation.Valid;
 public class ReferenceDataAdminController {
 
   private final ReferenceDataService service;
+  private final IdentifierRepository identifierRepository;
+  private final IdentifierService identifierService;
 
-  public ReferenceDataAdminController (ReferenceDataService service) {
+  public ReferenceDataAdminController (ReferenceDataService service,
+      @org.springframework.beans.factory.annotation.Autowired (required = false) IdentifierRepository identifierRepository,
+      @org.springframework.beans.factory.annotation.Autowired (required = false) IdentifierService identifierService) {
     this.service = service;
+    this.identifierRepository = identifierRepository;
+    this.identifierService = identifierService;
   }
 
   // ===== damages =====
@@ -141,6 +155,28 @@ public class ReferenceDataAdminController {
   public ResponseEntity<Void> deleteIdentifier (@PathVariable Long id) {
     service.deleteIdentifier (id);
     return ResponseEntity.noContent ().build ();
+  }
+
+  @PatchMapping ("/identifiers/{id}/active")
+  public ResponseEntity<IdNameResponse> updateIdentifierActive (@PathVariable Long id, @Valid @RequestBody ActiveUpdateRequest req,
+      @org.springframework.security.core.annotation.AuthenticationPrincipal UserPrincipal principal) {
+    if (Boolean.FALSE.equals (req.active ()) && principal != null && identifierRepository != null) {
+      boolean isAdmin = principal.getAuthorities ().stream ().anyMatch (a -> a.getAuthority ().equals ("ROLE_ADMIN"));
+      if (isAdmin) {
+        var opt = identifierRepository.findById (id);
+        if (opt.isPresent () && opt.get ().getUser () != null
+            && opt.get ().getUser ().getUserId ().equals (principal.getUserId ())) {
+          throw new ApiException ("SELF_DEACTIVATE_FORBIDDEN", HttpStatus.FORBIDDEN, "管理員不可停用自身簽名人");
+        }
+      }
+    }
+    return ResponseEntity.ok (service.updateIdentifierActive (id, req.active ()));
+  }
+
+  @PostMapping ("/identifiers/{id}/bind")
+  public ResponseEntity<IdNameResponse> bindIdentifier (@PathVariable Long id, @Valid @RequestBody BindSignerRequest req) {
+    Identifier bound = identifierService.bindToUser (id, req.userId ());
+    return ResponseEntity.ok (new IdNameResponse (bound.getIdentifierId (), bound.getIdentifier ()));
   }
 
   // ===== sender-types =====

@@ -39,6 +39,9 @@ public final class ReferenceDtos {
   public record IdNameResponse (Long id, String name) {
   }
 
+  public record IdentifierResponse (Long id, String name, boolean active, Long userId, String username) {
+  }
+
   /** 通用名稱寫入請求 (用於 damages/hints/methods/deliveries/services/identifiers/sender-types) */
   public record IdNameCreateRequest (@NotBlank (message = "名稱不可為空白")
       @Size (max = 100, message = "名稱不可超過 100 字元")
@@ -95,5 +98,13 @@ public final class ReferenceDtos {
       String name,
       @NotNull (message = "害物類型不可為空")
       Long pestTypeId) {
+  }
+
+  public record ActiveUpdateRequest (@NotNull (message = "啟用狀態不可為空")
+      Boolean active) {
+  }
+
+  public record BindSignerRequest (@NotNull (message = "使用者不可為空")
+      Long userId) {
   }
 }

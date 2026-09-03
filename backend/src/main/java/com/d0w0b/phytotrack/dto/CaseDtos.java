@@ -37,7 +37,8 @@ public final class CaseDtos {
 
       // 參照資料 (Reference Data) 的 ID
       @NotNull (message = "耕種方式不可為空") Long methodId,
-      @NotNull (message = "作物不可為空") Long cropId,
+      // 作物可由 cropId 指定，或以 inlineCrop 於同一交易內建立（提供時覆蓋 cropId；兩者皆無則由 Service 回 400）
+      Long cropId,
       @NotNull (message = "服務類別不可為空") Long serviceId,
       @NotNull (message = "送件方式不可為空") Long deliverId,
 
@@ -48,10 +49,27 @@ public final class CaseDtos {
       List<Long> hintIds,
       List<Long> pestCategoryIds,
       List<@Valid PestCategoryNote> pestCategoryWithNotes,
-      List<Long> identifierIds) {
+      List<Long> identifierIds,
+      List<@Valid InlineSigner> inlineIdentifiers,
+      @Valid InlineCrop inlineCrop) {
 
     public record PestCategoryNote (@NotNull (message = "病蟲害分類不可為空") Long pestCategoryId,
         @jakarta.validation.constraints.Size (max = 500, message = "害物備註不可超過 500 字元") String pestNote) {
+    }
+
+    public record InlineSigner (@NotBlank (message = "簽名人名稱不可為空白")
+        @jakarta.validation.constraints.Size (max = 100, message = "簽名人名稱不可超過 100 字元")
+        String name) {
+    }
+
+    public record InlineCrop (@NotBlank (message = "作物名稱不可為空白")
+        @jakarta.validation.constraints.Size (max = 100, message = "作物名稱不可超過 100 字元")
+        String name,
+        @NotNull (message = "作物分類不可為空") Long cropCategoryId) {
+    }
+
+    public CaseCreateRequest (LocalDate receiveDate, String cropScale, String damageScale, String caseDescription, String hintDescription, Long senderId, String senderName, String senderDisplayName, String senderPhone, String senderAddress, Long senderDistrictId, Long senderTypeId, Long methodId, Long cropId, Long serviceId, Long deliverId, Long fieldDistrictId, List<Long> damageIds, List<Long> hintIds, List<Long> pestCategoryIds, List<PestCategoryNote> pestCategoryWithNotes, List<Long> identifierIds) {
+      this (receiveDate, cropScale, damageScale, caseDescription, hintDescription, senderId, senderName, senderDisplayName, senderPhone, senderAddress, senderDistrictId, senderTypeId, methodId, cropId, serviceId, deliverId, fieldDistrictId, damageIds, hintIds, pestCategoryIds, pestCategoryWithNotes, identifierIds, null, null);
     }
   }
 
@@ -83,7 +101,20 @@ public final class CaseDtos {
       List<Long> hintIds,
       List<Long> pestCategoryIds,
       List<@Valid PestCategoryNote> pestCategoryWithNotes,
-      List<Long> identifierIds) {
+      List<Long> identifierIds,
+      List<@Valid InlineSigner> inlineIdentifiers,
+      @Valid InlineCrop inlineCrop) {
+
+    public record InlineSigner (@NotBlank (message = "簽名人名稱不可為空白")
+        @jakarta.validation.constraints.Size (max = 100, message = "簽名人名稱不可超過 100 字元")
+        String name) {
+    }
+
+    public record InlineCrop (@NotBlank (message = "作物名稱不可為空白")
+        @jakarta.validation.constraints.Size (max = 100, message = "作物名稱不可超過 100 字元")
+        String name,
+        @NotNull (message = "作物分類不可為空") Long cropCategoryId) {
+    }
 
     // 相容舊版 19 參數建構 (測試仍使用)
     public CaseUpdateRequest (LocalDate receiveDate, String cropScale, String damageScale,
@@ -95,7 +126,7 @@ public final class CaseDtos {
       this (receiveDate, cropScale, damageScale, caseDescription, hintDescription, status,
           methodId, cropId, serviceId, deliverId, null,
           null, senderName, null, senderPhone, senderAddress, senderDistrictId, senderTypeId,
-          damageIds, hintIds, pestCategoryIds, null, identifierIds);
+          damageIds, hintIds, pestCategoryIds, null, identifierIds, null, null);
     }
 
     // 相容 20 參數 (有 senderId/displayName，測試仍使用)
@@ -108,7 +139,7 @@ public final class CaseDtos {
       this (receiveDate, cropScale, damageScale, caseDescription, hintDescription, status,
           methodId, cropId, serviceId, deliverId, null,
           senderId, senderName, senderDisplayName, senderPhone, senderAddress, senderDistrictId, senderTypeId,
-          damageIds, hintIds, pestCategoryIds, null, identifierIds);
+          damageIds, hintIds, pestCategoryIds, null, identifierIds, null, null);
     }
 
     // 相容 22 參數 (無 fieldDistrictId，含 pestCategoryWithNotes，測試仍使用)
@@ -122,8 +153,10 @@ public final class CaseDtos {
       this (receiveDate, cropScale, damageScale, caseDescription, hintDescription, status,
           methodId, cropId, serviceId, deliverId, null,
           senderId, senderName, senderDisplayName, senderPhone, senderAddress, senderDistrictId, senderTypeId,
-          damageIds, hintIds, pestCategoryIds, pestCategoryWithNotes, identifierIds);
+          damageIds, hintIds, pestCategoryIds, pestCategoryWithNotes, identifierIds, null, null);
     }
+
+
 
     public record PestCategoryNote (@NotNull (message = "病蟲害分類不可為空") Long pestCategoryId,
         @jakarta.validation.constraints.Size (max = 500, message = "害物備註不可超過 500 字元") String pestNote) {

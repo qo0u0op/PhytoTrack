@@ -150,7 +150,7 @@ class UserAdminControllerTest {
   @Test
   @WithMockUser(roles = "ADMIN")
   void updateRole_shouldReturn404WhenUserNotFound() throws Exception {
-    when(authService.updateRole(eq(999L), any()))
+    when(authService.updateRole(eq(999L), org.mockito.ArgumentMatchers.anyString()))
         .thenThrow(new ApiException("USER_NOT_FOUND", HttpStatus.NOT_FOUND, "使用者不存在"));
 
     mockMvc.perform(patch("/api/admin/users/{id}/role", 999L)

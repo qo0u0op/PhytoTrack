@@ -490,7 +490,8 @@ CREATE INDEX IF NOT EXISTS idx_deactivate_requests_status ON deactivate_requests
 CREATE TABLE IF NOT EXISTS identifiers (
   identifier_id INTEGER PRIMARY KEY,
   identifier    TEXT    NOT NULL,
-  user_id       INTEGER REFERENCES users(user_id)
+  user_id       INTEGER REFERENCES users(user_id),
+  active        INTEGER NOT NULL DEFAULT 1
 );
 
 -- ============================================================

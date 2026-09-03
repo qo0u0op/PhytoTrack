@@ -79,6 +79,12 @@ const router = createRouter ({
       meta: { requiresAuth: true, adminOnly: true },
     },
     {
+      path: '/admin/signers',
+      name: 'signers-admin',
+      component: () => import ('../views/SignersView.vue'),
+      meta: { requiresAuth: true, adminOnly: true },
+    },
+    {
       path: '/account',
       name: 'account',
       component: () => import ('../views/AccountView.vue'),

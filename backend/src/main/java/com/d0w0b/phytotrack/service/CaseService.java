@@ -100,6 +100,7 @@ public class CaseService {
   private final IdentifierRepository identifierRepository;
   private final UserRepository userRepository;
   private final IdentifierService identifierService;
+  private final ReferenceDataService referenceDataService;
 
   @org.springframework.beans.factory.annotation.Autowired
   public CaseService (CaseRepository caseRepository,
@@ -116,7 +117,8 @@ public class CaseService {
                      PestCategoryRepository pestCategoryRepository,
                      IdentifierRepository identifierRepository,
                      @org.springframework.beans.factory.annotation.Autowired (required = false) UserRepository userRepository,
-                     @org.springframework.beans.factory.annotation.Autowired (required = false) IdentifierService identifierService) {
+                     @org.springframework.beans.factory.annotation.Autowired (required = false) IdentifierService identifierService,
+                     @org.springframework.beans.factory.annotation.Autowired (required = false) ReferenceDataService referenceDataService) {
     this.caseRepository = caseRepository;
     this.caseSearchViewRepository = caseSearchViewRepository;
     this.senderRepository = senderRepository;
@@ -132,6 +134,7 @@ public class CaseService {
     this.identifierRepository = identifierRepository;
     this.userRepository = userRepository;
     this.identifierService = identifierService;
+    this.referenceDataService = referenceDataService;
   }
 
   // 相容舊單元測試
@@ -150,7 +153,7 @@ public class CaseService {
                      IdentifierRepository identifierRepository) {
     this (caseRepository, caseSearchViewRepository, senderRepository, senderTypeRepository, districtRepository,
         methodRepository, cropRepository, serviceRepository, deliveryRepository, damageRepository, hintRepository,
-        pestCategoryRepository, identifierRepository, null, null);
+        pestCategoryRepository, identifierRepository, null, null, null);
   }
 
   /** 分頁查詢案件清單 (摘要)；經視圖 `v_case_search` 篩選後回補實體以保留遮蔽 */
@@ -188,16 +191,47 @@ public class CaseService {
     return toDetail (findByIdOrThrow (id));
   }
 
-  /** 建立案件：若 identifierIds 空則自動帶入當前使用者簽名人 */
+  /** 建立案件：若 identifierIds 與 inline 皆空則自動帶入當前使用者簽名人，inline 原子建非 user */
   @Transactional
   public CaseResponse create (CaseCreateRequest request) {
     List<Long> identifierIds = request.identifierIds ();
-    if ((identifierIds == null || identifierIds.isEmpty ()) && identifierService != null && userRepository != null) {
+    var inlines = request.inlineIdentifiers ();
+    boolean hasInline = inlines != null && !inlines.isEmpty ();
+    // 僅當兩者皆空才自動帶入
+    if ((identifierIds == null || identifierIds.isEmpty ()) && !hasInline && identifierService != null && userRepository != null) {
       User current = getCurrentUserOrNull ();
       if (current != null) {
         Identifier auto = identifierService.ensureForUser (current);
         identifierIds = List.of (auto.getIdentifierId ());
       }
+    }
+    // 內聯作物：同一交易內先建表（同分類同名復用），取得 id 後覆蓋顯式 cropId
+    Long effectiveCropId = request.cropId ();
+    if (request.inlineCrop () != null) {
+      var crop = referenceDataService.findOrCreateCrop (request.inlineCrop ().name (), request.inlineCrop ().cropCategoryId ());
+      effectiveCropId = crop.getCropId ();
+    }
+    if (effectiveCropId == null) {
+      throw new ApiException ("VALIDATION_ERROR", HttpStatus.BAD_REQUEST, "作物不可為空");
+    }
+    // 處理 inline 原子建（user=null，復用同名 active，正規化比對）
+    List<Long> inlineIds = new ArrayList<>();
+    if (hasInline) {
+      for (var inline : inlines) {
+        String name = IdentifierNames.display (inline.name ());
+        if (name.isEmpty ()) continue;
+        inlineIds.add (referenceDataService.findOrCreateIdentifier (name).getIdentifierId ());
+      }
+    }
+    List<Long> finalIdentifierIds;
+    if (!inlineIds.isEmpty () && identifierIds != null && !identifierIds.isEmpty ()) {
+      finalIdentifierIds = new ArrayList<>(identifierIds);
+      finalIdentifierIds.addAll (inlineIds);
+      finalIdentifierIds = new ArrayList<>(new java.util.LinkedHashSet<>(finalIdentifierIds));
+    } else if (!inlineIds.isEmpty ()) {
+      finalIdentifierIds = inlineIds;
+    } else {
+      finalIdentifierIds = identifierIds;
     }
     // 先驗證所有參照，避免 sender 已落庫後才因其他參照不存在而回滾前的非原子中間狀態 (ACID)
     if (request.senderId () != null) {
@@ -216,7 +250,7 @@ public class CaseService {
       }
     }
     getRef (methodRepository, request.methodId (), "耕種方式");
-    getRef (cropRepository, request.cropId (), "作物");
+    getRef (cropRepository, effectiveCropId, "作物");
     getRef (serviceRepository, request.serviceId (), "服務類別");
     getRef (deliveryRepository, request.deliverId (), "送件方式");
     if (request.fieldDistrictId () == null) {
@@ -242,9 +276,12 @@ public class CaseService {
         getRef (pestCategoryRepository, id, "病蟲害分類");
       }
     }
-    if (identifierIds != null) {
-      for (Long id : new HashSet<>(identifierIds)) {
-        getRef (identifierRepository, id, "診斷簽名人");
+    if (finalIdentifierIds != null) {
+      for (Long id : new HashSet<>(finalIdentifierIds)) {
+        Identifier signer = getRef (identifierRepository, id, "診斷簽名人");
+        if (!signer.isActive ()) {
+          throw new ApiException ("SIGNER_INACTIVE", HttpStatus.CONFLICT, "簽名人已停用，請重新選擇");
+        }
       }
     }
 
@@ -259,7 +296,7 @@ public class CaseService {
 
     caseEntity.setSender (findOrCreateSender (request));
     caseEntity.setMethod (getRef (methodRepository, request.methodId (), "耕種方式"));
-    caseEntity.setCrop (getRef (cropRepository, request.cropId (), "作物"));
+    caseEntity.setCrop (getRef (cropRepository, effectiveCropId, "作物"));
     caseEntity.setService (getRef (serviceRepository, request.serviceId (), "服務類別"));
     caseEntity.setDelivery (getRef (deliveryRepository, request.deliverId (), "送件方式"));
     caseEntity.setFieldDistrict (getRef (districtRepository, request.fieldDistrictId (), "田區位置"));
@@ -277,7 +314,7 @@ public class CaseService {
     } else {
       addPestCategories (caseEntity, request.pestCategoryIds ());
     }
-    addIdentifiers (caseEntity, identifierIds);
+    addIdentifiers (caseEntity, finalIdentifierIds);
 
     caseRepository.save (caseEntity);
     return toDetail (caseEntity);
@@ -294,9 +331,22 @@ public class CaseService {
           "案件已結案，僅管理者可修改內容");
     }
 
-    // identifierIds 空陣列自動帶入當前使用者簽名人（null 則保留原值）
+    // identifierIds 空陣列自動帶入（僅當 inline 亦空）與 inline 原子建
     CaseUpdateRequest effectiveRequest = request;
-    if (request.identifierIds () != null && request.identifierIds ().isEmpty () && identifierService != null && userRepository != null) {
+    // 內聯作物：同一交易內先建表（同分類同名復用），取得 id 後覆蓋 cropId
+    if (request.inlineCrop () != null) {
+      var inlineCrop = referenceDataService.findOrCreateCrop (request.inlineCrop ().name (), request.inlineCrop ().cropCategoryId ());
+      effectiveRequest = new CaseUpdateRequest (request.receiveDate (), request.cropScale (), request.damageScale (),
+          request.caseDescription (), request.hintDescription (), request.status (),
+          request.methodId (), inlineCrop.getCropId (), request.serviceId (), request.deliverId (),
+          request.fieldDistrictId (),
+          request.senderId (), request.senderName (), request.senderDisplayName (), request.senderPhone (), request.senderAddress (),
+          request.senderDistrictId (), request.senderTypeId (),
+          request.damageIds (), request.hintIds (), request.pestCategoryIds (), request.pestCategoryWithNotes (),
+          request.identifierIds (), request.inlineIdentifiers (), request.inlineCrop ());
+    }
+    boolean hasInlineUpd = request.inlineIdentifiers () != null && !request.inlineIdentifiers ().isEmpty ();
+    if (request.identifierIds () != null && request.identifierIds ().isEmpty () && !hasInlineUpd && identifierService != null && userRepository != null) {
       User current = getCurrentUserOrNull ();
       if (current != null) {
         Identifier auto = identifierService.ensureForUser (current);
@@ -307,8 +357,43 @@ public class CaseService {
             request.senderId (), request.senderName (), request.senderDisplayName (), request.senderPhone (), request.senderAddress (),
             request.senderDistrictId (), request.senderTypeId (),
             request.damageIds (), request.hintIds (), request.pestCategoryIds (), request.pestCategoryWithNotes (),
-            List.of (auto.getIdentifierId ()));
+            List.of (auto.getIdentifierId ()), request.inlineIdentifiers (), request.inlineCrop ());
       }
+    }
+    // 處理 inline 原子建（user IS NULL，復用同名 active，正規化比對）
+    if (hasInlineUpd) {
+      List<Long> inlineIds = new ArrayList<>();
+      for (var inline : request.inlineIdentifiers ()) {
+        String name = IdentifierNames.display (inline.name ());
+        if (name.isEmpty ()) continue;
+        inlineIds.add (referenceDataService.findOrCreateIdentifier (name).getIdentifierId ());
+      }
+      List<Long> baseIds = effectiveRequest.identifierIds ();
+      List<Long> combined;
+      if (baseIds != null) {
+        if (!baseIds.isEmpty ()) {
+          combined = new ArrayList<>(baseIds);
+          combined.addAll (inlineIds);
+          combined = new ArrayList<>(new java.util.LinkedHashSet<>(combined));
+        } else {
+          combined = inlineIds;
+        }
+      } else {
+        // null 保留原值，需與原案件現有簽名人合併
+        List<Long> existingIds = caseEntity.getCaseIdentifiers ().stream ()
+            .map (j -> j.getIdentifier ().getIdentifierId ()).collect (Collectors.toList ());
+        combined = new ArrayList<>(existingIds);
+        combined.addAll (inlineIds);
+        combined = new ArrayList<>(new java.util.LinkedHashSet<>(combined));
+      }
+      effectiveRequest = new CaseUpdateRequest (effectiveRequest.receiveDate (), effectiveRequest.cropScale (), effectiveRequest.damageScale (),
+          effectiveRequest.caseDescription (), effectiveRequest.hintDescription (), effectiveRequest.status (),
+          effectiveRequest.methodId (), effectiveRequest.cropId (), effectiveRequest.serviceId (), effectiveRequest.deliverId (),
+          effectiveRequest.fieldDistrictId (),
+          effectiveRequest.senderId (), effectiveRequest.senderName (), effectiveRequest.senderDisplayName (), effectiveRequest.senderPhone (), effectiveRequest.senderAddress (),
+          effectiveRequest.senderDistrictId (), effectiveRequest.senderTypeId (),
+          effectiveRequest.damageIds (), effectiveRequest.hintIds (), effectiveRequest.pestCategoryIds (), effectiveRequest.pestCategoryWithNotes (),
+          combined, effectiveRequest.inlineIdentifiers (), effectiveRequest.inlineCrop ());
     }
 
     // 先驗證所有參照 ID (fail-fast)，避免部分欄位已寫入後才因參照不存在而回滾，確保原子性語意清晰
@@ -352,7 +437,7 @@ public class CaseService {
       caseEntity.setMethod (getRef (methodRepository, request.methodId (), "耕種方式"));
     }
     if (request.cropId () != null) {
-      caseEntity.setCrop (getRef (cropRepository, request.cropId (), "作物"));
+    caseEntity.setCrop (getRef (cropRepository, effectiveRequest.cropId (), "作物"));
     }
     if (request.serviceId () != null) {
       caseEntity.setService (getRef (serviceRepository, request.serviceId (), "服務類別"));

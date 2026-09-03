@@ -61,7 +61,12 @@ public class AccountService {
     String trimmedEmail = email != null ? email.trim() : null;
     if (trimmedEmail != null && trimmedEmail.isEmpty ()) trimmedEmail = null;
 
-    user.setDisplayName (displayName.trim ());
+    String newName = displayName.trim ();
+    if (!newName.equals (user.getDisplayName ())) {
+      assertDisplayNameAvailable (newName, user.getUserId ());
+    }
+
+    user.setDisplayName (newName);
     user.setEmail (trimmedEmail);
     userRepository.save (user);
     // 同步簽名人：displayName 變更時更名首個 Identifier，無則建立
@@ -69,17 +74,28 @@ public class AccountService {
     return toResponse (user);
   }
 
+  private void assertDisplayNameAvailable (String newName, Long currentUserId) {
+    if (identifierRepository == null) return;
+    // 僅擋非使用者同名；同名同姓的使用者簽名人允許並存（以帳號區分），提權時走綁定流程
+    boolean duplicate = identifierRepository.findByUserIsNullAndActiveTrue ().stream ()
+        .anyMatch (i -> IdentifierNames.equalsNormalized (i.getIdentifier (), newName));
+    if (duplicate) {
+      throw new ApiException ("DISPLAY_NAME_EXISTS", HttpStatus.CONFLICT, "顯示名稱已存在");
+    }
+  }
+
   private void syncIdentifierForDisplayName (User user) {
     if (identifierRepository == null) return;
     String displayName = user.getDisplayName ();
     if (displayName == null || displayName.isBlank ()) return;
-    // VIEWER 不強制，但有則同步更名
-    List<Identifier> existing = identifierRepository.findByUserUserId (user.getUserId ());
-    if (!existing.isEmpty ()) {
-      Identifier first = existing.get (0);
-      if (!displayName.trim ().equals (first.getIdentifier ())) {
-        first.setIdentifier (displayName.trim ());
+    List<Identifier> active = identifierRepository.findByUserUserIdAndActiveTrueOrderByIdentifierIdAsc (user.getUserId ());
+    if (!active.isEmpty ()) {
+      Identifier first = active.get (0);
+      if (!IdentifierNames.equalsNormalized (first.getIdentifier (), displayName)) {
+        first.setIdentifier (IdentifierNames.display (displayName));
       }
+    } else if (!identifierRepository.findByUserUserId (user.getUserId ()).isEmpty ()) {
+      // 僅有已停用，不更名，交由 ensureForUser 於下次建案時新建
     } else if ((user.getRole () == User.Role.ROLE_STAFF || user.getRole () == User.Role.ROLE_ADMIN)
         && identifierService != null) {
       identifierService.ensureForUser (user);

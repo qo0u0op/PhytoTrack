@@ -17,4 +17,18 @@ public interface IdentifierRepository extends JpaRepository<Identifier, Long> {
   Optional<Identifier> findByIdentifier (String identifier);
 
   List<Identifier> findByIdentifierContainingIgnoreCase (String keyword);
+
+  List<Identifier> findByActiveTrue ();
+
+  List<Identifier> findByUserUserIdAndActiveTrueOrderByIdentifierIdAsc (Long userId);
+
+  List<Identifier> findByActiveTrueOrderByIdentifierIdAsc ();
+
+  Optional<Identifier> findByIdentifierAndActiveTrueAndUserIsNull (String identifier);
+
+  List<Identifier> findByIdentifierAndActiveTrue (String identifier);
+
+  List<Identifier> findByUserIsNull ();
+
+  List<Identifier> findByUserIsNullAndActiveTrue ();
 }

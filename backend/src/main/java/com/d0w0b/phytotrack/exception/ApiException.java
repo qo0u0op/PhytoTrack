@@ -16,10 +16,20 @@ public class ApiException extends RuntimeException {
   /** 對應的 HTTP 狀態碼 (HTTP Status) */
   private final HttpStatus status;
 
+  private final java.util.Map<String, Object> details;
+
   public ApiException (String code, HttpStatus status, String message) {
     super (message);
     this.code = code;
     this.status = status;
+    this.details = null;
+  }
+
+  public ApiException (String code, HttpStatus status, String message, java.util.Map<String, Object> details) {
+    super (message);
+    this.code = code;
+    this.status = status;
+    this.details = details;
   }
 
   public String getCode () {
@@ -28,5 +38,9 @@ public class ApiException extends RuntimeException {
 
   public HttpStatus getStatus () {
     return status;
+  }
+
+  public java.util.Map<String, Object> getDetails () {
+    return details;
   }
 }

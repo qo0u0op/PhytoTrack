@@ -10,7 +10,6 @@ type TabKey =
   | 'methods'
   | 'deliveries'
   | 'services'
-  | 'identifiers'
   | 'senderTypes'
   | 'crops'
   | 'cropCategories'
@@ -32,7 +31,6 @@ const hints = ref<IdName[]>([])
 const methods = ref<IdName[]>([])
 const deliveries = ref<IdName[]>([])
 const services = ref<IdName[]>([])
-const identifiers = ref<IdName[]>([])
 const senderTypes = ref<IdName[]>([])
 const crops = ref<{ id: number; name: string; cropCategoryId?: number }[]>([])
 const cropCategories = ref<IdName[]>([])
@@ -43,14 +41,13 @@ const pestTypes = ref<{ id: number; name: string }[]>([])
 async function loadAll () {
   loading.value = true
   try {
-    const [damRes, hintRes, methodRes, deliverRes, serviceRes, identRes, senderTypeRes, cropCatRes, pestTypeRes] =
+    const [damRes, hintRes, methodRes, deliverRes, serviceRes, senderTypeRes, cropCatRes, pestTypeRes] =
       await Promise.all ([
         refApi.damages (),
         refApi.hints (),
         refApi.methods (),
         refApi.deliveries (),
         refApi.services (),
-        refApi.identifiers (),
         refApi.senderTypes (),
         refApi.cropCategories (),
         refApi.pestTypes (),
@@ -60,7 +57,6 @@ async function loadAll () {
     methods.value = (methodRes.data as IdName[]) ?? []
     deliveries.value = (deliverRes.data as IdName[]) ?? []
     services.value = (serviceRes.data as IdName[]) ?? []
-    identifiers.value = (identRes.data as IdName[]) ?? []
     senderTypes.value = (senderTypeRes.data as IdName[]) ?? []
     // cropCategories 含 crops
     const cats = cropCatRes.data as { id: number; name: string; crops: { id: number; name: string }[] }[]
@@ -88,7 +84,7 @@ onMounted (loadAll)
 
 // 通用新增/編輯/刪除處理
 async function handleCreate () {
-  if (['damages', 'hints', 'methods', 'deliveries', 'services', 'identifiers', 'senderTypes', 'cropCategories'].includes (currentTab.value)) {
+  if (['damages', 'hints', 'methods', 'deliveries', 'services', 'senderTypes', 'cropCategories'].includes (currentTab.value)) {
     const { value: name } = await Swal.fire ({
       title: '新增',
       input: 'text',
@@ -116,9 +112,6 @@ async function handleCreate () {
           break
         case 'services':
           await refAdminApi.createService ({ name: name.trim () })
-          break
-        case 'identifiers':
-          await refAdminApi.createIdentifier ({ name: name.trim () })
           break
         case 'senderTypes':
           await refAdminApi.createSenderType ({ name: name.trim () })
@@ -199,7 +192,7 @@ async function handleCreate () {
 }
 
 async function handleEdit (item: any) {
-  if (['damages', 'hints', 'methods', 'deliveries', 'services', 'identifiers', 'senderTypes', 'cropCategories'].includes (currentTab.value)) {
+  if (['damages', 'hints', 'methods', 'deliveries', 'services', 'senderTypes', 'cropCategories'].includes (currentTab.value)) {
     const { value: name } = await Swal.fire ({
       title: '編輯',
       input: 'text',
@@ -229,9 +222,6 @@ async function handleEdit (item: any) {
           break
         case 'services':
           await refAdminApi.updateService (item.id, { name: trimmed })
-          break
-        case 'identifiers':
-          await refAdminApi.updateIdentifier (item.id, { name: trimmed })
           break
         case 'senderTypes':
           await refAdminApi.updateSenderType (item.id, { name: trimmed })
@@ -330,9 +320,6 @@ async function handleDelete (item: any) {
       case 'services':
         await refAdminApi.deleteService (item.id)
         break
-      case 'identifiers':
-        await refAdminApi.deleteIdentifier (item.id)
-        break
       case 'senderTypes':
         await refAdminApi.deleteSenderType (item.id)
         break
@@ -357,7 +344,6 @@ const tabs: { key: TabKey; label: string }[] = [
   { key: 'methods', label: '耕種方式' },
   { key: 'deliveries', label: '送件方式' },
   { key: 'services', label: '服務類別' },
-  { key: 'identifiers', label: '簽名人' },
   { key: 'senderTypes', label: '身分別' },
   { key: 'cropCategories', label: '作物類別' },
 ]
@@ -376,8 +362,6 @@ const currentList = computed<any[]>(() => {
       return deliveries.value.filter ((d) => matchQ (d.name))
     case 'services':
       return services.value.filter ((d) => matchQ (d.name))
-    case 'identifiers':
-      return identifiers.value.filter ((d) => matchQ (d.name))
     case 'senderTypes':
       return senderTypes.value.filter ((d) => matchQ (d.name))
     case 'crops':
@@ -481,7 +465,7 @@ const pagedList = computed (() => {
               <th v-if="currentTab === 'pestCategories'" style="width:90px;min-width:90px">代碼</th>
               <th v-if="currentTab === 'pestCategories'" style="width:100px;min-width:100px">類型</th>
               <th v-if="currentTab === 'pestCategories'" style="width:70px;min-width:70px">排序</th>
-              <th class="text-end" style="width:130px;min-width:130px">操作</th>
+              <th class="text-end" style="width:180px;min-width:180px">操作</th>
             </tr>
           </thead>
           <tbody>

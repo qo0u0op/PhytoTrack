@@ -47,6 +47,9 @@ public class UserAdminController {
   @PatchMapping ("/{id}/role")
   @PreAuthorize ("hasRole ('ADMIN')")
   public ResponseEntity<UserResponse> updateRole (@PathVariable Long id, @Valid @RequestBody RoleUpdateRequest request) {
+    if (request.bindIdentifierId () != null || Boolean.TRUE.equals (request.force ())) {
+      return ResponseEntity.ok (authService.updateRole (id, request));
+    }
     return ResponseEntity.ok (authService.updateRole (id, request.role ()));
   }
 

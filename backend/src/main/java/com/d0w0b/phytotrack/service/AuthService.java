@@ -15,6 +15,7 @@ import com.d0w0b.phytotrack.dto.AuthDtos.RegisterRequest;
 import com.d0w0b.phytotrack.dto.AuthDtos.UserResponse;
 import com.d0w0b.phytotrack.exception.ApiException;
 import com.d0w0b.phytotrack.models.DeactivateRequest;
+import com.d0w0b.phytotrack.models.Identifier;
 import com.d0w0b.phytotrack.models.User;
 import com.d0w0b.phytotrack.repository.DeactivateRequestRepository;
 import com.d0w0b.phytotrack.repository.IdentifierRepository;
@@ -161,6 +162,12 @@ public class AuthService {
   /** 管理者調整角色 */
   @Transactional
   public UserResponse updateRole (Long userId, String roleStr) {
+    return updateRole (userId, new com.d0w0b.phytotrack.dto.AuthDtos.RoleUpdateRequest (roleStr));
+  }
+
+  @Transactional
+  public UserResponse updateRole (Long userId, com.d0w0b.phytotrack.dto.AuthDtos.RoleUpdateRequest request) {
+    String roleStr = request.role ();
     User user = userRepository.findById (userId)
         .orElseThrow (() -> new ApiException ("USER_NOT_FOUND", HttpStatus.NOT_FOUND, "使用者不存在"));
     User.Role role;
@@ -176,12 +183,45 @@ public class AuthService {
         throw new ApiException ("LAST_ADMIN_FORBIDDEN", HttpStatus.CONFLICT, "不可移除最後一位管理者");
       }
     }
+    // 若帶 bindIdentifierId，先綁定
+    if (request.bindIdentifierId () != null && identifierService != null) {
+      identifierService.bindToUser (request.bindIdentifierId (), userId);
+    }
+    // 撞名檢查：提權至 STAFF/ADMIN 且 displayName 撞 signer but not user
+    boolean force = Boolean.TRUE.equals (request.force ());
+    if (!force && (role == User.Role.ROLE_STAFF || role == User.Role.ROLE_ADMIN)
+        && identifierRepository != null && request.bindIdentifierId () == null) {
+      String displayName = user.getDisplayName ();
+      if (displayName != null && !displayName.isBlank ()) {
+        var existingOpt = identifierRepository.findByUserIsNullAndActiveTrue ().stream ()
+            .filter (i -> IdentifierNames.equalsNormalized (i.getIdentifier (), displayName))
+            .sorted (java.util.Comparator.comparing (Identifier::getIdentifierId))
+            .findFirst ();
+        if (existingOpt.isPresent ()) {
+          boolean userHasSame = identifierRepository.findByUserUserIdAndActiveTrueOrderByIdentifierIdAsc (userId).stream ()
+              .anyMatch (i -> IdentifierNames.equalsNormalized (i.getIdentifier (), displayName));
+          if (!userHasSame) {
+            java.util.Map<String, Object> details = java.util.Map.of ("existingIdentifierId", existingOpt.get ().getIdentifierId (), "displayName", IdentifierNames.display (displayName));
+            throw new ApiException ("SIGNER_NAME_CONFLICT", HttpStatus.CONFLICT, "顯示名稱與既有簽名人重名，是否綁定", details);
+          }
+        }
+      }
+    }
+    User.Role oldRole = user.getRole ();
     user.setRole (role);
     User saved = userRepository.save (user);
+    // 降級出 STAFF/ADMIN 時連動停用名下簽名人（歷史案件仍以 id 顯示）
+    if ((oldRole == User.Role.ROLE_STAFF || oldRole == User.Role.ROLE_ADMIN)
+        && role != User.Role.ROLE_STAFF && role != User.Role.ROLE_ADMIN
+        && identifierRepository != null) {
+      deactivateUserSigners (saved.getUserId ());
+    }
     // 升為 STAFF/ADMIN 時確保簽名人存在（VIEWER 不強制），相容舊單測 null 情況
     if ((role == User.Role.ROLE_STAFF || role == User.Role.ROLE_ADMIN)
         && identifierRepository != null && identifierService != null) {
-      if (identifierRepository.findByUserUserId (saved.getUserId ()).isEmpty ()) {
+      // 若已透過 bind 取得，則不需再建
+      boolean hasActive = !identifierRepository.findByUserUserIdAndActiveTrueOrderByIdentifierIdAsc (saved.getUserId ()).isEmpty ();
+      if (!hasActive) {
         identifierService.ensureForUser (saved);
       }
     }
@@ -208,7 +248,18 @@ public class AuthService {
       }
     }
     user.setActive (active);
-    return toResponse (userRepository.save (user));
+    User saved = userRepository.save (user);
+    // 停用帳號時連動停用名下簽名人（歷史案件仍以 id 顯示）
+    if (!active && identifierRepository != null) {
+      deactivateUserSigners (saved.getUserId ());
+    }
+    return toResponse (saved);
+  }
+
+  private void deactivateUserSigners (Long userId) {
+    for (var signer : identifierRepository.findByUserUserIdAndActiveTrueOrderByIdentifierIdAsc (userId)) {
+      signer.setActive (false);
+    }
   }
 
   private Long currentUserId () {

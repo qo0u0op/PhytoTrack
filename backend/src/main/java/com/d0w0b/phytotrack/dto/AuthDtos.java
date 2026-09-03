@@ -53,7 +53,12 @@ public final class AuthDtos {
 
   /** 管理者調整角色請求 */
   public record RoleUpdateRequest (@NotBlank (message = "角色不可為空白")
-      String role) {
+      String role,
+      Long bindIdentifierId,
+      Boolean force) {
+    public RoleUpdateRequest (String role) {
+      this (role, null, null);
+    }
   }
 
   /** 管理者啟停用帳號請求 */

@@ -169,9 +169,29 @@ public class ReferenceDataService {
   /** 診斷簽名人 */
   @Transactional (readOnly = true)
   public List<IdNameResponse> identifiers () {
-    return identifierRepository.findAll ().stream ()
-        .map (i -> new IdNameResponse (i.getIdentifierId (), i.getIdentifier ()))
+    return identifiers (false).stream ().map (r -> new IdNameResponse (r.id (), r.name ())).toList ();
+  }
+
+  @Transactional (readOnly = true)
+  public List<com.d0w0b.phytotrack.dto.ReferenceDtos.IdentifierResponse> identifiers (boolean includeInactive) {
+    List<Identifier> list = includeInactive ? identifierRepository.findAll ()
+        : identifierRepository.findByActiveTrue ();
+    return list.stream ()
+        .map (i -> new com.d0w0b.phytotrack.dto.ReferenceDtos.IdentifierResponse (i.getIdentifierId (), i.getIdentifier (), i.isActive (),
+            i.getUser () != null ? i.getUser ().getUserId () : null,
+            i.getUser () != null ? i.getUser ().getUsername () : null))
         .toList ();
+  }
+
+  @Transactional
+  public IdNameResponse updateIdentifierActive (Long id, boolean active) {
+    Identifier e = identifierRepository.findById (id)
+        .orElseThrow (() -> new ApiException ("REFERENCE_NOT_FOUND", HttpStatus.NOT_FOUND, "簽名人不存在"));
+    if (!active && e.isActive () && identifierRepository.findByActiveTrue ().size () <= 1) {
+      throw new ApiException ("LAST_ACTIVE_SIGNER", HttpStatus.CONFLICT, "不可停用最後一個啟用中簽名人");
+    }
+    e.setActive (active);
+    return new IdNameResponse (e.getIdentifierId (), e.getIdentifier ());
   }
 
   // ===== 寫入：IdName 通用類型 =====
@@ -308,28 +328,106 @@ public class ReferenceDataService {
 
   @Transactional
   public IdNameResponse createIdentifier (String name) {
-    Identifier e = new Identifier ();
-    e.setIdentifier (name.trim ());
-    identifierRepository.save (e);
-    return new IdNameResponse (e.getIdentifierId (), e.getIdentifier ());
+    String trimmed = IdentifierNames.display (name);
+    synchronized (("signer:" + IdentifierNames.normalize (trimmed)).intern ()) {
+      boolean exists = identifierRepository.findByActiveTrue ().stream ()
+          .anyMatch (i -> IdentifierNames.equalsNormalized (i.getIdentifier (), trimmed));
+      if (exists) {
+        throw new ApiException ("DISPLAY_NAME_EXISTS", HttpStatus.CONFLICT, "顯示名稱已存在");
+      }
+      Identifier e = new Identifier ();
+      e.setIdentifier (trimmed);
+      e.setActive (true);
+      try {
+        identifierRepository.save (e);
+      } catch (org.springframework.dao.DataIntegrityViolationException ex) {
+        throw new ApiException ("DISPLAY_NAME_EXISTS", HttpStatus.CONFLICT, "顯示名稱已存在");
+      }
+      return new IdNameResponse (e.getIdentifierId (), e.getIdentifier ());
+    }
+  }
+
+  /**
+   * 案件內聯共用：同分類同名作物存在即復用，否則新建。
+   * 與管理頁 `createCrop` 同一去重語意，差別在內聯不拋 409 而是回既有實體。
+   */
+  @Transactional
+  public Crop findOrCreateCrop (String name, Long cropCategoryId) {
+    if (name == null || name.trim ().isEmpty ()) {
+      throw new ApiException ("VALIDATION_ERROR", HttpStatus.BAD_REQUEST, "作物名稱不可為空白");
+    }
+    if (cropCategoryId == null) {
+      throw new ApiException ("VALIDATION_ERROR", HttpStatus.BAD_REQUEST, "作物分類不可為空");
+    }
+    String trimmed = name.trim ();
+    var existing = cropRepository.findByCropIgnoreCaseAndCropCategoryCropCategoryId (trimmed, cropCategoryId);
+    if (existing.isPresent ()) return existing.get ();
+    CropCategory category = cropCategoryRepository.findById (cropCategoryId)
+        .orElseThrow (() -> new ApiException ("REFERENCE_NOT_FOUND", HttpStatus.NOT_FOUND, "作物分類不存在"));
+    Crop e = new Crop ();
+    e.setCrop (trimmed);
+    e.setCropCategory (category);
+    try {
+      return cropRepository.save (e);
+    } catch (org.springframework.dao.DataIntegrityViolationException ex) {
+      // 併發同時新建：查回既有
+      return cropRepository.findByCropIgnoreCaseAndCropCategoryCropCategoryId (trimmed, cropCategoryId)
+          .orElseThrow (() -> ex);
+    }
+  }
+
+  /**
+   * 案件內聯共用：同名 `active` 非使用者簽名人存在即復用（正規化比對，取 id 最小者），否則新建
+   * `user IS NULL, active=true`。與管理頁同名檢查同一比對語意，內聯不拋 409。
+   */
+  @Transactional
+  public Identifier findOrCreateIdentifier (String name) {
+    String trimmed = IdentifierNames.display (name);
+    if (trimmed.isEmpty ()) {
+      throw new ApiException ("VALIDATION_ERROR", HttpStatus.BAD_REQUEST, "簽名人名稱不可為空白");
+    }
+    synchronized (("signer:" + IdentifierNames.normalize (trimmed)).intern ()) {
+      var existingOpt = identifierRepository.findByUserIsNullAndActiveTrue ().stream ()
+          .filter (i -> IdentifierNames.equalsNormalized (i.getIdentifier (), trimmed))
+          .sorted (java.util.Comparator.comparing (Identifier::getIdentifierId))
+          .findFirst ();
+      if (existingOpt.isPresent ()) return existingOpt.get ();
+      Identifier e = new Identifier ();
+      e.setIdentifier (trimmed);
+      e.setUser (null);
+      e.setActive (true);
+      try {
+        return identifierRepository.save (e);
+      } catch (org.springframework.dao.DataIntegrityViolationException ex) {
+        // 併發同時新建：查回既有
+        return identifierRepository.findByUserIsNullAndActiveTrue ().stream ()
+            .filter (i -> IdentifierNames.equalsNormalized (i.getIdentifier (), trimmed))
+            .sorted (java.util.Comparator.comparing (Identifier::getIdentifierId))
+            .findFirst ().orElseThrow (() -> ex);
+      }
+    }
   }
 
   @Transactional
-  public IdNameResponse updateIdentifier (Long id, String name) {
-    Identifier e = identifierRepository.findById (id)
+  public IdNameResponse updateIdentifier (Long id, String name) {    Identifier e = identifierRepository.findById (id)
         .orElseThrow (() -> new ApiException ("REFERENCE_NOT_FOUND", HttpStatus.NOT_FOUND, "簽名人不存在"));
-    e.setIdentifier (name.trim ());
+    if (e.getUser () != null) {
+      throw new ApiException ("USER_LINKED_SIGNER_IMMUTABLE", HttpStatus.CONFLICT, "此簽名人關聯系統使用者，請改個人檔案顯示名稱");
+    }
+    String trimmed = IdentifierNames.display (name);
+    boolean duplicate = identifierRepository.findByActiveTrue ().stream ()
+        .anyMatch (other -> !other.getIdentifierId ().equals (id)
+            && IdentifierNames.equalsNormalized (other.getIdentifier (), trimmed));
+    if (duplicate) {
+      throw new ApiException ("DISPLAY_NAME_EXISTS", HttpStatus.CONFLICT, "顯示名稱已存在");
+    }
+    e.setIdentifier (trimmed);
     return new IdNameResponse (e.getIdentifierId (), e.getIdentifier ());
   }
 
   @Transactional
   public void deleteIdentifier (Long id) {
-    Identifier e = identifierRepository.findById (id)
-        .orElseThrow (() -> new ApiException ("REFERENCE_NOT_FOUND", HttpStatus.NOT_FOUND, "簽名人不存在"));
-    if (caseRepository.existsByCaseIdentifiersIdentifierIdentifierId (id)) {
-      throw new ApiException ("REFERENCE_IN_USE", HttpStatus.CONFLICT, "已被案件引用，無法刪除");
-    }
-    identifierRepository.delete (e);
+    throw new ApiException ("METHOD_NOT_ALLOWED", HttpStatus.METHOD_NOT_ALLOWED, "簽名人僅可停用，請使用 PATCH .../active");
   }
 
   @Transactional

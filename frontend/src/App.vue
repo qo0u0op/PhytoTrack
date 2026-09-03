@@ -45,6 +45,9 @@ async function handleLogout () {
             <router-link class="nav-link" to="/admin/pest-categories">害物管理</router-link>
           </li>
           <li v-if="auth.isAdmin" class="nav-item">
+            <router-link class="nav-link" to="/admin/signers">簽名人管理</router-link>
+          </li>
+          <li v-if="auth.isAdmin" class="nav-item">
             <router-link class="nav-link" to="/admin/reference-data">參照資料管理</router-link>
           </li>
           <li v-if="auth.isAdmin" class="nav-item">

@@ -196,6 +196,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/deactivate-requests/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["reviewRequest"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/account/profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["updateProfile"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/account/password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["changePassword"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/senders": {
         parameters: {
             query?: never;
@@ -286,6 +334,22 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["login"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/abandon-deactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["abandonDeactivate"];
         delete?: never;
         options?: never;
         head?: never;
@@ -404,6 +468,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/ref/identifiers/{id}/bind": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["bindIdentifier"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/ref/hints": {
         parameters: {
             query?: never;
@@ -484,6 +564,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/account/deactivate-request": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getMyPending"];
+        put?: never;
+        post: operations["requestDeactivate"];
+        delete: operations["cancelDeactivate"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ref/identifiers/{id}/active": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["updateMyIdentifierActive"];
+        trace?: never;
+    };
     "/api/admin/users/{id}/role": {
         parameters: {
             query?: never;
@@ -514,6 +626,22 @@ export interface paths {
         options?: never;
         head?: never;
         patch: operations["updateActive"];
+        trace?: never;
+    };
+    "/api/admin/ref/identifiers/{id}/active": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["updateIdentifierActive"];
         trace?: never;
     };
     "/api/senders/search": {
@@ -604,6 +732,22 @@ export interface paths {
             cookie?: never;
         };
         get: operations["identifiers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ref/identifiers/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["myIdentifier"];
         put?: never;
         post?: never;
         delete?: never;
@@ -724,6 +868,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/auth/check-username": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["checkUsername"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/check-email": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["checkEmail"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/ai/health": {
         parameters: {
             query?: never;
@@ -748,6 +924,54 @@ export interface paths {
             cookie?: never;
         };
         get: operations["listUsers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/deactivate-requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listRequests"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/account": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getProfile"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/account/check-email": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["checkEmail_1"];
         put?: never;
         post?: never;
         delete?: never;
@@ -818,6 +1042,16 @@ export interface components {
             pestCategoryIds?: number[];
             pestCategoryWithNotes?: components["schemas"]["PestCategoryNote"][];
             identifierIds?: number[];
+            inlineIdentifiers?: components["schemas"]["InlineSigner"][];
+            inlineCrop?: components["schemas"]["InlineCrop"];
+        };
+        InlineCrop: {
+            name: string;
+            /** Format: int64 */
+            cropCategoryId: number;
+        };
+        InlineSigner: {
+            name: string;
         };
         PestCategoryNote: {
             /** Format: int64 */
@@ -893,8 +1127,6 @@ export interface components {
             name: string;
             /** Format: int64 */
             pestTypeId: number;
-            /** Format: int32 */
-            sortOrder: number;
         };
         CropUpdateRequest: {
             name: string;
@@ -903,6 +1135,34 @@ export interface components {
         };
         CropCategoryUpdateRequest: {
             name: string;
+        };
+        DeactivateRequestResponse: {
+            /** Format: int64 */
+            requestId?: number;
+            /** Format: int64 */
+            userId?: number;
+            username?: string;
+            status?: string;
+            createdAt?: string;
+            reviewedBy?: string;
+        };
+        UpdateProfileRequest: {
+            displayName: string;
+            /** Format: email */
+            email?: string;
+        };
+        UserResponse: {
+            /** Format: int64 */
+            userId?: number;
+            username?: string;
+            displayName?: string;
+            email?: string;
+            role?: string;
+            active?: boolean;
+        };
+        ChangePasswordRequest: {
+            currentPassword?: string;
+            newPassword: string;
         };
         CaseCreateRequest: {
             /** Format: date */
@@ -924,7 +1184,7 @@ export interface components {
             /** Format: int64 */
             methodId: number;
             /** Format: int64 */
-            cropId: number;
+            cropId?: number;
             /** Format: int64 */
             serviceId: number;
             /** Format: int64 */
@@ -936,6 +1196,8 @@ export interface components {
             pestCategoryIds?: number[];
             pestCategoryWithNotes?: components["schemas"]["PestCategoryNote"][];
             identifierIds?: number[];
+            inlineIdentifiers?: components["schemas"]["InlineSigner"][];
+            inlineCrop?: components["schemas"]["InlineCrop"];
         };
         RegisterRequest: {
             username: string;
@@ -943,15 +1205,6 @@ export interface components {
             password: string;
             /** Format: email */
             email?: string;
-        };
-        UserResponse: {
-            /** Format: int64 */
-            userId?: number;
-            username?: string;
-            displayName?: string;
-            email?: string;
-            role?: string;
-            active?: boolean;
         };
         LoginRequest: {
             username: string;
@@ -968,7 +1221,6 @@ export interface components {
             pestCategories?: string[];
             pestNotes?: string[];
             caseDescription?: string;
-            pestDescription?: string;
             cropScale?: string;
             damageScale?: string;
             cultivationMethod?: string;
@@ -990,8 +1242,10 @@ export interface components {
             name: string;
             /** Format: int64 */
             pestTypeId: number;
-            /** Format: int32 */
-            sortOrder: number;
+        };
+        BindSignerRequest: {
+            /** Format: int64 */
+            userId: number;
         };
         CropCreateRequest: {
             name: string;
@@ -1001,25 +1255,35 @@ export interface components {
         CropCategoryCreateRequest: {
             name: string;
         };
-        RoleUpdateRequest: {
-            role: string;
-        };
         ActiveUpdateRequest: {
             active: boolean;
+        };
+        RoleUpdateRequest: {
+            role: string;
+            /** Format: int64 */
+            bindIdentifierId?: number;
+            force?: boolean;
         };
         PestCategoryItem: {
             /** Format: int64 */
             id?: number;
             code?: string;
             name?: string;
-            /** Format: int32 */
-            sortOrder?: number;
         };
         PestTypeResponse: {
             /** Format: int64 */
             id?: number;
             name?: string;
             categories?: components["schemas"]["PestCategoryItem"][];
+        };
+        IdentifierResponse: {
+            /** Format: int64 */
+            id?: number;
+            name?: string;
+            active?: boolean;
+            /** Format: int64 */
+            userId?: number;
+            username?: string;
         };
         CropCategoryResponse: {
             /** Format: int64 */
@@ -1766,6 +2030,80 @@ export interface operations {
             };
         };
     };
+    reviewRequest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    [key: string]: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["DeactivateRequestResponse"];
+                };
+            };
+        };
+    };
+    updateProfile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateProfileRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["UserResponse"];
+                };
+            };
+        };
+    };
+    changePassword: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangePasswordRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     list: {
         parameters: {
             query?: never;
@@ -1817,6 +2155,8 @@ export interface operations {
                 serviceId?: number;
                 senderName?: string;
                 senderQuery?: string;
+                senderTypeId?: number;
+                methodId?: number;
                 receiveDateFrom?: string;
                 receiveDateTo?: string;
                 status?: string;
@@ -1954,6 +2294,28 @@ export interface operations {
                 content: {
                     "*/*": components["schemas"]["AuthResponse"];
                 };
+            };
+        };
+    };
+    abandonDeactivate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoginRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -2125,6 +2487,32 @@ export interface operations {
             };
         };
     };
+    bindIdentifier: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BindSignerRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["IdNameResponse"];
+                };
+            };
+        };
+    };
     createHint: {
         parameters: {
             query?: never;
@@ -2245,6 +2633,90 @@ export interface operations {
             };
         };
     };
+    getMyPending: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["DeactivateRequestResponse"];
+                };
+            };
+        };
+    };
+    requestDeactivate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["DeactivateRequestResponse"];
+                };
+            };
+        };
+    };
+    cancelDeactivate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    updateMyIdentifierActive: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActiveUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["IdNameResponse"];
+                };
+            };
+        };
+    };
     updateRole: {
         parameters: {
             query?: never;
@@ -2293,6 +2765,32 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["UserResponse"];
+                };
+            };
+        };
+    };
+    updateIdentifierActive: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActiveUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["IdNameResponse"];
                 };
             };
         };
@@ -2401,6 +2899,28 @@ export interface operations {
     };
     identifiers: {
         parameters: {
+            query?: {
+                includeInactive?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["IdentifierResponse"][];
+                };
+            };
+        };
+    };
+    myIdentifier: {
+        parameters: {
             query?: never;
             header?: never;
             path?: never;
@@ -2414,7 +2934,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["IdNameResponse"][];
+                    "*/*": components["schemas"]["IdNameResponse"];
                 };
             };
         };
@@ -2525,6 +3045,7 @@ export interface operations {
                 period?: string;
                 year?: number;
                 month?: number;
+                half?: number;
             };
             header?: never;
             path?: never;
@@ -2550,6 +3071,8 @@ export interface operations {
                 serviceId?: number;
                 senderName?: string;
                 senderQuery?: string;
+                senderTypeId?: number;
+                methodId?: number;
                 receiveDateFrom?: string;
                 receiveDateTo?: string;
                 status?: string;
@@ -2575,6 +3098,54 @@ export interface operations {
                 };
                 content: {
                     "text/csv": string;
+                };
+            };
+        };
+    };
+    checkUsername: {
+        parameters: {
+            query: {
+                username: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    checkEmail: {
+        parameters: {
+            query: {
+                email: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };
@@ -2617,6 +3188,70 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["UserResponse"][];
+                };
+            };
+        };
+    };
+    listRequests: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["DeactivateRequestResponse"][];
+                };
+            };
+        };
+    };
+    getProfile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["UserResponse"];
+                };
+            };
+        };
+    };
+    checkEmail_1: {
+        parameters: {
+            query: {
+                email: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };

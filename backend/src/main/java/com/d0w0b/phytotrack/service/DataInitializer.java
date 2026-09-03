@@ -8,6 +8,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 
 import com.d0w0b.phytotrack.models.Identifier;
 import com.d0w0b.phytotrack.models.User;
+import com.d0w0b.phytotrack.repository.CaseRepository;
 import com.d0w0b.phytotrack.repository.IdentifierRepository;
 import com.d0w0b.phytotrack.repository.UserRepository;
 
@@ -23,6 +24,7 @@ public class DataInitializer implements CommandLineRunner {
 
   private final UserRepository userRepository;
   private final IdentifierRepository identifierRepository;
+  private final CaseRepository caseRepository;
   private final PasswordEncoder passwordEncoder;
   private final String adminUsername;
   private final String adminPassword;
@@ -33,6 +35,7 @@ public class DataInitializer implements CommandLineRunner {
 
   public DataInitializer (UserRepository userRepository,
                          IdentifierRepository identifierRepository,
+                         CaseRepository caseRepository,
                          PasswordEncoder passwordEncoder,
                          @Value ("${app.bootstrap.admin-username}") String adminUsername,
                          @Value ("${app.bootstrap.admin-password}") String adminPassword,
@@ -42,6 +45,7 @@ public class DataInitializer implements CommandLineRunner {
                          @Value ("${app.bootstrap.viewer-password}") String viewerPassword) {
     this.userRepository = userRepository;
     this.identifierRepository = identifierRepository;
+    this.caseRepository = caseRepository;
     this.passwordEncoder = passwordEncoder;
     this.adminUsername = adminUsername;
     this.adminPassword = adminPassword;
@@ -59,21 +63,33 @@ public class DataInitializer implements CommandLineRunner {
     // 檢視者帳號：供開發環境驗證 VIEWER 角色的遮蔽行為 (如送件人個人資料)
     getOrCreateUser (viewerUsername, "檢視員", viewerPassword, User.Role.ROLE_VIEWER);
 
-    // 診斷簽名人 (Identifier) 需關聯系統使用者，故無法於 schema.sql 預填，
-    // 改在此處建立；僅在完全沒有簽名人時才建立。
-    if (identifierRepository.count () == 0) {
-      createIdentifier ("張志明", staff);
-      createIdentifier ("林雅惠", staff);
-      createIdentifier ("陳建宏", admin);
+    // 1. 移除預設 3 筆種子（BREAKING）：既有庫若存在則置 active=false（若未被引用則刪除）
+    for (String name : new String[]{"張志明", "林雅惠", "陳建宏"}) {
+      for (Identifier i : identifierRepository.findAll ()) {
+        if (name.equals (i.getIdentifier ())) {
+          if (caseRepository.existsByCaseIdentifiersIdentifierIdentifierId (i.getIdentifierId ())) {
+            if (i.isActive ()) {
+              i.setActive (false);
+              identifierRepository.save (i);
+            }
+          } else {
+            identifierRepository.delete (i);
+          }
+        }
+      }
     }
-    // 補建：確保所有 STAFF/ADMIN 至少有一個以 displayName 命名的簽名人
+    // 2. 補建：確保所有 STAFF/ADMIN 至少有一個以 displayName 命名的簽名人（獨立於通用）
     for (User user : userRepository.findAll ()) {
-      if ((user.getRole () == User.Role.ROLE_STAFF || user.getRole () == User.Role.ROLE_ADMIN)
-          && identifierRepository.findByUserUserId (user.getUserId ()).isEmpty ()) {
-        Identifier identifier = new Identifier ();
-        identifier.setIdentifier (user.getDisplayName ());
-        identifier.setUser (user);
-        identifierRepository.save (identifier);
+      if ((user.getRole () == User.Role.ROLE_STAFF || user.getRole () == User.Role.ROLE_ADMIN)) {
+        boolean hasActiveWithName = identifierRepository.findByUserUserIdAndActiveTrueOrderByIdentifierIdAsc (user.getUserId ()).stream ()
+            .anyMatch (i -> IdentifierNames.equalsNormalized (i.getIdentifier (), user.getDisplayName ()));
+        if (!hasActiveWithName) {
+          Identifier identifier = new Identifier ();
+          identifier.setIdentifier (user.getDisplayName ());
+          identifier.setUser (user);
+          identifier.setActive (true);
+          identifierRepository.save (identifier);
+        }
       }
     }
   }
@@ -94,6 +110,7 @@ public class DataInitializer implements CommandLineRunner {
     Identifier identifier = new Identifier ();
     identifier.setIdentifier (name);
     identifier.setUser (user);
+    identifier.setActive (true);
     identifierRepository.save (identifier);
   }
 }

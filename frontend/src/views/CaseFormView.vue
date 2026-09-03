@@ -2,7 +2,7 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import Swal from 'sweetalert2'
-import { aiApi, caseApi, refApi, refAdminApi, senderApi } from '../api'
+import { aiApi, caseApi, refApi, senderApi } from '../api'
 import { useAuthStore } from '../stores/auth'
 import { STATUS_OPTIONS } from '../utils/caseStatus'
 import { escapeHtml } from '../utils/escapeHtml'
@@ -11,6 +11,8 @@ import type { components } from '../types/api'
 interface IdName {
   id: number
   name: string
+  userId?: number | null
+  username?: string | null
 }
 interface CropCategory {
   id: number
@@ -64,6 +66,23 @@ const form = reactive ({
   hintIds: [] as number[],
   pestCategoryIds: [] as number[],
   identifierIds: [] as number[],
+  inlineIdentifiers: [] as { name: string }[],
+})
+const pendingInlineSigners = ref<{ name: string; tempId: number }[]>([])
+// 內聯作物暫存（單一，記憶體暫存不落庫；提交時以 inlineCrop 併入，inline 覆蓋 cropId）
+const pendingInlineCrop = ref<{ name: string; cropCategoryId: number } | null>(null)
+// 暫存作物於下拉中的臨時 id（負值，後端僅認 inlineCrop）
+const TEMP_CROP_ID = -1
+
+// 作物下拉：遠端清單合併暫存（標記待提交）
+const mergedCrops = computed (() => {
+  const base = selectedCropCategoryId.value
+    ? (cropCategories.value.find ((c) => c.id === selectedCropCategoryId.value)?.crops ?? [])
+    : cropCategories.value.flatMap ((c) => c.crops)
+  if (pendingInlineCrop.value && (!selectedCropCategoryId.value || selectedCropCategoryId.value === pendingInlineCrop.value.cropCategoryId)) {
+    return [...base, { id: TEMP_CROP_ID, name: `${pendingInlineCrop.value.name}（待提交）` }]
+  }
+  return base
 })
 
 // 作物級聯：所選分類 (null 為全部)
@@ -383,14 +402,23 @@ async function handleCreateCrop () {
     },
   })
   if (!formData) return
-  try {
-    const { data } = await refAdminApi.createCrop ({ name: formData.name, cropCategoryId: formData.categoryId })
-    const cc = await refApi.cropCategories ()
-    cropCategories.value = cc.data
-    form.cropId = (data as any).id
+  const pending = { name: formData.name, cropCategoryId: formData.categoryId }
+  // 同分類同名已存在（去空白大小寫不敏感）直接選用既有項，不入暫存
+  const existing = cropCategories.value
+    .find ((c) => c.id === formData.categoryId)?.crops
+    .find ((cr) => cr.name.trim ().toLowerCase () === formData.name.toLowerCase ())
+  if (existing) {
+    form.cropId = existing.id
     selectedCropCategoryId.value = formData.categoryId
-    Swal.fire ({ icon: 'success', title: '已新增作物', timer: 1200, showConfirmButton: false })
-  } catch {}
+    pendingInlineCrop.value = null
+    Swal.fire ({ icon: 'success', title: '已選用既有作物', timer: 1200, showConfirmButton: false })
+    return
+  }
+  // 原子建：暫存至 pendingInlineCrop，待案件提交時同交易建立
+  pendingInlineCrop.value = pending
+  form.cropId = TEMP_CROP_ID
+  selectedCropCategoryId.value = formData.categoryId
+  Swal.fire ({ icon: 'success', title: '已加入待建作物（提交案件時建立）', timer: 1500, showConfirmButton: false })
 }
 
 async function handleCreateIdentifier () {
@@ -405,16 +433,27 @@ async function handleCreateIdentifier () {
     inputValidator: (v) => (!v?.trim () ? '名稱不可為空白' : null),
   })
   if (!name) return
-  try {
-    const { data } = await refAdminApi.createIdentifier ({ name: name.trim () })
-    identifiers.value.push ({ id: (data as any).id, name: (data as any).name })
-    form.identifierIds.push ((data as any).id)
-    Swal.fire ({ icon: 'success', title: '已新增簽名人', timer: 1200, showConfirmButton: false })
-  } catch {}
+  const trimmed = name.trim ()
+  const existing = identifiers.value.find ((i) => i.name === trimmed)
+  if (existing) {
+    if (!form.identifierIds.includes (existing.id)) form.identifierIds.push (existing.id)
+    Swal.fire ({ icon: 'success', title: '已選用既有簽名人', timer: 1200, showConfirmButton: false })
+    return
+  }
+  // 原子建：暫存至 pending，待案件提交時同交易建立（user=null）
+  const tempId = -Date.now () - Math.floor (Math.random () * 1000)
+  identifiers.value.push ({ id: tempId, name: trimmed } as any)
+  form.identifierIds.push (tempId)
+  pendingInlineSigners.value.push ({ name: trimmed, tempId })
+  form.inlineIdentifiers.push ({ name: trimmed })
+  Swal.fire ({ icon: 'success', title: '已加入待建簽名人（提交案件時建立）', timer: 1500, showConfirmButton: false })
 }
 
-// 依選定作物反查其所屬分類名稱 (供 AI Prompt 使用)
+// 依選定作物反查其所屬分類名稱 (供 AI Prompt 使用)；暫存作物以其暫存分類為準
 const selectedCropCategory = computed (() => {
+  if (pendingInlineCrop.value) {
+    return cropCategories.value.find ((c) => c.id === pendingInlineCrop.value!.cropCategoryId)?.name ?? ''
+  }
   const crop = cropCategories.value
     .flatMap ((c) => c.crops.map ((cr) => ({ ...cr, category: c.name })))
     .find ((c) => c.id === form.cropId)
@@ -595,8 +634,8 @@ async function submit () {
     Swal.fire ({ icon: 'warning', title: '請先儲存送件人', text: '送件人資料已修改，請先點「更新送件人」或「取消編輯」' })
     return
   }
-  // 送出前檢查 (後端仍有完整驗證)
-  if (!form.cropId) {
+  // 送出前檢查 (後端仍有完整驗證)；暫存作物視為已選（提交時以 inlineCrop 建立）
+  if (!form.cropId && !pendingInlineCrop.value) {
     Swal.fire ({ icon: 'warning', title: '欄位不完整', text: '請選擇作物' })
     return
   }
@@ -622,15 +661,21 @@ async function submit () {
         status: form.status || undefined,
         senderId: form.senderId ?? undefined,
         methodId: form.methodId,
-        cropId: form.cropId,
+        cropId: pendingInlineCrop.value ? undefined : form.cropId,
+        inlineCrop: pendingInlineCrop.value ?? undefined,
         serviceId: form.serviceId,
         deliverId: form.deliverId,
         fieldDistrictId: effectiveFieldDistrictId ?? undefined,
         damageIds: form.damageIds,
         hintIds: form.hintIds,
         pestCategoryWithNotes: pestWithNotes,
-        identifierIds: form.identifierIds,
+        identifierIds: form.identifierIds.filter ((id) => id > 0),
+        inlineIdentifiers: pendingInlineSigners.value.map ((p) => ({ name: p.name })),
       } as any)
+      // 成功後清空暫存並重載下拉（暫存已隨案件提交落庫）
+      pendingInlineCrop.value = null
+      pendingInlineSigners.value = []
+      await loadRefs ()
       Swal.fire ({ icon: 'success', title: '儲存成功', timer: 1200, showConfirmButton: false }).then (() => {
         router.push ({ path: `/cases/${editId}`, query: route.query as any })
       })
@@ -651,15 +696,21 @@ async function submit () {
         senderTypeId: form.senderTypeId,
         fieldDistrictId: effectiveFieldDistrictId2 ?? undefined,
         methodId: form.methodId,
-        cropId: form.cropId,
+        cropId: pendingInlineCrop.value ? undefined : form.cropId,
+        inlineCrop: pendingInlineCrop.value ?? undefined,
         serviceId: form.serviceId,
         deliverId: form.deliverId,
         damageIds: form.damageIds,
         hintIds: form.hintIds,
         pestCategoryWithNotes: pestWithNotes2,
-        identifierIds: form.identifierIds,
+        identifierIds: form.identifierIds.filter ((id) => id > 0),
+        inlineIdentifiers: pendingInlineSigners.value.map ((p) => ({ name: p.name })),
       } as any)
       const newId = (data as any)?.caseId
+      // 成功後清空暫存並重載下拉（暫存已隨案件提交落庫）
+      pendingInlineCrop.value = null
+      pendingInlineSigners.value = []
+      await loadRefs ()
       Swal.fire ({ icon: 'success', title: '儲存成功', timer: 1200, showConfirmButton: false }).then (() => {
         if (newId) router.push ({ path: `/cases/${newId}`, query: route.query as any })
         else router.push ({ path: '/cases', query: route.query as any })
@@ -675,9 +726,10 @@ async function submit () {
 // AI 診斷：組出欄位資料送後端，再由後端代理 llama.cpp
 async function runAi () {
   const category = selectedCropCategory.value
-  const crop = cropCategories.value
-    .flatMap ((c) => c.crops)
-    .find ((c) => c.id === form.cropId)
+  const pendingCrop = pendingInlineCrop.value && form.cropId === TEMP_CROP_ID ? pendingInlineCrop.value : null
+  const crop = pendingCrop
+    ? { id: TEMP_CROP_ID, name: pendingCrop.name }
+    : cropCategories.value.flatMap ((c) => c.crops).find ((c) => c.id === form.cropId)
   if (!crop) {
     Swal.fire ({ icon: 'warning', title: '請先選擇作物' })
     return
@@ -896,7 +948,7 @@ async function runAi () {
             <select v-model.number="form.cropId" class="form-select" required>
               <option value="0" disabled>請選擇作物</option>
               <option
-                v-for="cr in (selectedCropCategoryId ? (cropCategories.find ((c) => c.id === selectedCropCategoryId)?.crops ?? []) : cropCategories.flatMap ((c) => c.crops))"
+                v-for="cr in mergedCrops"
                 :key="cr.id"
                 :value="cr.id"
               >
@@ -994,7 +1046,7 @@ async function runAi () {
                 :checked="form.identifierIds.includes (i.id)"
                 @change="toggle (form.identifierIds, i.id)"
               />
-              <span class="form-check-label">{{ i.name }}</span>
+              <span class="form-check-label">{{ i.name }} <span class="badge ms-1" :class="i.userId ? 'bg-primary' : 'bg-secondary'">{{ i.userId ? '使用者' : '非使用者' }}</span> <span v-if="i.username" class="text-muted small">· {{ i.username }}</span></span>
             </div>
           </div>
         </div>

@@ -42,7 +42,7 @@ public class GlobalExceptionHandler {
   public ResponseEntity<ErrorResponse> handleApiException (ApiException ex, HttpServletRequest request) {
     log.warn ("業務錯誤 [{}] {} {}：{}",
         ex.getCode (), request.getMethod (), request.getRequestURI (), ex.getMessage ());
-    return build (ex.getCode (), ex.getMessage (), ex.getStatus (), request, null);
+    return build (ex.getCode (), ex.getMessage (), ex.getStatus (), request, ex.getDetails ());
   }
 
   /** Bean Validation 參數驗證失敗 */
