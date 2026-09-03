@@ -2,7 +2,7 @@
 
 ## Purpose
 
-為案件導入明確狀態生命週期 (待處理／已處理／已結案) 並補全更新契約，使案件可被完整追蹤與修正。
+為案件導入明確狀態生命週期 (待處理／已處理／已結案) 並補全更新契約，使案件可被完整追蹤與修正，避免狀態錯置導致資料不一致。
 
 ## Requirements
 
@@ -120,11 +120,11 @@ STAFF/ADMIN SHALL 可將案件由 `PENDING` 標記為 `RESOLVED`；ADMIN SHALL �
 
 ### Requirement: 建案時診斷簽名人自動帶入
 
-`POST /api/cases` 與 `PUT /api/cases/{id}` 在 `identifierIds` 為空、未傳或空陣列時 SHALL 自動帶入當前登入使用者的關聯 `Identifier`（以 `Identifier.user.userId = 當前使用者` 查找；若無則以當前 `displayName` 即時建立並使用）；若請求已含 `identifierIds` 則 SHALL 原樣採用，不覆蓋或增補。前述自動帶入 SHALL 於交易內完成且回應的 `identifiers` 陣列 SHALL 包含該簽名人。
+`POST /api/cases` 與 `PUT /api/cases/{id}` 在 `identifierIds` 為空、未傳或空陣列時 SHALL 自動帶入當前登入使用者的關聯 `Identifier`（以 `Identifier.user.userId = 當前使用者` 且 `active=true` 查找；若無則以當前 `displayName` 依 `IdentifierService.ensureForUser` 建立並使用）；若請求已含 `identifierIds` 則 SHALL 原樣採用，不覆蓋或增補。前述自動帶入 SHALL 於交易內完成且回應的 `identifiers` 陣列 SHALL 包含該簽名人。
 
 #### Scenario: 建案未選簽名人自動帶入
 - **WHEN** STAFF 以 `identifierIds: []` 建立案件
-- **THEN** 案件 `identifiers` 含一筆其 `displayName` 對應的簽名人，且 `GET /api/cases/{id}` 可見
+- **THEN** 案件 `identifiers` 含一筆其 `displayName` 對應且 `active=true` 的簽名人，且 `GET /api/cases/{id}` 可見
 
 #### Scenario: 建案已選簽名人不覆蓋
 - **WHEN** STAFF 以 `identifierIds: [2,3]` 建立案件
@@ -132,7 +132,7 @@ STAFF/ADMIN SHALL 可將案件由 `PENDING` 標記為 `RESOLVED`；ADMIN SHALL �
 
 #### Scenario: 無關聯簽名人時即時建立
 - **WHEN** 新 STAFF（尚無 `Identifier`）以空清單建案
-- **THEN** 系統先建立 `Identifier(identifier=displayName, user=currentUser)` 再關聯至案件，後續 `GET /api/identifiers` 可見該筆
+- **THEN** 系統先建立 `Identifier(identifier=displayName, user=currentUser, active=true)` 再關聯至案件，後續 `GET /api/identifiers` 可見該筆
 
 #### Scenario: 更新時空清單亦自動帶入
 - **WHEN** STAFF 以 `identifierIds: []` 更新既有案件
@@ -140,8 +140,56 @@ STAFF/ADMIN SHALL 可將案件由 `PENDING` 標記為 `RESOLVED`；ADMIN SHALL �
 
 #### Scenario: 更新時未傳欄位不變
 - **WHEN** STAFF 更新案件但未傳 `identifierIds`（null）
-- **THEN** 若原語意為「未傳即不更動」，則保留原簽名人；若本 change 定義「未傳視為空」則自動帶入（實作以 `CaseService` 現有 `identifierIds != null` 判斷為準，此情境驗證保留原值）
+- **THEN** 保留原簽名人
 
 #### Scenario: 前端預選當前使用者簽名人
 - **WHEN** STAFF 開啟案件新增表單
-- **THEN** `GET /api/identifiers`（或 `GET /api/identifiers/me`）回傳的當前使用者簽名人預設勾選，仍可手動增刪多簽名
+- **THEN** `GET /api/identifiers/me` 回傳的當前使用者簽名人預設勾選，仍可手動增刪多簽名
+
+### Requirement: 案件表單內內聯簽名人原子建立且默認為非使用者
+
+`POST /api/cases` 與 `PUT /api/cases/{id}` 支援 `inlineIdentifiers: [{ name }]` 與 `identifierIds` 併用，`inlineIdentifiers` 內每筆 SHALL 於同一交易內建立 `Identifier(user IS NULL, active=true)`，名稱去空白重複時復用既有 `active` 同名簽名人（`signer but not user` 優先），建立後與案件以 `case_identifiers` 關聯；若未傳 `identifierIds` 且未傳 `inlineIdentifiers` 則走自動帶入。`STAFF|ADMIN` 於案件內新建者一律 `user IS NULL`，僅提權路徑建 `user as signer`。放棄新增/編輯（前端不提交）時 `inlineIdentifiers` SHALL 不落庫；交易失敗 SHALL 全回滾（含內聯簽名人）。
+
+#### Scenario: 內聯新建默認為非 user
+- **WHEN** STAFF 以 `inlineIdentifiers: [{ name: "外聘專家" }]` 建案
+- **THEN** 新建 `identifiers` 其 `user_id IS NULL` 且 `active=true`，案件關聯該 `id`
+
+#### Scenario: 併用併去重
+- **WHEN** 同時傳 `identifierIds=[1]` 與 `inlineIdentifiers=[{ name: "外聘專家" }]`
+- **THEN** 案件最終簽名人為 `1` 加新建之外聘，名稱重複時復用既有 `active` 同名而非新建
+
+#### Scenario: 放棄不落庫
+- **WHEN** STAFF 於表單內新增外聘簽名人後取消未提交
+- **THEN** 資料庫 `identifiers` 無新增，`GET /api/ref/identifiers` 不可見
+
+#### Scenario: 交易失敗全回滾
+- **WHEN** `inlineIdentifiers` 建成但後續 `pestCategoryIds` 校驗失敗致 `400`
+- **THEN** 內聯簽名人亦回滾，不殘留
+
+### Requirement: 停用簽名人於新增案件時隱藏
+
+`GET /api/ref/identifiers` 預設僅回 `active=true`，故 `active=false` 的簽名人 SHALL 不出現於 `CaseFormView` 的候選清單；但 `PUT /api/cases/{id}` 仍可引用已停用之歷史 `id`（刪除保護不變）。
+
+#### Scenario: 已停用不出現於新建
+- **WHEN** 某簽名人已 `active=false`
+- **THEN** `GET /api/ref/identifiers` 不含該筆，`CaseFormView` 不可勾選，但 `GET /api/cases/{歷史id}` 仍顯示其名
+
+### Requirement: 新建案件拒絕停用簽名人
+
+`POST /api/cases` SHALL 拒絕 `identifierIds` 內含 `active=false` 者（回 `409` 或 `400`），`PUT /api/cases/{id}` 更新歷史案件時 SHALL 放行已引用之 `inactive` 以保留顯示。
+
+#### Scenario: 新建引用停用簽名人被拒
+- **WHEN** STAFF 以 `identifierIds: [已停用id]` 建立案件
+- **THEN** 回 4xx 且案件未建立，簽名人清單仍僅顯示 `active` 候選
+
+#### Scenario: 歷史案件仍顯示停用簽名人
+- **WHEN** 檢視已引用停用簽名人的舊案件
+- **THEN** 詳情仍以 id 顯示原名，不因停用消失
+
+### Requirement: 案件表單簽名人可辨同名
+
+`CaseFormView` 簽名人候選 SHALL 與管理頁一致顯示 `身分別＋帳號`（如 `使用者 · wang123`），同名時可以帳號區分選擇，提交仍以 `id` 為準。
+
+#### Scenario: 同名以帳號區分
+- **WHEN** 存在兩筆 `王小明`（帳號 `wang1`、`wang2`）
+- **THEN** 案件表單顯示兩列可辨帳號，勾選後以各自 `id` 提交
