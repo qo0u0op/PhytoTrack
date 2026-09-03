@@ -67,6 +67,12 @@ const router = createRouter ({
       meta: { requiresAuth: true, staffOnly: true },
     },
     {
+      path: '/admin/senders/:id/edit',
+      name: 'sender-edit',
+      component: () => import ('../views/SenderEditView.vue'),
+      meta: { requiresAuth: true, staffOnly: true },
+    },
+    {
       path: '/admin/crops',
       name: 'crops-admin',
       component: () => import ('../views/CropManagementView.vue'),
