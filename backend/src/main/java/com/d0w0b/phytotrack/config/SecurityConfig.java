@@ -15,6 +15,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
+import org.springframework.beans.factory.annotation.Autowired;
+
+import com.d0w0b.phytotrack.config.RateLimitFilter;
 import com.d0w0b.phytotrack.security.JwtAuthenticationFilter;
 import com.d0w0b.phytotrack.security.RestAuthenticationEntryPoint;
 
@@ -33,9 +36,12 @@ import com.d0w0b.phytotrack.security.RestAuthenticationEntryPoint;
 public class SecurityConfig {
 
   private final JwtAuthenticationFilter jwtAuthenticationFilter;
+  private final RateLimitFilter rateLimitFilter;
 
-  public SecurityConfig (JwtAuthenticationFilter jwtAuthenticationFilter) {
+  public SecurityConfig (JwtAuthenticationFilter jwtAuthenticationFilter,
+      @Autowired (required = false) RateLimitFilter rateLimitFilter) {
     this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+    this.rateLimitFilter = rateLimitFilter;
   }
 
   /**
@@ -67,6 +73,10 @@ public class SecurityConfig {
             .anyRequest ().authenticated ())
         // 在標準使用者名稱密碼驗證過濾器之前掛上 JWT 過濾器
         .addFilterBefore (jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+    // 速率限制過濾器置於 JWT 之前（匿名亦限流），若 bean 存在才掛載（WebMvcTest 可 mock）
+    if (rateLimitFilter != null) {
+      http.addFilterBefore (rateLimitFilter, JwtAuthenticationFilter.class);
+    }
     return http.build ();
   }
 

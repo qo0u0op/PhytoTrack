@@ -14,3 +14,11 @@ spring:
   sql:
     init:
       mode: always
+
+app:
+  rate-limit:
+    enabled: false
+  cors:
+    allowed-origins: ""
+  security-headers:
+    enabled: false

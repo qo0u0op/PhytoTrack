@@ -18,21 +18,28 @@ http.interceptors.request.use ((config) => {
 
 // 回應攔截器：統一處理錯誤。401 視為「未登入/登入已過期」。
 http.interceptors.response.use ((response) => response,
- (error) => {
-    const status = error.response?.status
-    const message = error.response?.data?.error?.message ?? error.message
+  (error) => {
+     const status = error.response?.status
+     const data = error.response?.data
+     const message = data?.error?.message ?? error.message
 
-    if (status === 401) {
-      // 清除本機登入狀態，並導回登入頁
-      localStorage.removeItem ('token')
-      localStorage.removeItem ('user')
-      if (window.location.pathname !== '/login') {
-        window.location.href = '/login'
-      }
-    } else {
-      Swal.fire ({ icon: 'error', title: '操作失敗', text: message })
-    }
-    return Promise.reject (error)
-  },)
+     if (status === 429) {
+       const retryAfter = error.response?.headers?.['retry-after']
+         ?? error.response?.headers?.['Retry-After']
+       const hint = retryAfter ? `（請 ${retryAfter} 秒後再試）` : ''
+       // 429 限流不清除 token，避免無限重試
+       Swal.fire ({ icon: 'warning', title: '請求過於頻繁', text: message + hint })
+     } else if (status === 401) {
+       // 清除本機登入狀態，並導回登入頁
+       localStorage.removeItem ('token')
+       localStorage.removeItem ('user')
+       if (window.location.pathname !== '/login') {
+         window.location.href = '/login'
+       }
+     } else {
+       Swal.fire ({ icon: 'error', title: '操作失敗', text: message })
+     }
+     return Promise.reject (error)
+   },)
 
 export default http

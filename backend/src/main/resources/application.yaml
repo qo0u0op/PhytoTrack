@@ -83,6 +83,18 @@ app:
     staff-password: ${STAFF_PASSWORD:staff123}
     viewer-username: ${VIEWER_USERNAME:viewer}
     viewer-password: ${VIEWER_PASSWORD:viewer123}
+  rate-limit:
+    # 登入/註冊速率限制（security-review Phase2）
+    enabled: true
+    requests-per-minute: 10
+    window-seconds: 60
+  cors:
+    # CORS 白名單（逗號分隔），由 env CORS_ALLOWED_ORIGINS 驅動
+    # dev 為空沿用 *，prod 為空預設拒絕跨源
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:}
+  security-headers:
+    # 安全標頭開關，prod 覆寫為 true
+    enabled: false
 
 springdoc:
   api-docs:
@@ -100,3 +112,6 @@ springdoc:
     enabled: false
   swagger-ui:
     enabled: false
+app:
+  security-headers:
+    enabled: true

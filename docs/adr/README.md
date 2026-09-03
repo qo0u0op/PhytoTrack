@@ -23,6 +23,7 @@
 | [ADR-009](ADR-009-llama-backend-proxy.md) | llama.cpp 後端代理 (Spring AI) | 已實作 |
 | [ADR-010](ADR-010-unified-error-handling.md) | 統一錯誤處理 (@RestControllerAdvice) | 已實作 |
 | [ADR-011](ADR-011-sender-management.md) | 送件人管理 (displayName、去重、遮蔽、刪除策略) | 已決定 |
+| [ADR-012](ADR-012-rate-limit-cors-security-headers.md) | 認證限流、CORS 白名單與安全標頭 | 已實作 |
 
 ## 為何要寫 ADR
 
