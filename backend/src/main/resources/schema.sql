@@ -776,7 +776,7 @@ CREATE TABLE IF NOT EXISTS senders (
   name           TEXT,
   display_name   TEXT,
   phone          TEXT,
-  address        TEXT    NOT NULL,
+  address        TEXT,
   district_id    INTEGER NOT NULL REFERENCES districts(district_id),
   sender_type_id INTEGER NOT NULL REFERENCES sender_types(sender_type_id)
 );

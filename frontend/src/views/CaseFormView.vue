@@ -691,7 +691,7 @@ async function submit () {
         caseDescription: form.caseDescription,
         hintDescription: form.hintDescription,
         senderId: form.senderId ?? undefined,
-        senderAddress: form.senderAddress,
+        senderAddress: form.senderAddress || undefined,
         senderDistrictId: form.senderDistrictId,
         senderTypeId: form.senderTypeId,
         fieldDistrictId: effectiveFieldDistrictId2 ?? undefined,
@@ -842,8 +842,8 @@ async function runAi () {
             </select>
           </div>
           <div class="col-md-5">
-            <label class="form-label">地址</label>
-            <input v-model.trim="form.senderAddress" class="form-control" required />
+            <label class="form-label">地址 (選填)</label>
+            <input v-model.trim="form.senderAddress" class="form-control" />
           </div>
           <div v-if="form.senderId" class="col-12">
             <div class="alert alert-info py-2 mb-0 small">已選用既有送件人 #{{ form.senderId }}，儲存時將沿用該送件人 <button type="button" class="btn btn-sm btn-outline-secondary ms-2" @click="form.senderId = null">取消沿用</button></div>

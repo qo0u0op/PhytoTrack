@@ -149,6 +149,35 @@ sqlite3 backend/diagnoses.db "SELECT COUNT (*) FROM cases WHERE field_district_i
 
 測試庫 `backend/target/phytotrack-test.db` 為產物，刪除 `rm target/phytotrack-test.db` 後 `mvn test` 會依新 `schema.sql` 重建。
 
+## 7.1 既有資料庫遷移 (送件人地址 `senders.address` 放寬可空)
+
+本版本 `senders.address` 改為可空（無地址送件可建檔，空值存 null）。`CREATE TABLE IF NOT EXISTS` 與 Hibernate `ddl-auto: update` 皆不會為既有 `backend/diagnoses.db` 放寬既有欄位的 `NOT NULL`，需手動遷移（SQLite 不支援直接 `ALTER COLUMN`，需建表搬資料）：
+
+```bash
+# 1. 備份
+bash scripts/backup.sh
+# 2. 建表搬資料 (保留既有地址，僅放寬約束)
+sqlite3 backend/diagnoses.db <<'SQL'
+ALTER TABLE senders RENAME TO senders_old;
+CREATE TABLE senders (
+  sender_id      INTEGER PRIMARY KEY,
+  name           TEXT,
+  display_name   TEXT,
+  phone          TEXT,
+  address        TEXT,
+  district_id    INTEGER NOT NULL REFERENCES districts(district_id),
+  sender_type_id INTEGER NOT NULL REFERENCES sender_types(sender_type_id)
+);
+INSERT INTO senders SELECT * FROM senders_old;
+DROP TABLE senders_old;
+CREATE INDEX IF NOT EXISTS idx_senders_district_id    ON senders(district_id);
+CREATE INDEX IF NOT EXISTS idx_senders_sender_type_id ON senders(sender_type_id);
+CREATE INDEX IF NOT EXISTS idx_senders_phone ON senders(phone);
+SQL
+```
+
+測試庫同第 7 節刪除重建即可。
+
 ## 8. CSV 匯出欄位順序變更 (BREAKING)
 
 本版本依 `docs/diagnoses.typ` 紙本邏輯與後續 7+2 項調整重排 `GET /api/cases/export` 的欄位順序。舊版以欄位索引解析者請改以表頭解析。
