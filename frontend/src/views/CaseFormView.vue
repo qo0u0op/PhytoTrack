@@ -852,7 +852,7 @@ async function runAi () {
               class="btn btn-sm btn-outline-light"
               @click="resetSenderForm"
             >
-              取消
+              清除
             </button>
             <template v-if="form.senderId && senderDirty">
               <button
