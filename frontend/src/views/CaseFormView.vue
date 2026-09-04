@@ -197,7 +197,7 @@ watch (selectedFieldCityId, (newCityId) => {
   const districts = cities.value.find ((c) => c.id === newCityId)?.districts ?? []
   if (districts.length > 0 && form.fieldDistrictId && !districts.some ((d) => d.id === form.fieldDistrictId)) {
     form.fieldDistrictId = districts[0].id
-  } else if (districts.length > 0 && !form.fieldDistrictId && !fieldSameAsSender.value) {
+  } else if (districts.length > 0 && !form.fieldDistrictId && !fieldSameAsSender.value && fieldLocationVisible.value) {
     form.fieldDistrictId = districts[0].id
   }
 })
@@ -225,6 +225,34 @@ const diagnosisVisible = computed (() => {
   if (editId !== null) return !senderDirty.value
   return form.senderId !== null && !senderDirty.value
 })
+// 田區位置初隱：與診斷區段同訊號（新增時需送件人確定後才可選田區）
+const fieldLocationVisible = computed (() => {
+  if (editId !== null) return true
+  return form.senderId !== null && !senderDirty.value
+})
+
+/**
+ * 一鍵清空送件人輸入（新增模式，取消按鈕）：直接清空、無任何 Swal/alert，不觸發 fuzzy 搜尋。
+ * 田區同步重置，因田區初隱後再次顯示前應為空。
+ */
+function resetSenderForm () {
+  form.senderId = null
+  form.senderName = ''
+  form.senderDisplayName = ''
+  form.senderPhone = ''
+  form.senderAddress = ''
+  const defaults = { districtId: cities.value[0]?.districts[0]?.id ?? 0, cityId: cities.value[0]?.id ?? null, senderTypeId: senderTypes.value[0]?.id ?? 0 }
+  form.senderDistrictId = defaults.districtId
+  form.senderTypeId = defaults.senderTypeId
+  selectedSenderCityId.value = defaults.cityId
+  form.fieldDistrictId = null
+  selectedFieldCityId.value = null
+  fieldSameAsSender.value = false
+  lastFuzzyQuery = ''
+  senderSnapshot = snapshotSender ()
+}
+
+// 獨立儲存送件人：有 senderId 時 PUT 更新，否則 POST 建立；成功後鎖定 senderId 並解鎖診斷區段
 
 // 診斷儲存阻擋：送件人未儲存 (無 senderId) 或尚有未儲存的送件人編輯
 const diagnosisSaveBlocked = computed (() => !editId && (form.senderId === null || senderDirty.value))
@@ -789,6 +817,14 @@ async function runAi () {
             >
               {{ savingSender ? '儲存中…' : '儲存送件人' }}
             </button>
+            <button
+              v-if="!editId"
+              type="button"
+              class="btn btn-sm btn-outline-light"
+              @click="resetSenderForm"
+            >
+              取消
+            </button>
             <template v-if="form.senderId && senderDirty">
               <button
                 type="button"
@@ -852,7 +888,7 @@ async function runAi () {
       </div>
 
       <!-- 田區位置 -->
-      <div class="card shadow-sm mb-4">
+      <div v-if="fieldLocationVisible" class="card shadow-sm mb-4">
         <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
           <span>田區位置</span>
           <div class="form-check mb-0">
