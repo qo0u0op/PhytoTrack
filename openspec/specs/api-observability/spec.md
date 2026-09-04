@@ -26,26 +26,42 @@
 - **WHEN** 發生未預期例外
 - **THEN** 回應為泛化訊息，伺服器日誌以同一 requestId 記錄完整堆疊
 
-### Requirement: Actuator 健康與指標端點
+### Requirement: Actuator 健康檢查端點
 
-系統 SHALL 暴露 Actuator 精簡端點：`GET /actuator/health`（含應用與資料庫狀態）、`GET /actuator/info` 與 `GET /actuator/metrics`（JVM/HTTP 指標），非 dev 環境下僅允許內網或 `ROLE_ADMIN` 存取，敏感端點（`env`/`beans`）不得暴露。
+系統 SHALL 透過 Spring Boot Actuator 暴露 `health` 與 `info` 端點，供監控探測與部署檢查使用；其他 Actuator 端點預設不暴露。
 
-#### Scenario: 健康檢查
-- **WHEN** 呼叫 `GET /actuator/health`
-- **THEN** 回傳 `{"status":"UP"}` 且包含 `db` 與 `llama` 組件狀態
+#### Scenario: 匿名探測健康狀態
+- **WHEN** 未認證使用者呼叫 `GET /actuator/health`
+- **THEN** 回應 200 且 body 含 `{"status":"UP"}`，不洩漏細節 (`showDetails=never`)
 
-#### Scenario: 指標查詢
-- **WHEN** 呼叫 `GET /actuator/metrics/http.server.requests`
-- **THEN** 回傳 HTTP 指標且僅 ADMIN 或內網可存取
+#### Scenario: 匿名探測資訊端點
+- **WHEN** 未認證使用者呼叫 `GET /actuator/info`
+- **THEN** 回應 200 (內容可為空物件)，不需認證
 
-### Requirement: 日誌滾動與保留策略
+#### Scenario: 其他 Actuator 端點預設關閉
+- **WHEN** 未認證使用者呼叫 `GET /actuator/env` 或 `GET /actuator/beans`
+- **THEN** 回應 404 或 403，不暴露內部資訊
 
-系統 SHALL 以 logback 依日與大小滾動寫入 `logs/phytotrack-%d{yyyy-MM-dd}.%i.log.gz`，單檔上限 10MB、保留 30 日、總量 500MB，格式包含 `timestamp`、`level`、`requestId`、`thread` 與 `message`，並於 `application.yaml` 可調整。
+#### Scenario: 敏感端點需授權
+- **WHEN** 已登入但非 ADMIN 使用者嘗試存取未暴露的 Actuator 端點 (若曾臨時開啟)
+- **THEN** 系統拒絕存取 (403 或 404)，不洩漏配置
 
-#### Scenario: 日誌滾動
-- **WHEN** 日誌達 10MB 或跨日
-- **THEN** 自動滾動為新檔並壓縮舊檔，舊檔依保留策略清理
+### Requirement: logback 滾動日誌含 requestId
 
-#### Scenario: requestId 於日誌可追蹤
-- **WHEN** 產生錯誤回應
-- **THEN** 同一 `requestId` 出現於對應日誌行
+系統 SHALL 以 `logback-spring.xml` 提供滾動檔案日誌，按日與大小滾動、保留 30 天、總量 1GB 上限，且每行日誌 SHALL 包含與錯誤回應相同的 `requestId` (由 `RequestIdFilter` 以 MDC 注入)。
+
+#### Scenario: 日誌同時輸出至 console 與檔案
+- **WHEN** 應用程式啟動且產生日誌
+- **THEN** 日誌同時出現在 console 與 `logs/phytotrack.log`，檔案依 `logs/phytotrack.%d{yyyy-MM-dd}.%i.log` 滾動
+
+#### Scenario: requestId 關聯查詢
+- **WHEN** 發生 4xx 業務錯誤並回應 `requestId: abc-123`
+- **THEN** 同一 `requestId` 以 ` [abc-123]` 形式出現在日誌行 (含 `%X{requestId}`)，可 `grep abc-123 logs/phytotrack.log` 追溯
+
+#### Scenario: 滾動策略生效
+- **WHEN** 單日日誌超過 10MB 或跨日
+- **THEN** 產生新滾動檔，舊檔依 `TimeBasedRollingPolicy` 保留 30 天、總量不超過 1GB
+
+#### Scenario: 日誌檔案不進版控
+- **WHEN** 執行 `git status`
+- **THEN** `logs/` 下的 `*.log` 不顯示為未追蹤檔案 (已於 `.gitignore` 忽略)
