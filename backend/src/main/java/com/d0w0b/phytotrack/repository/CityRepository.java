@@ -12,7 +12,7 @@ import java.util.List;
  */
 public interface CityRepository extends JpaRepository<City, Long> {
 
-  /** 查詢所有縣市並預先抓取底下鄉鎮市區，避免 N+1 */
+  /** 查詢所有縣市並預先抓取底下鄉鎮市區，避免 N+1；一律依 id 升冪 */
   @EntityGraph (attributePaths = "districts")
-  List<City> findAllByOrderBySortOrderAsc ();
+  List<City> findAllByOrderByCityIdAsc ();
 }

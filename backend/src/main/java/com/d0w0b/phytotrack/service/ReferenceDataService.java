@@ -14,6 +14,7 @@ import com.d0w0b.phytotrack.models.Crop;
 import com.d0w0b.phytotrack.models.CropCategory;
 import com.d0w0b.phytotrack.models.Damage;
 import com.d0w0b.phytotrack.models.Delivery;
+import com.d0w0b.phytotrack.models.District;
 import com.d0w0b.phytotrack.models.Hint;
 import com.d0w0b.phytotrack.models.Identifier;
 import com.d0w0b.phytotrack.models.Method;
@@ -153,7 +154,7 @@ public class ReferenceDataService {
   /** 縣市 (含鄉鎮市區清單) */
   @Transactional (readOnly = true)
   public List<CityResponse> cities () {
-    return cityRepository.findAllByOrderBySortOrderAsc ().stream ()
+    return cityRepository.findAllByOrderByCityIdAsc ().stream ()
         .map (this::toCityResponse)
         .toList ();
   }
@@ -595,8 +596,8 @@ public class ReferenceDataService {
 
   private CityResponse toCityResponse (City city) {
     List<CityResponse.DistrictItem> districts = city.getDistricts ().stream ()
-        .sorted (Comparator.comparingInt (d -> d.getSortOrder ()))
-        .map (d -> new CityResponse.DistrictItem (d.getDistrictId (), d.getDistrict (), d.getSortOrder ()))
+        .sorted (Comparator.comparing (District::getDistrictId))
+        .map (d -> new CityResponse.DistrictItem (d.getDistrictId (), d.getDistrict ()))
         .toList ();
     return new CityResponse (city.getCityId (), city.getCity (), districts);
   }

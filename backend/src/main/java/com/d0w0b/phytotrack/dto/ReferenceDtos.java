@@ -29,9 +29,9 @@ public final class ReferenceDtos {
     }
   }
 
-  /** 縣市回應：包含其下的鄉鎮市區清單 */
+  /** 縣市回應：包含其下的鄉鎮市區清單（一律依 id 升冪，不提供 sortOrder） */
   public record CityResponse (Long id, String name, List<DistrictItem> districts) {
-    public record DistrictItem (Long id, String name, int sortOrder) {
+    public record DistrictItem (Long id, String name) {
     }
   }
 

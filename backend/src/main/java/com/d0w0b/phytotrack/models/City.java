@@ -17,9 +17,6 @@ public class City {
   @Column (nullable = false)
   private String city;
 
-  @Column (nullable = false)
-  private int sortOrder;
-
   /** 反向關聯：此縣市下的鄉鎮市區清單 (配合 @EntityGraph 一次抓取) */
   @OneToMany (mappedBy = "city", fetch = FetchType.LAZY)
   private List<District> districts;
