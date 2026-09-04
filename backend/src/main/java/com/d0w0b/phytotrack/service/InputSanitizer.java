@@ -12,11 +12,21 @@ public final class InputSanitizer {
 
   public static void assertNoHtml (String value, String field) {
     if (value != null && (value.contains ("<") || value.contains (">"))) {
-      throw new ApiException ("VALIDATION_ERROR", HttpStatus.BAD_REQUEST, field + "不可包含 < 或 >");
+      String msg = field + "不可包含 < 或 >";
+      throw new ApiException ("VALIDATION_ERROR", HttpStatus.BAD_REQUEST, msg,
+          java.util.Map.of(field, msg));
+    }
+  }
+
+  public static void assertNoHtml (String value, String fieldKey, String fieldLabel) {
+    if (value != null && (value.contains ("<") || value.contains (">"))) {
+      String msg = fieldLabel + "不可包含 < 或 >";
+      throw new ApiException ("VALIDATION_ERROR", HttpStatus.BAD_REQUEST, msg,
+          java.util.Map.of(fieldKey, msg));
     }
   }
 
   public static void assertDisplayName (String displayName) {
-    assertNoHtml (displayName, "顯示名稱");
+    assertNoHtml (displayName, "displayName", "顯示名稱");
   }
 }

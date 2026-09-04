@@ -105,9 +105,9 @@ public class SenderService {
     if (!hasPhone && !hasDisplay) {
       throw new ApiException ("VALIDATION_ERROR", HttpStatus.BAD_REQUEST, "電話與顯示名稱至少需提供一項");
     }
-    InputSanitizer.assertNoHtml (request.displayName (), "顯示名稱");
-    InputSanitizer.assertNoHtml (request.name (), "姓名");
-    InputSanitizer.assertNoHtml (request.address (), "地址");
+    InputSanitizer.assertNoHtml (request.displayName (), "displayName", "顯示名稱");
+    InputSanitizer.assertNoHtml (request.name (), "name", "姓名");
+    InputSanitizer.assertNoHtml (request.address (), "address", "地址");
   }
 
   private void apply (Sender s, SenderUpsertRequest request) {

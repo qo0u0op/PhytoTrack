@@ -194,6 +194,14 @@ public class CaseService {
   /** 建立案件：若 identifierIds 與 inline 皆空則自動帶入當前使用者簽名人，inline 原子建非 user */
   @Transactional
   public CaseResponse create (CaseCreateRequest request) {
+    if (request.inlineIdentifiers () != null) {
+      for (var inline : request.inlineIdentifiers ()) {
+        InputSanitizer.assertNoHtml (inline.name (), "inlineIdentifier", "簽名人名稱");
+      }
+    }
+    if (request.inlineCrop () != null) {
+      InputSanitizer.assertNoHtml (request.inlineCrop ().name (), "inlineCrop", "作物名稱");
+    }
     List<Long> identifierIds = request.identifierIds ();
     var inlines = request.inlineIdentifiers ();
     boolean hasInline = inlines != null && !inlines.isEmpty ();
@@ -323,6 +331,14 @@ public class CaseService {
   /** 更新案件 (僅更新有提供的欄位)；狀態變更需符合轉移規則 (見 CaseStatus) */
   @Transactional
   public CaseResponse update (Long id, CaseUpdateRequest request) {
+    if (request.inlineIdentifiers () != null) {
+      for (var inline : request.inlineIdentifiers ()) {
+        InputSanitizer.assertNoHtml (inline.name (), "inlineIdentifier", "簽名人名稱");
+      }
+    }
+    if (request.inlineCrop () != null) {
+      InputSanitizer.assertNoHtml (request.inlineCrop ().name (), "inlineCrop", "作物名稱");
+    }
     Case caseEntity = findByIdOrThrow (id);
 
     // 已結案案件：僅管理者可修改內容欄位 (狀態同值為合法 no-op，狀態轉移另由規則把關)
@@ -590,6 +606,9 @@ public class CaseService {
     if (!hasPhone && !hasDisplay) {
       throw new ApiException ("VALIDATION_ERROR", HttpStatus.BAD_REQUEST, "電話與顯示名稱至少需提供一項");
     }
+    InputSanitizer.assertNoHtml (name, "senderName", "送件人姓名");
+    InputSanitizer.assertNoHtml (displayName, "senderDisplayName", "送件人顯示名稱");
+    InputSanitizer.assertNoHtml (address, "senderAddress", "送件人地址");
     Sender sender = new Sender ();
     sender.setName (name);
     sender.setDisplayName (displayName);
@@ -1034,6 +1053,9 @@ public class CaseService {
     if (!hasPhone && !hasDisplay) {
       throw new ApiException ("VALIDATION_ERROR", HttpStatus.BAD_REQUEST, "電話與顯示名稱至少需提供一項");
     }
+    InputSanitizer.assertNoHtml (request.senderName (), "senderName", "送件人姓名");
+    InputSanitizer.assertNoHtml (displayName, "senderDisplayName", "送件人顯示名稱");
+    InputSanitizer.assertNoHtml (request.senderAddress (), "senderAddress", "送件人地址");
     Sender sender = new Sender ();
     sender.setName (request.senderName ());
     sender.setDisplayName (displayName);

@@ -5,6 +5,8 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -28,10 +30,14 @@ public final class CaseDtos {
 
       // 送件人 (Sender) 欄位：若提供 senderId 則沿用，否則依 name/phone/displayName 建立
       Long senderId,
+      @Pattern(regexp = "^[^<>]*$", message = "送件人姓名不可包含 < 或 >")
       String senderName,
+      @Size(max = 50, message = "送件人顯示名稱不可超過 50 字元")
+      @Pattern(regexp = "^[^<>]*$", message = "送件人顯示名稱不可包含 < 或 >")
       String senderDisplayName,
       String senderPhone,
       // 送件人地址選填：空值（未傳/null/全空白）視為未綁定地址，存為 null
+      @Pattern(regexp = "^[^<>]*$", message = "送件人地址不可包含 < 或 >")
       String senderAddress,
       @NotNull (message = "送件人鄉鎮市區不可為空") Long senderDistrictId,
       @NotNull (message = "身分別不可為空") Long senderTypeId,
@@ -60,11 +66,13 @@ public final class CaseDtos {
 
     public record InlineSigner (@NotBlank (message = "簽名人名稱不可為空白")
         @jakarta.validation.constraints.Size (max = 100, message = "簽名人名稱不可超過 100 字元")
+        @Pattern(regexp = "^[^<>]*$", message = "簽名人名稱不可包含 < 或 >")
         String name) {
     }
 
     public record InlineCrop (@NotBlank (message = "作物名稱不可為空白")
         @jakarta.validation.constraints.Size (max = 100, message = "作物名稱不可超過 100 字元")
+        @Pattern(regexp = "^[^<>]*$", message = "作物名稱不可包含 < 或 >")
         String name,
         @NotNull (message = "作物分類不可為空") Long cropCategoryId) {
     }
@@ -90,9 +98,13 @@ public final class CaseDtos {
 
       // 送件人 (Sender) 欄位：任一提供即更新案件關聯的送件人
       Long senderId,
+      @Pattern(regexp = "^[^<>]*$", message = "送件人姓名不可包含 < 或 >")
       String senderName,
+      @Size(max = 50, message = "送件人顯示名稱不可超過 50 字元")
+      @Pattern(regexp = "^[^<>]*$", message = "送件人顯示名稱不可包含 < 或 >")
       String senderDisplayName,
       String senderPhone,
+      @Pattern(regexp = "^[^<>]*$", message = "送件人地址不可包含 < 或 >")
       String senderAddress,
       Long senderDistrictId,
       Long senderTypeId,
@@ -108,11 +120,13 @@ public final class CaseDtos {
 
     public record InlineSigner (@NotBlank (message = "簽名人名稱不可為空白")
         @jakarta.validation.constraints.Size (max = 100, message = "簽名人名稱不可超過 100 字元")
+        @Pattern(regexp = "^[^<>]*$", message = "簽名人名稱不可包含 < 或 >")
         String name) {
     }
 
     public record InlineCrop (@NotBlank (message = "作物名稱不可為空白")
         @jakarta.validation.constraints.Size (max = 100, message = "作物名稱不可超過 100 字元")
+        @Pattern(regexp = "^[^<>]*$", message = "作物名稱不可包含 < 或 >")
         String name,
         @NotNull (message = "作物分類不可為空") Long cropCategoryId) {
     }
