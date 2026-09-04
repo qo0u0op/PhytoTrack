@@ -45,6 +45,17 @@ public class IdentifierService {
     // 若有同名 inactive 舊筆則優先啟用，避免累積
     String newName = IdentifierNames.display (user.getDisplayName () != null ? user.getDisplayName () : user.getUsername ());
     synchronized (("signer:" + IdentifierNames.normalize (newName)).intern ()) {
+      // 歷史重鏈優先：former_user_id 為己、同名未綁定舊筆（id 最小）直接恢復，不拋錯
+      var formerOpt = identifierRepository.findByFormerUserUserId (user.getUserId ()).stream ()
+          .filter (i -> i.getUser () == null && IdentifierNames.equalsNormalized (i.getIdentifier (), newName))
+          .sorted (java.util.Comparator.comparing (Identifier::getIdentifierId))
+          .findFirst ();
+      if (formerOpt.isPresent ()) {
+        Identifier reowned = formerOpt.get ();
+        reowned.setUser (user);
+        reowned.setActive (true);
+        return identifierRepository.save (reowned);
+      }
       // 僅擋非使用者同名（同名同姓的使用者簽名人允許並存，以帳號區分）
       boolean collides = identifierRepository.findByUserIsNullAndActiveTrue ().stream ()
           .anyMatch (i -> IdentifierNames.equalsNormalized (i.getIdentifier (), newName));
@@ -69,6 +80,33 @@ public class IdentifierService {
       } catch (org.springframework.dao.DataIntegrityViolationException ex) {
         throw new com.d0w0b.phytotrack.exception.ApiException ("DISPLAY_NAME_EXISTS", org.springframework.http.HttpStatus.CONFLICT, "顯示名稱已存在");
       }
+    }
+  }
+
+  /**
+   * 恢復原筆簽名人：升權／重新啟用時，憑 `former_user_id` 重鏈同名未綁定舊筆。
+   * 他人同名（`former_user_id` 不同或為 null）不恢復；已有連結 active 簽名人時不動作。
+   *
+   * @return 有恢復回傳 true，無原筆回傳 false
+   */
+  @Transactional
+  public boolean restoreFormerSigner (User user) {
+    if (user == null || user.getUserId () == null) return false;
+    if (!identifierRepository.findByUserUserIdAndActiveTrueOrderByIdentifierIdAsc (user.getUserId ()).isEmpty ()) {
+      return false;
+    }
+    String name = IdentifierNames.display (user.getDisplayName () != null ? user.getDisplayName () : user.getUsername ());
+    synchronized (("signer:" + IdentifierNames.normalize (name)).intern ()) {
+      var candidate = identifierRepository.findByFormerUserUserId (user.getUserId ()).stream ()
+          .filter (i -> i.getUser () == null && IdentifierNames.equalsNormalized (i.getIdentifier (), name))
+          .sorted (java.util.Comparator.comparing (Identifier::getIdentifierId))
+          .findFirst ();
+      if (candidate.isEmpty ()) return false;
+      Identifier reowned = candidate.get ();
+      reowned.setUser (user);
+      reowned.setActive (true);
+      identifierRepository.save (reowned);
+      return true;
     }
   }
 
@@ -107,6 +145,8 @@ public class IdentifierService {
     }
     identifier.setUser (user);
     identifier.setActive (true);
+    // 已有所屬無需歷史：清空前手歷史，避免後續誤恢復
+    identifier.setFormerUser (null);
     return identifierRepository.save (identifier);
   }
 }

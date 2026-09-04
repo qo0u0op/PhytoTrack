@@ -491,6 +491,7 @@ CREATE TABLE IF NOT EXISTS identifiers (
   identifier_id INTEGER PRIMARY KEY,
   identifier    TEXT    NOT NULL,
   user_id       INTEGER REFERENCES users(user_id),
+  former_user_id INTEGER REFERENCES users(user_id),
   active        INTEGER NOT NULL DEFAULT 1
 );
 

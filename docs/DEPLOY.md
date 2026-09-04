@@ -178,6 +178,17 @@ SQL
 
 測試庫同第 7 節刪除重建即可。
 
+
+## 7.2 既有資料庫驗證 (`identifiers.former_user_id` 歷史欄位)
+
+本版本 `identifiers` 新增可空 `former_user_id` 外鍵（記錄解綁前所屬使用者，供升權／啟用恢復原筆）。Hibernate `ddl-auto: update` 可自動 `ADD COLUMN`（SQLite 支援），既有 `backend/diagnoses.db` 重啟後自動補欄，無需手動遷移；`schema.sql` 已同步（新庫直接生效）。部署後驗證：
+
+```bash
+sqlite3 backend/diagnoses.db "PRAGMA table_info (identifiers);"
+# 應含 former_user_id 欄；缺失時手動補：
+sqlite3 backend/diagnoses.db "ALTER TABLE identifiers ADD COLUMN former_user_id INTEGER REFERENCES users(user_id);"
+```
+
 ## 8. CSV 匯出欄位順序變更 (BREAKING)
 
 本版本依 `docs/diagnoses.typ` 紙本邏輯與後續 7+2 項調整重排 `GET /api/cases/export` 的欄位順序。舊版以欄位索引解析者請改以表頭解析。
