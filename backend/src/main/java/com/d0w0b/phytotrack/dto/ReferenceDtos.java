@@ -29,9 +29,9 @@ public final class ReferenceDtos {
     }
   }
 
-  /** 縣市回應：包含其下的鄉鎮市區清單 */
+  /** 縣市回應：包含其下的鄉鎮市區清單（一律依 id 升冪，不提供 sortOrder） */
   public record CityResponse (Long id, String name, List<DistrictItem> districts) {
-    public record DistrictItem (Long id, String name, int sortOrder) {
+    public record DistrictItem (Long id, String name) {
     }
   }
 
@@ -66,6 +66,32 @@ public final class ReferenceDtos {
       String name,
       @NotNull (message = "作物分類不可為空")
       Long cropCategoryId) {
+  }
+
+  /** 縣市寫入請求 */
+  public record CityCreateRequest (@NotBlank (message = "縣市名稱不可為空白")
+      @Size (max = 50, message = "縣市名稱不可超過 50 字元")
+      String name) {
+  }
+
+  public record CityUpdateRequest (@NotBlank (message = "縣市名稱不可為空白")
+      @Size (max = 50, message = "縣市名稱不可超過 50 字元")
+      String name) {
+  }
+
+  /** 鄉鎮市區寫入請求 */
+  public record DistrictCreateRequest (@NotBlank (message = "鄉鎮市區名稱不可為空白")
+      @Size (max = 50, message = "鄉鎮市區名稱不可超過 50 字元")
+      String name,
+      @NotNull (message = "縣市不可為空")
+      Long cityId) {
+  }
+
+  public record DistrictUpdateRequest (@NotBlank (message = "鄉鎮市區名稱不可為空白")
+      @Size (max = 50, message = "鄉鎮市區名稱不可超過 50 字元")
+      String name,
+      @NotNull (message = "縣市不可為空")
+      Long cityId) {
   }
 
   /** 作物分類寫入請求 */

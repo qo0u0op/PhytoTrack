@@ -68,7 +68,18 @@ class SignerEdgeBatch1Test {
     MvcResult r = mockMvc.perform (get (url).header (HttpHeaders.AUTHORIZATION, bearer (token)))
         .andExpect (status ().isOk ()).andReturn ();
     JsonNode arr = objectMapper.readTree (r.getResponse ().getContentAsString (StandardCharsets.UTF_8));
-    return arr.get (0).path ("crops").get (0).path ("id").asLong ();
+    JsonNode crops = arr.get (0).path ("crops");
+    // 業務初始無作物種子：為空時自建（保持測試獨立於種子）
+    if (crops.isArray () && crops.size () > 0) return crops.get (0).path ("id").asLong ();
+    long categoryId = arr.get (0).path ("id").asLong ();
+    MvcResult created = mockMvc.perform (post ("/api/admin/ref/crops")
+            .header (HttpHeaders.AUTHORIZATION, bearer (token))
+            .contentType (MediaType.APPLICATION_JSON)
+            .content ("""
+                {"name":"測試作物_%s","cropCategoryId":%d}
+                """.formatted (System.nanoTime (), categoryId)))
+        .andExpect (status ().isCreated ()).andReturn ();
+    return objectMapper.readTree (created.getResponse ().getContentAsString (StandardCharsets.UTF_8)).path ("id").asLong ();
   }
 
   private long firstPestCategoryId (String url, String token) throws Exception {

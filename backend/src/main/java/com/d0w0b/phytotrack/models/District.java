@@ -19,7 +19,4 @@ public class District {
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "city_id", nullable = false)
   private City city;
-
-  @Column(nullable = false)
-  private int sortOrder;
 }
