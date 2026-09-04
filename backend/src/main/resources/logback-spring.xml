@@ -17,10 +17,10 @@
       <pattern>${LOG_PATTERN}</pattern>
     </encoder>
     <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-      <fileNamePattern>logs/phytotrack-%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+      <fileNamePattern>logs/phytotrack.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
       <maxFileSize>10MB</maxFileSize>
       <maxHistory>30</maxHistory>
-      <totalSizeCap>500MB</totalSizeCap>
+      <totalSizeCap>1GB</totalSizeCap>
     </rollingPolicy>
   </appender>
 

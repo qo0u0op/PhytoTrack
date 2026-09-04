@@ -226,9 +226,9 @@ sqlite3 backend/diagnoses.db "ALTER TABLE identifiers ADD COLUMN former_user_id 
 
 ## 9. 監控與日誌 (Phase 2, api-observability)
 
-- 健康檢查：`GET /actuator/health`（含 `db`，公開）、`GET /actuator/info`（公開）；指標：`GET /actuator/metrics/http.server.requests` 等僅 `ROLE_ADMIN`（`management.endpoints.web.exposure.include=health,info,metrics`）
-- 日誌：`logs/phytotrack.log` 為主檔，依日與大小滾動為 `logs/phytotrack-%d{yyyy-MM-dd}.%i.log.gz`（`maxFileSize 10MB`、`maxHistory 30`、`totalSizeCap 500MB`），pattern 含 `[%X{requestId}]` 供追蹤（含 `RATE_LIMITED` 警告）；`logs/` 已 gitignore，建議納入備份排除
-- 驗證：`curl http://localhost:8080/actuator/health` 應回 `{"status":"UP"}`；`ls logs/` 觀察滾動與壓縮
+- 健康檢查：`GET /actuator/health`（公開，`show-details: never` 僅回 `{"status":"UP"}`）、`GET /actuator/info`（公開，空物件）；其餘端點（含 `metrics`）不暴露（`management.endpoints.web.exposure.include=health,info`），勿改為 `*`
+- 日誌：`logs/phytotrack.log` 為主檔，依日與大小滾動為 `logs/phytotrack.%d{yyyy-MM-dd}.%i.log`（`maxFileSize 10MB`、`maxHistory 30`、`totalSizeCap 1GB`），pattern 含 `[%X{requestId}]` 供追蹤（含 `RATE_LIMITED` 警告）；`logs/` 已 gitignore，建議納入備份排除
+- 驗證：`curl http://localhost:8080/actuator/health` 應回 `{"status":"UP"}`；`ls logs/` 觀察滾動；`grep <requestId> logs/phytotrack.log` 追溯請求
 
 ## 10. 安全加固 (Phase 2, security-review)
 

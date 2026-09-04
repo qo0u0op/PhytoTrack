@@ -53,14 +53,20 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics
+        include: health,info
   endpoint:
     health:
-      show-details: always
-      show-components: always
+      show-details: never
+      probes:
+        enabled: true
   metrics:
     tags:
       application: ${spring.application.name}
+
+logging:
+  # 日誌主檔（可被 LOGGING_FILE_NAME env 覆寫）；實際滾動規則見 logback-spring.xml
+  file:
+    name: logs/phytotrack.log
 
 # ============================================================
 # 應用程式自訂設定
