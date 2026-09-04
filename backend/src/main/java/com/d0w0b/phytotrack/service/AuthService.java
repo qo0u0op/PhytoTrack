@@ -78,6 +78,7 @@ public class AuthService {
    */
   @Transactional
   public UserResponse register (RegisterRequest request) {
+    InputSanitizer.assertDisplayName (request.displayName ());
     if (userRepository.findByUsername (request.username ()).isPresent ()) {
       throw new ApiException ("USERNAME_TAKEN", HttpStatus.CONFLICT, "帳號已存在");
     }

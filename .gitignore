@@ -38,6 +38,9 @@ build/
 backups/
 logs/
 
+### Scanner reports ###
+*.sarif
+
 ### Environment ###
 backend/.env
 

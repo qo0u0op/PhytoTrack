@@ -2,6 +2,7 @@ package com.d0w0b.phytotrack.dto;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 public final class AccountDtos {
@@ -10,6 +11,7 @@ public final class AccountDtos {
   public record UpdateProfileRequest (
       @NotBlank(message = "顯示名稱不可為空白")
       @Size(max = 50, message = "顯示名稱不可超過 50 字元")
+      @Pattern(regexp = "^[^<>]*$", message = "顯示名稱不可包含 < 或 >")
       String displayName,
 
       @Email(message = "電子信箱格式不正確")

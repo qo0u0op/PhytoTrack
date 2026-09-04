@@ -8,11 +8,15 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.DisabledException;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import com.d0w0b.phytotrack.config.RequestIdFilter;
 
@@ -87,6 +91,34 @@ public class GlobalExceptionHandler {
   public ResponseEntity<ErrorResponse> handleAccessDenied (AccessDeniedException ex, HttpServletRequest request) {
     log.warn ("權限不足 {} {}：{}", request.getMethod (), request.getRequestURI (), ex.getMessage ());
     return build ("ACCESS_DENIED", "權限不足", HttpStatus.FORBIDDEN, request, null);
+  }
+
+  /** 404：靜態資源或未知路徑（避免落入 500） */
+  @ExceptionHandler (NoResourceFoundException.class)
+  public ResponseEntity<ErrorResponse> handleNoResource (NoResourceFoundException ex, HttpServletRequest request) {
+    log.warn ("資源不存在 {} {}：{}", request.getMethod (), request.getRequestURI (), ex.getMessage ());
+    return build ("NOT_FOUND", "資源不存在", HttpStatus.NOT_FOUND, request, null);
+  }
+
+  /** 405：方法不允許 */
+  @ExceptionHandler (HttpRequestMethodNotSupportedException.class)
+  public ResponseEntity<ErrorResponse> handleMethodNotSupported (HttpRequestMethodNotSupportedException ex, HttpServletRequest request) {
+    log.warn ("方法不允許 {} {}：{}", request.getMethod (), request.getRequestURI (), ex.getMessage ());
+    return build ("METHOD_NOT_ALLOWED", "方法不允許", HttpStatus.METHOD_NOT_ALLOWED, request, null);
+  }
+
+  /** 415：不支援的媒體類型 */
+  @ExceptionHandler (HttpMediaTypeNotSupportedException.class)
+  public ResponseEntity<ErrorResponse> handleMediaTypeNotSupported (HttpMediaTypeNotSupportedException ex, HttpServletRequest request) {
+    log.warn ("不支援的媒體類型 {} {}：{}", request.getMethod (), request.getRequestURI (), ex.getMessage ());
+    return build ("UNSUPPORTED_MEDIA_TYPE", "不支援的媒體類型", HttpStatus.UNSUPPORTED_MEDIA_TYPE, request, null);
+  }
+
+  /** 400：JSON 解析失敗 / 請求體不可讀 */
+  @ExceptionHandler (HttpMessageNotReadableException.class)
+  public ResponseEntity<ErrorResponse> handleNotReadable (HttpMessageNotReadableException ex, HttpServletRequest request) {
+    log.warn ("請求體不可讀 {} {}：{}", request.getMethod (), request.getRequestURI (), ex.getMessage ());
+    return build ("VALIDATION_ERROR", "請求格式錯誤", HttpStatus.BAD_REQUEST, request, null);
   }
 
   /** 未預期的系統例外 (500) */

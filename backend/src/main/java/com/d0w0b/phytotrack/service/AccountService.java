@@ -58,6 +58,7 @@ public class AccountService {
   public UserResponse updateProfile (UserPrincipal principal, String displayName, String email) {
     User user = userRepository.findById (principal.getUserId ())
         .orElseThrow (() -> new ApiException ("USER_NOT_FOUND", HttpStatus.NOT_FOUND, "使用者不存在"));
+    InputSanitizer.assertDisplayName (displayName);
     String trimmedEmail = email != null ? email.trim() : null;
     if (trimmedEmail != null && trimmedEmail.isEmpty ()) trimmedEmail = null;
 

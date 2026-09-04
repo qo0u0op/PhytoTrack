@@ -64,7 +64,8 @@ public class SecurityConfig {
             .requestMatchers ("/api/auth/register", "/api/auth/login", "/api/auth/abandon-deactivate", "/api/auth/check-username", "/api/auth/check-email").permitAll ()
             // 公開：llama-server 健康檢查
             .requestMatchers ("/api/ai/health").permitAll ()
-            // 公開：OpenAPI 文件與 Swagger UI
+            // 公開：OpenAPI 文件與 Swagger UI（prod profile 以 springdoc.enabled=false 關閉，見 application.yaml）
+            // 保留 permitAll 僅為 dev 便利，prod 因端點不存在而不暴露；若需更嚴格可改為 hasRole ADMIN
             .requestMatchers ("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll ()
             // Actuator：health/info 公開，metrics 僅 ADMIN（非 dev 限權，見 api-observability Phase2）
             .requestMatchers ("/actuator/health", "/actuator/info").permitAll ()
