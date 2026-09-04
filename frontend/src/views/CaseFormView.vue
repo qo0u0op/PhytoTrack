@@ -98,6 +98,37 @@ interface PestRow {
   pestNote: string
 }
 const pestRows = ref<PestRow[]>([])
+// 診斷簽名人顯示條件：僅診斷有編輯時顯示（先建檔、後診斷）
+const originalDiagnosis = ref<{ pestRowsJson: string; hintIdsJson: string; hintDescription: string }>({
+  pestRowsJson: JSON.stringify ([]),
+  hintIdsJson: JSON.stringify ([]),
+  hintDescription: '',
+})
+const diagnosisEdited = computed (() => {
+  if (editId === null) {
+    return pestRows.value.length > 0 || form.hintIds.length > 0 || form.hintDescription.trim () !== ''
+  }
+  const curPest = JSON.stringify (pestRows.value)
+  const curHintIds = JSON.stringify ([...form.hintIds].sort ((a, b) => a - b))
+  if (curPest !== originalDiagnosis.value.pestRowsJson) return true
+  if (curHintIds !== originalDiagnosis.value.hintIdsJson) return true
+  if (form.hintDescription.trim () !== (originalDiagnosis.value.hintDescription ?? '').trim ()) return true
+  return false
+})
+// 編輯模式若原始診斷已有資料，預設顯示簽名人欄位
+const originalDiagnosisHasData = computed (() => {
+  if (editId === null) return false
+  try {
+    const rows = JSON.parse (originalDiagnosis.value.pestRowsJson)
+    if (Array.isArray (rows) && rows.length > 0) return true
+  } catch {}
+  try {
+    const ids = JSON.parse (originalDiagnosis.value.hintIdsJson)
+    if (Array.isArray (ids) && ids.length > 0) return true
+  } catch {}
+  return (originalDiagnosis.value.hintDescription ?? '').trim () !== ''
+})
+const signerCardVisible = computed (() => diagnosisVisible.value && (diagnosisEdited.value || originalDiagnosisHasData.value))
 
 // 參照資料
 const cropCategories = ref<CropCategory[]>([])
@@ -523,20 +554,6 @@ async function loadRefs () {
   cities.value = ct.data
   senderTypes.value = st.data
   identifiers.value = (idf.data as IdName[]) ?? []
-  // 新增案件時自動帶入當前使用者簽名人（後端兜底，前端預選提升 UX）
-  if (!editId && form.identifierIds.length === 0) {
-    try {
-      const me = await refApi.myIdentifier ()
-      const myId = (me.data as any)?.id ?? (me.data as any)?.identifierId
-      if (myId && !form.identifierIds.includes (myId)) form.identifierIds = [myId]
-    } catch {
-      const name = auth.user?.displayName
-      if (name) {
-        const found = identifiers.value.find ((i) => i.name === name)
-        if (found && !form.identifierIds.includes (found.id)) form.identifierIds = [found.id]
-      }
-    }
-  }
 
   // 建立模式：套用合理的預設值
   form.methodId = methods.value[0]?.id ?? 0
@@ -637,6 +654,12 @@ async function loadCase (id: number) {
     }
   }
   form.identifierIds = d.identifiers?.map ((x) => x.id).filter ((x): x is number => x != null) ?? []
+  // 快照原始診斷用於簽名人卡片顯示條件（僅診斷有編輯時顯示）
+  originalDiagnosis.value = {
+    pestRowsJson: JSON.stringify (pestRows.value),
+    hintIdsJson: JSON.stringify ([...form.hintIds].sort ((a, b) => a - b)),
+    hintDescription: form.hintDescription ?? '',
+  }
 
   // 由名稱反查 ID (後端詳細回應帶的是名稱而非 ID)
   const crop = cropCategories.value
@@ -1079,28 +1102,43 @@ async function runAi () {
             <label class="form-label">建議採取措施</label>
             <textarea v-model.trim="form.hintDescription" class="form-control" rows="2"></textarea>
           </div>
-          <div class="col-md-6">
+          <div class="col-12">
             <label class="form-label">防治建議 (可複選)</label>
-            <div v-for="h in hints" :key="h.id" class="form-check">
-              <input
-                class="form-check-input"
-                type="checkbox"
-                :checked="form.hintIds.includes (h.id)"
-                @change="toggle (form.hintIds, h.id)"
-              />
-              <span class="form-check-label">{{ h.name }}</span>
+            <div class="d-flex flex-wrap gap-3">
+              <label v-for="h in hints" :key="h.id" class="form-check form-check-inline">
+                <input
+                  class="form-check-input"
+                  type="checkbox"
+                  :checked="form.hintIds.includes (h.id)"
+                  @change="toggle (form.hintIds, h.id)"
+                />
+                <span class="form-check-label">{{ h.name }}</span>
+              </label>
             </div>
           </div>
-          <div class="col-md-6">
-            <label class="form-label d-flex justify-content-between">診斷簽名人 (可複選) <button type="button" class="btn btn-sm btn-outline-success py-0" @click="handleCreateIdentifier">＋新增</button></label>
-            <div v-for="i in identifiers" :key="i.id" class="form-check">
-              <input
-                class="form-check-input"
-                type="checkbox"
-                :checked="form.identifierIds.includes (i.id)"
-                @change="toggle (form.identifierIds, i.id)"
-              />
-              <span class="form-check-label">{{ i.name }} <span class="badge ms-1" :class="i.userId ? 'bg-primary' : 'bg-secondary'">{{ i.userId ? '使用者' : '非使用者' }}</span> <span v-if="i.username" class="text-muted small">· {{ i.username }}</span></span>
+        </div>
+      </div>
+
+      <!-- 診斷簽名人獨立卡片：僅診斷有編輯時顯示，預設不勾選 -->
+      <div v-if="signerCardVisible" class="card shadow-sm mb-4">
+        <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+          <span>診斷簽名人 (可複選)</span>
+          <button type="button" class="btn btn-sm btn-outline-light py-0" @click="handleCreateIdentifier">＋新增</button>
+        </div>
+        <div class="card-body">
+          <div class="row g-2">
+            <div v-for="i in identifiers" :key="i.id" class="col-md-4">
+              <div class="form-check d-flex align-items-center gap-1 m-0 p-2 border rounded">
+                <input
+                  class="form-check-input flex-shrink-0 m-0"
+                  type="checkbox"
+                  :checked="form.identifierIds.includes (i.id)"
+                  @change="toggle (form.identifierIds, i.id)"
+                />
+                <span class="form-check-label text-truncate flex-shrink-0" style="width:90px" :title="i.name">{{ i.name }}</span>
+                <span class="badge flex-shrink-0 text-center" style="width:64px" :class="i.userId ? 'bg-primary' : 'bg-secondary'">{{ i.userId ? '使用者' : '非使用者' }}</span>
+                <span class="text-muted small flex-shrink-0 text-truncate ms-2" style="width:80px" :title="i.username ?? ''">{{ i.username ?? '' }}</span>
+              </div>
             </div>
           </div>
         </div>
