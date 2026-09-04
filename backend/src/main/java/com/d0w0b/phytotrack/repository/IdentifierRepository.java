@@ -31,4 +31,7 @@ public interface IdentifierRepository extends JpaRepository<Identifier, Long> {
   List<Identifier> findByUserIsNull ();
 
   List<Identifier> findByUserIsNullAndActiveTrue ();
+
+  /** 解綁歷史：曾屬於指定使用者的簽名人（恢復原筆用） */
+  List<Identifier> findByFormerUserUserId (Long userId);
 }

@@ -31,7 +31,8 @@ public final class CaseDtos {
       String senderName,
       String senderDisplayName,
       String senderPhone,
-      @NotBlank (message = "送件人地址不可為空白") String senderAddress,
+      // 送件人地址選填：空值（未傳/null/全空白）視為未綁定地址，存為 null
+      String senderAddress,
       @NotNull (message = "送件人鄉鎮市區不可為空") Long senderDistrictId,
       @NotNull (message = "身分別不可為空") Long senderTypeId,
 

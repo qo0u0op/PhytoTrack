@@ -111,7 +111,7 @@ public class SenderService {
     s.setName (blankToNull (request.name ()));
     s.setDisplayName (blankToNull (request.displayName ()));
     s.setPhone (blankToNull (request.phone ()));
-    s.setAddress (request.address ());
+    s.setAddress (blankToNull (request.address ()));
     s.setDistrict (getRef (districtRepository, request.districtId (), "鄉鎮市區"));
     s.setSenderType (getRef (senderTypeRepository, request.senderTypeId (), "身分別"));
   }

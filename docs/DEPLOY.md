@@ -149,6 +149,46 @@ sqlite3 backend/diagnoses.db "SELECT COUNT (*) FROM cases WHERE field_district_i
 
 測試庫 `backend/target/phytotrack-test.db` 為產物，刪除 `rm target/phytotrack-test.db` 後 `mvn test` 會依新 `schema.sql` 重建。
 
+## 7.1 既有資料庫遷移 (送件人地址 `senders.address` 放寬可空)
+
+本版本 `senders.address` 改為可空（無地址送件可建檔，空值存 null）。`CREATE TABLE IF NOT EXISTS` 與 Hibernate `ddl-auto: update` 皆不會為既有 `backend/diagnoses.db` 放寬既有欄位的 `NOT NULL`，需手動遷移（SQLite 不支援直接 `ALTER COLUMN`，需建表搬資料）：
+
+```bash
+# 1. 備份
+bash scripts/backup.sh
+# 2. 建表搬資料 (保留既有地址，僅放寬約束)
+sqlite3 backend/diagnoses.db <<'SQL'
+ALTER TABLE senders RENAME TO senders_old;
+CREATE TABLE senders (
+  sender_id      INTEGER PRIMARY KEY,
+  name           TEXT,
+  display_name   TEXT,
+  phone          TEXT,
+  address        TEXT,
+  district_id    INTEGER NOT NULL REFERENCES districts(district_id),
+  sender_type_id INTEGER NOT NULL REFERENCES sender_types(sender_type_id)
+);
+INSERT INTO senders SELECT * FROM senders_old;
+DROP TABLE senders_old;
+CREATE INDEX IF NOT EXISTS idx_senders_district_id    ON senders(district_id);
+CREATE INDEX IF NOT EXISTS idx_senders_sender_type_id ON senders(sender_type_id);
+CREATE INDEX IF NOT EXISTS idx_senders_phone ON senders(phone);
+SQL
+```
+
+測試庫同第 7 節刪除重建即可。
+
+
+## 7.2 既有資料庫驗證 (`identifiers.former_user_id` 歷史欄位)
+
+本版本 `identifiers` 新增可空 `former_user_id` 外鍵（記錄解綁前所屬使用者，供升權／啟用恢復原筆）。Hibernate `ddl-auto: update` 可自動 `ADD COLUMN`（SQLite 支援），既有 `backend/diagnoses.db` 重啟後自動補欄，無需手動遷移；`schema.sql` 已同步（新庫直接生效）。部署後驗證：
+
+```bash
+sqlite3 backend/diagnoses.db "PRAGMA table_info (identifiers);"
+# 應含 former_user_id 欄；缺失時手動補：
+sqlite3 backend/diagnoses.db "ALTER TABLE identifiers ADD COLUMN former_user_id INTEGER REFERENCES users(user_id);"
+```
+
 ## 8. CSV 匯出欄位順序變更 (BREAKING)
 
 本版本依 `docs/diagnoses.typ` 紙本邏輯與後續 7+2 項調整重排 `GET /api/cases/export` 的欄位順序。舊版以欄位索引解析者請改以表頭解析。

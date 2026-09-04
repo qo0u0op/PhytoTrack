@@ -54,15 +54,37 @@ public class AIService {
   }
 
   /**
-   * 檢查 llama.cpp 是否存活
+   * 檢查 llama.cpp 是否存活且已載入模型
    *
-   * llama.cpp 提供 /health 端點回傳 "ok"。後端以 RestClient 主動檢查，
-   * 前端可藉此在呼叫前先顯示模型狀態。
+   * llama.cpp / LlamaStash 的 /health 回傳如 {"status":"ok","models_loaded":1}。
+   * 僅當 status 為 ok 且 models_loaded > 0（或 models_discovered>0 且已載入）視為健康；
+   * 否則即使 server 存活但未載入模型，前端仍應顯示未連線。
    */
   public boolean isHealthy () {
     try {
       String body = restClient.get ().uri (healthUrl).retrieve ().body (String.class);
-      return body != null && body.contains ("ok");
+      if (body == null || !body.contains ("ok")) return false;
+      // 若回應含 models_loaded，須 >0 才算健康（避免空載時誤判已連線）
+      int idx = body.indexOf ("\"models_loaded\"");
+      if (idx >= 0) {
+        int colon = body.indexOf (':', idx);
+        if (colon >= 0) {
+          int end = colon + 1;
+          while (end < body.length () && Character.isWhitespace (body.charAt (end))) end++;
+          int start = end;
+          while (end < body.length () && Character.isDigit (body.charAt (end))) end++;
+          if (start < end) {
+            int loaded = Integer.parseInt (body.substring (start, end));
+            if (loaded == 0) return false;
+          }
+        }
+      }
+      // 亦檢查 models_discovered 為 0 的情況（無模型可載入）
+      int idx2 = body.indexOf ("\"models_discovered\"");
+      if (idx2 >= 0 && body.contains ("\"models_loaded\":0")) {
+        // 已在上方處理，確保未載入時不視為健康
+      }
+      return true;
     } catch (Exception e) {
       // 模型未啟動或連線失敗都視為不健康
       return false;

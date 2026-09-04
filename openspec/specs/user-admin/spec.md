@@ -188,12 +188,80 @@ ADMIN SHALL 可為使用者重設密碼，重設後該使用者可用新密碼�
 
 ### Requirement: 帳號管理異動儲存鈕
 
-帳號管理頁的儲存按鈕 SHALL 改為 dirty 判斷：email 或顯示名稱任一與載入時的值不同即顯示；兩者皆未修改 SHALL 隱藏。送出仍需通過既有格式與可用性檢查。
+帳號管理頁的儲存按鈕 SHALL 僅在以下條件全滿足時顯示：有修改的顯示名稱其「檢查」結果為通過（編輯後失效須重按），有修改且非空的信箱亦同；信箱清空（解除綁定）不需檢查。任一條件未滿足 SHALL 隱藏儲存鈕並於原位置提示先按檢查；兩者皆未修改亦隱藏。顯示名稱與信箱欄 SHALL 各有「取消」鈕可還原載入值。送出時僅做格式複檢（字符層防線），不再以 alert 要求檢查（按鈕可見即代表已通過）。
 
 #### Scenario: 僅改顯示名稱即顯示儲存鈕
-- **WHEN** 使用者只修改顯示名稱（信箱未動）
-- **THEN** 儲存按鈕顯示
+- **WHEN** 使用者只修改顯示名稱（信箱未動）並按過檢查通過
+- **THEN** 儲存按鈕顯示（送出時仍需先通過顯示名稱檢查）
+
+#### Scenario: 從未綁信箱者新增信箱可儲存
+- **WHEN** 原始信箱為空的使用者填入新信箱
+- **THEN** 儲存按鈕顯示（dirty 正常判定）
+
+#### Scenario: 信箱取消還原
+- **WHEN** 使用者修改信箱後點擊取消
+- **THEN** 信箱還原載入值且檢查結果清除，儲存按鈕隱藏
+
+#### Scenario: 未按檢查隱藏儲存鈕並提示
+- **WHEN** 使用者只修改顯示名稱但未按檢查
+- **THEN** 儲存按鈕隱藏，原位置顯示請先完成顯示名稱檢查的提示
+
+#### Scenario: 空信箱無需檢查可送出
+- **WHEN** 使用者清空信箱（解除綁定）且顯示名稱未動
+- **THEN** 送出不要求信箱檢查，直接更新為 null
 
 #### Scenario: 未修改隱藏儲存鈕
 - **WHEN** 使用者未修改任何欄位
 - **THEN** 儲存按鈕隱藏
+
+### Requirement: 信箱空值或格式即時檢查
+
+帳號管理與註冊的信箱欄 SHALL 僅接受空值或符合前端共用 email regex 的值；非空且格式不符 SHALL 即時於欄位下方顯示 inline 錯誤並阻擋送出。空值送出時 SHALL 以 null 解除綁定。
+
+#### Scenario: 格式錯誤即時提示
+- **WHEN** 使用者在信箱欄輸入無 `@` 的字串
+- **THEN** 欄位下方即時顯示格式錯誤，且送出被阻擋
+
+#### Scenario: 清空解除綁定
+- **WHEN** 使用者清空已綁信箱並送出（顯示名稱已通過檢查或未動）
+- **THEN** 後端儲存為 null，後續載入顯示為空
+
+### Requirement: 降權解綁簽名人保留可見
+
+`PATCH /api/admin/users/{id}/role` 將 `STAFF|ADMIN` 降權至 `VIEWER` 時，系統 SHALL 將其名下 `active` 的 `user as signer` 解綁為非使用者（`user_id = null`、`former_user_id` 記為該使用者、`active` 維持 `true`、`id` 不變）；解綁後 SHALL 繼續顯示於新案件簽名人候選（身分別為非使用者），歷史案件仍以 `id` 顯示原名。
+
+#### Scenario: 降權轉非使用者仍可選
+- **WHEN** ADMIN 將 STAFF 王小明降權為 VIEWER
+- **THEN** 其簽名人 `user_id` 清空、`active` 維持 `true`、`id` 不變，新案件候選仍可見（非使用者）
+
+### Requirement: 停用解綁簽名人
+
+`PATCH /api/admin/users/{id}/active` 設 `active=false` 時，除既有連動停用外，系統 SHALL 一併將其名下簽名人解綁（`user_id = null`、`former_user_id` 記為該使用者）；可見性維持現行（新案件候選隱藏，管理頁 `?includeInactive=true` 可見）。
+
+#### Scenario: 停用解綁且候選隱藏
+- **WHEN** ADMIN 停用 STAFF 王小明
+- **THEN** 其簽名人 `user_id` 清空且 `active=false`，新案件候選不可見，管理頁可見停用狀態
+
+### Requirement: 升權或啟用恢復原簽名人
+
+升權至 `STAFF|ADMIN` 或重新啟用（`active=true`）時，系統 SHALL 優先恢復原筆簽名人：以 `former_user_id` 為該使用者、同名（正規化比對）的未綁定舊筆取 `id` 最小者，重新連結（`user_id` 回填）並 `active=true`；無原筆才走既有新建／啟用流程，不得在存在可恢復舊筆時新建重複。他人同名非使用者簽名人（`former_user_id` 不同）SHALL 不被恢復，維持既有撞名綁定流程。
+
+#### Scenario: 升權恢復原筆不新建
+- **WHEN** 被降權的王小明（其原簽名人已解綁為非使用者 active）重新升權為 STAFF
+- **THEN** 原筆 `id` 重新連結該使用者，不新增第二筆同名簽名人
+
+#### Scenario: 啟用恢復停用舊筆
+- **WHEN** 被停用的王小明重新啟用
+- **THEN** 其原停用簽名人重新連結並 `active=true`，新案件候選可見
+
+### Requirement: 首頁已登入隱藏認證按鈕
+
+首頁（`/`）Hero 區的「立即登入」「建立帳號」按鈕組 SHALL 僅在未登入時顯示；已登入時 SHALL 隱藏。登入後預設進入儀表板，若使用者再導向回首頁亦 SHALL 隱藏。後端契約與路由不變。
+
+#### Scenario: 未登入顯示按鈕
+- **WHEN** 未登入使用者訪問 `/`
+- **THEN** Hero 區顯示「立即登入」與「建立帳號」按鈕
+
+#### Scenario: 已登入隱藏按鈕
+- **WHEN** 已登入使用者訪問 `/`（含登入後點導覽回首頁）
+- **THEN** Hero 區不顯示「立即登入」與「建立帳號」按鈕

@@ -108,11 +108,11 @@ export const senderApi = {
   search: (q: string) => http.get ('/senders/search', { params: { q } }),
   list: () => http.get ('/senders'),
   detail: (id: number) => http.get (`/senders/${id}`),
-  /** 建立 (STAFF+) */
-  create: (data: { name?: string; displayName?: string; phone?: string; address: string; districtId: number; senderTypeId: number }) =>
+  /** 建立 (STAFF+)；地址選填 */
+  create: (data: { name?: string; displayName?: string; phone?: string; address?: string; districtId: number; senderTypeId: number }) =>
     http.post ('/senders', data),
-  /** 編輯 (STAFF+) */
-  update: (id: number, data: { name?: string; displayName?: string; phone?: string; address: string; districtId: number; senderTypeId: number }) =>
+  /** 編輯 (STAFF+)；地址選填 */
+  update: (id: number, data: { name?: string; displayName?: string; phone?: string; address?: string; districtId: number; senderTypeId: number }) =>
     http.put (`/senders/${id}`, data),
   remove: (id: number) => http.delete (`/senders/${id}`),
 }

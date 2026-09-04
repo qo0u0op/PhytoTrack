@@ -189,6 +189,11 @@ public class AuthService {
     }
     // 撞名檢查：提權至 STAFF/ADMIN 且 displayName 撞 signer but not user
     boolean force = Boolean.TRUE.equals (request.force ());
+    // 升權先恢復原筆（憑 former_user_id），自身舊筆恢復後不再誤報撞名
+    if (!force && (role == User.Role.ROLE_STAFF || role == User.Role.ROLE_ADMIN)
+        && identifierRepository != null && identifierService != null && request.bindIdentifierId () == null) {
+      identifierService.restoreFormerSigner (user);
+    }
     if (!force && (role == User.Role.ROLE_STAFF || role == User.Role.ROLE_ADMIN)
         && identifierRepository != null && request.bindIdentifierId () == null) {
       String displayName = user.getDisplayName ();
@@ -210,11 +215,11 @@ public class AuthService {
     User.Role oldRole = user.getRole ();
     user.setRole (role);
     User saved = userRepository.save (user);
-    // 降級出 STAFF/ADMIN 時連動停用名下簽名人（歷史案件仍以 id 顯示）
+    // 降級至 VIEWER 時解綁名下簽名人（保留 active 與 id，記 former_user_id，候選仍可見）
     if ((oldRole == User.Role.ROLE_STAFF || oldRole == User.Role.ROLE_ADMIN)
-        && role != User.Role.ROLE_STAFF && role != User.Role.ROLE_ADMIN
+        && role == User.Role.ROLE_VIEWER
         && identifierRepository != null) {
-      deactivateUserSigners (saved.getUserId ());
+      unlinkUserSigners (saved, false);
     }
     // 升為 STAFF/ADMIN 時確保簽名人存在（VIEWER 不強制），相容舊單測 null 情況
     if ((role == User.Role.ROLE_STAFF || role == User.Role.ROLE_ADMIN)
@@ -249,16 +254,27 @@ public class AuthService {
     }
     user.setActive (active);
     User saved = userRepository.save (user);
-    // 停用帳號時連動停用名下簽名人（歷史案件仍以 id 顯示）
+    // 停用帳號時解綁並連動停用名下簽名人（歷史案件仍以 id 顯示）
     if (!active && identifierRepository != null) {
-      deactivateUserSigners (saved.getUserId ());
+      unlinkUserSigners (saved, true);
+    }
+    // 重新啟用 STAFF/ADMIN 時恢復原筆簽名人
+    if (active && (saved.getRole () == User.Role.ROLE_STAFF || saved.getRole () == User.Role.ROLE_ADMIN)
+        && identifierRepository != null && identifierService != null) {
+      identifierService.restoreFormerSigner (saved);
     }
     return toResponse (saved);
   }
 
-  private void deactivateUserSigners (Long userId) {
-    for (var signer : identifierRepository.findByUserUserIdAndActiveTrueOrderByIdentifierIdAsc (userId)) {
-      signer.setActive (false);
+  /**
+   * 解綁名下 active 簽名人：user_id 清空、former_user_id 留存，id 不變。
+   * 降權呼叫時維持 active（候選仍可見）；停用呼叫時一併停用。
+   */
+  private void unlinkUserSigners (User user, boolean deactivate) {
+    for (var signer : identifierRepository.findByUserUserIdAndActiveTrueOrderByIdentifierIdAsc (user.getUserId ())) {
+      signer.setUser (null);
+      signer.setFormerUser (user);
+      if (deactivate) signer.setActive (false);
     }
   }
 

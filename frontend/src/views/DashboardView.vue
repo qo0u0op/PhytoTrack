@@ -18,10 +18,17 @@ const selectedHalf = ref<1 | 2>(1)
 
 
 const availableYears = computed (() => stats.value?.availableYears ?? [])
+// 空庫單一訊號：後端真相源，避免多處 length===0 分歧
+const hasYears = computed (() => availableYears.value.length > 0)
 
 
 
 async function loadStats () {
+  // 空庫非歷史期別早退：避免送缺 year 請求觸發後端 400
+  if (!hasYears.value && period.value !== 'HISTORICAL') {
+    period.value = 'HISTORICAL'
+    return
+  }
   try {
     const params: Record<string, string | number> = {}
     params.period = period.value
@@ -55,6 +62,11 @@ watch ([period, selectedYear, selectedMonth, selectedHalf], () => {
   loadStats ()
 })
 
+// 空庫切非歷史期別自動回退 HISTORICAL（與 loadStats 早退雙守衛，不額外發請求）
+watch (period, (p) => {
+  if (!hasYears.value && p !== 'HISTORICAL') period.value = 'HISTORICAL'
+})
+
 const total = () => stats.value?.periodTotal ?? stats.value?.totalCases ?? 0
 
 const percent = (count?: number) => {
@@ -79,7 +91,7 @@ const barClass = (status?: string) =>
         <div class="row g-2 align-items-end">
           <div class="col-md-2">
             <label class="form-label small text-muted mb-1">期別</label>
-            <select v-model="period" class="form-select form-select-sm">
+            <select v-model="period" class="form-select form-select-sm" :disabled="!hasYears" title="尚無歷史年份時不可切換">
               <option value="HISTORICAL">歷史</option>
               <option value="ANNUAL">年度</option>
               <option value="HALF_YEAR">半年度</option>
@@ -88,21 +100,21 @@ const barClass = (status?: string) =>
           </div>
           <div class="col-md-3">
             <label class="form-label small text-muted mb-1">年份</label>
-            <select v-model="selectedYear" class="form-select form-select-sm" :disabled="period === 'HISTORICAL'">
+            <select v-model="selectedYear" class="form-select form-select-sm" :disabled="!hasYears || period === 'HISTORICAL'">
+              <option v-if="!hasYears" disabled value="">尚無歷史年份</option>
               <option v-for="y in availableYears" :key="y" :value="y">{{ y }} 年</option>
             </select>
-            <div v-if="availableYears.length === 0" class="form-text small text-muted">尚無歷史年份</div>
           </div>
           <div class="col-md-2">
             <label class="form-label small text-muted mb-1">半年度</label>
-            <select v-model="selectedHalf" class="form-select form-select-sm" :disabled="period !== 'HALF_YEAR'">
+            <select v-model="selectedHalf" class="form-select form-select-sm" :disabled="!hasYears || period !== 'HALF_YEAR'">
               <option :value="1">上半年</option>
               <option :value="2">下半年</option>
             </select>
           </div>
           <div class="col-md-2">
             <label class="form-label small text-muted mb-1">月份</label>
-            <select v-model="selectedMonth" class="form-select form-select-sm" :disabled="period !== 'MONTHLY'">
+            <select v-model="selectedMonth" class="form-select form-select-sm" :disabled="!hasYears || period !== 'MONTHLY'">
               <option v-for="m in 12" :key="m" :value="m">{{ m }} 月</option>
             </select>
           </div>

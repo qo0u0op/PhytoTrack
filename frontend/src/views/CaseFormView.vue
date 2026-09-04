@@ -98,6 +98,37 @@ interface PestRow {
   pestNote: string
 }
 const pestRows = ref<PestRow[]>([])
+// 診斷簽名人顯示條件：僅診斷有編輯時顯示（先建檔、後診斷）
+const originalDiagnosis = ref<{ pestRowsJson: string; hintIdsJson: string; hintDescription: string }>({
+  pestRowsJson: JSON.stringify ([]),
+  hintIdsJson: JSON.stringify ([]),
+  hintDescription: '',
+})
+const diagnosisEdited = computed (() => {
+  if (editId === null) {
+    return pestRows.value.length > 0 || form.hintIds.length > 0 || form.hintDescription.trim () !== ''
+  }
+  const curPest = JSON.stringify (pestRows.value)
+  const curHintIds = JSON.stringify ([...form.hintIds].sort ((a, b) => a - b))
+  if (curPest !== originalDiagnosis.value.pestRowsJson) return true
+  if (curHintIds !== originalDiagnosis.value.hintIdsJson) return true
+  if (form.hintDescription.trim () !== (originalDiagnosis.value.hintDescription ?? '').trim ()) return true
+  return false
+})
+// 編輯模式若原始診斷已有資料，預設顯示簽名人欄位
+const originalDiagnosisHasData = computed (() => {
+  if (editId === null) return false
+  try {
+    const rows = JSON.parse (originalDiagnosis.value.pestRowsJson)
+    if (Array.isArray (rows) && rows.length > 0) return true
+  } catch {}
+  try {
+    const ids = JSON.parse (originalDiagnosis.value.hintIdsJson)
+    if (Array.isArray (ids) && ids.length > 0) return true
+  } catch {}
+  return (originalDiagnosis.value.hintDescription ?? '').trim () !== ''
+})
+const signerCardVisible = computed (() => diagnosisVisible.value && (diagnosisEdited.value || originalDiagnosisHasData.value))
 
 // 參照資料
 const cropCategories = ref<CropCategory[]>([])
@@ -197,7 +228,7 @@ watch (selectedFieldCityId, (newCityId) => {
   const districts = cities.value.find ((c) => c.id === newCityId)?.districts ?? []
   if (districts.length > 0 && form.fieldDistrictId && !districts.some ((d) => d.id === form.fieldDistrictId)) {
     form.fieldDistrictId = districts[0].id
-  } else if (districts.length > 0 && !form.fieldDistrictId && !fieldSameAsSender.value) {
+  } else if (districts.length > 0 && !form.fieldDistrictId && !fieldSameAsSender.value && fieldLocationVisible.value) {
     form.fieldDistrictId = districts[0].id
   }
 })
@@ -225,6 +256,34 @@ const diagnosisVisible = computed (() => {
   if (editId !== null) return !senderDirty.value
   return form.senderId !== null && !senderDirty.value
 })
+// 田區位置初隱：與診斷區段同訊號（新增時需送件人確定後才可選田區）
+const fieldLocationVisible = computed (() => {
+  if (editId !== null) return true
+  return form.senderId !== null && !senderDirty.value
+})
+
+/**
+ * 一鍵清空送件人輸入（新增模式，取消按鈕）：直接清空、無任何 Swal/alert，不觸發 fuzzy 搜尋。
+ * 田區同步重置，因田區初隱後再次顯示前應為空。
+ */
+function resetSenderForm () {
+  form.senderId = null
+  form.senderName = ''
+  form.senderDisplayName = ''
+  form.senderPhone = ''
+  form.senderAddress = ''
+  const defaults = { districtId: cities.value[0]?.districts[0]?.id ?? 0, cityId: cities.value[0]?.id ?? null, senderTypeId: senderTypes.value[0]?.id ?? 0 }
+  form.senderDistrictId = defaults.districtId
+  form.senderTypeId = defaults.senderTypeId
+  selectedSenderCityId.value = defaults.cityId
+  form.fieldDistrictId = null
+  selectedFieldCityId.value = null
+  fieldSameAsSender.value = false
+  lastFuzzyQuery = ''
+  senderSnapshot = snapshotSender ()
+}
+
+// 獨立儲存送件人：有 senderId 時 PUT 更新，否則 POST 建立；成功後鎖定 senderId 並解鎖診斷區段
 
 // 診斷儲存阻擋：送件人未儲存 (無 senderId) 或尚有未儲存的送件人編輯
 const diagnosisSaveBlocked = computed (() => !editId && (form.senderId === null || senderDirty.value))
@@ -232,52 +291,45 @@ const diagnosisSaveBlocked = computed (() => !editId && (form.senderId === null 
 // Fuzzy 相似提示：任一欄位輸入後即時 (debounce)，有候選時提示帶入
 let fuzzyTimer: ReturnType<typeof setTimeout> | null = null
 let lastFuzzyQuery = ''
+const inlineCandidates = ref<any[]>([])
+const inlineCandidatesQuery = ref('')
+const selectedInlineCandidateId = ref('')
 const fuzzyFields = computed (() => [form.senderName, form.senderPhone, form.senderDisplayName] as const)
 watch (fuzzyFields,
  (newVals, oldVals) => {
     if (fuzzyTimer) clearTimeout (fuzzyTimer)
     // 已選用既有送件人且無編輯時不提示
     if (form.senderId !== null && !senderDirty.value) return
-    // 找出本次變動的欄位值作為 q (任一欄位相似即觸發，符合需求 3)
+    // 找出本次變動的欄位值作為 q (任一欄位相似即觸發，電話需 4 碼，其餘 2 碼)
+    const thresholds = [2, 4, 2]
     let q = ''
     if (oldVals) {
       for (let i = 0; i < newVals.length; i++) {
-        if (newVals[i] !== oldVals[i] && newVals[i].trim ().length >= 2) {
+        if (newVals[i] !== oldVals[i] && newVals[i].trim ().length >= thresholds[i]) {
           q = newVals[i].trim ()
           break
         }
       }
       if (!q) return // 無有效變動
     } else {
-      q = newVals.find ((v) => v.trim ().length >= 2)?.trim () ?? ''
+      for (let i = 0; i < newVals.length; i++) {
+        if (newVals[i].trim ().length >= thresholds[i]) { q = newVals[i].trim (); break }
+      }
       if (!q) return
     }
     if (q === lastFuzzyQuery) return
     fuzzyTimer = setTimeout (async () => {
       try {
         const { data } = await senderApi.search (q)
-        if (data.length === 0) return
-        lastFuzzyQuery = q
-        const inputOptions: Record<string, string> = {}
-        data.forEach ((s: any) => {
-          inputOptions[String (s.senderId)] =
-            `${s.name ?? ''}${s.displayName ? '(' + s.displayName + ')' : ''} - ${s.phone ?? ''}`
-        })
-        inputOptions['0'] = '— 建立新送件人 —'
-        const { value: selected } = await Swal.fire ({
-          title: '有相似的資料，是否帶入?',
-          text: '找到相似的既有送件人，可沿用避免重複建立',
-          input: 'select',
-          inputOptions,
-          showCancelButton: true,
-          confirmButtonText: '帶入',
-          cancelButtonText: '忽略，繼續輸入',
-        })
-        if (selected === '0') {
-          form.senderId = null
-        } else if (selected) {
-          applyCandidate (Number (selected), data as any[])
+        if (data.length === 0) {
+          inlineCandidates.value = []
+          inlineCandidatesQuery.value = ''
+          return
         }
+        lastFuzzyQuery = q
+        inlineCandidates.value = data as any[]
+        inlineCandidatesQuery.value = q
+        selectedInlineCandidateId.value = String ((data as any[])[0]?.senderId ?? '')
       } catch {}
     }, 600)
   },)
@@ -294,49 +346,62 @@ function applyCandidate (id: number, candidates: any[]) {
     if (chosen.senderTypeId) form.senderTypeId = chosen.senderTypeId
   }
   senderSnapshot = snapshotSender ()
+  inlineCandidates.value = []
+  inlineCandidatesQuery.value = ''
+}
+
+function useNewSender () {
+  form.senderId = null
+  senderSnapshot = snapshotSender ()
+  inlineCandidates.value = []
+  inlineCandidatesQuery.value = ''
+  selectedInlineCandidateId.value = ''
+  lastFuzzyQuery = ''
+}
+
+function confirmInlineSelection () {
+  const val = selectedInlineCandidateId.value
+  if (!val) return
+  applyCandidate (Number (val), inlineCandidates.value)
 }
 
 async function searchCandidates () {
-  // 手動搜尋：以任一非空欄位單獨為查詢 (符合 fuzzy 任一欄位相似即提示)
-  const q = form.senderName.trim () || form.senderPhone.trim () || form.senderDisplayName.trim ()
+  // 手動搜尋：電話需 4 碼以上，其餘 2 碼
+  const nameTrim = form.senderName.trim ()
+  const phoneTrim = form.senderPhone.trim ()
+  const displayTrim = form.senderDisplayName.trim ()
+  if (phoneTrim && phoneTrim.length < 4 && !nameTrim && !displayTrim) {
+    Swal.fire ({ icon: 'info', title: '電話需輸入 4 碼以上才可搜尋' })
+    return
+  }
+  const q = nameTrim || phoneTrim || displayTrim
   if (!q) {
     Swal.fire ({ icon: 'info', title: '請輸入姓名、電話或顯示名稱關鍵字' })
+    return
+  }
+  if (q === phoneTrim && q.length < 4) {
+    Swal.fire ({ icon: 'info', title: '電話需輸入 4 碼以上才可搜尋' })
     return
   }
   try {
     const { data } = await senderApi.search (q)
     if (data.length === 0) {
-      Swal.fire ({ icon: 'info', title: '無候選', text: '未找到相符的送件人，將建立新送件人' })
+      inlineCandidates.value = []
+      inlineCandidatesQuery.value = q
       form.senderId = null
       return
     }
-    const inputOptions: Record<string, string> = {}
-    data.forEach ((s: any) => {
-      const label = `${s.name ?? ''}${s.displayName ? '(' + s.displayName + ')' : ''} - ${s.phone ?? ''} - ${s.districtName ?? ''}`
-      inputOptions[String (s.senderId)] = label
-    })
-    inputOptions['0'] = '— 建立新送件人 —'
-    const { value: selected } = await Swal.fire ({
-      title: '選擇送件人候選',
-      input: 'select',
-      inputOptions,
-      showCancelButton: true,
-      confirmButtonText: '沿用',
-      cancelButtonText: '取消',
-    })
-    if (selected !== undefined) {
-      if (selected === '0') {
-        form.senderId = null
-        senderSnapshot = snapshotSender ()
-        Swal.fire ({ icon: 'info', title: '將建立新送件人', timer: 1200, showConfirmButton: false })
-      } else if (selected) {
-        applyCandidate (Number (selected), data as any[])
-        Swal.fire ({ icon: 'success', title: '已選用既有送件人', timer: 1200, showConfirmButton: false })
-      }
-    }
+    inlineCandidates.value = data as any[]
+    inlineCandidatesQuery.value = q
+    selectedInlineCandidateId.value = String ((data as any[])[0]?.senderId ?? '')
+    lastFuzzyQuery = q
   } catch {}
 }
 
+/**
+ * 一鍵清空送件人輸入（新增模式，取消按鈕）：直接清空、無任何 Swal/alert，不觸發 fuzzy 搜尋。
+ * 田區同步重置，因田區初隱後再次顯示前應為空。
+ */
 // 獨立儲存送件人：有 senderId 時 PUT 更新，否則 POST 建立；成功後鎖定 senderId 並解鎖診斷區段
 async function saveSender () {
   if (!form.senderDistrictId) {
@@ -489,20 +554,6 @@ async function loadRefs () {
   cities.value = ct.data
   senderTypes.value = st.data
   identifiers.value = (idf.data as IdName[]) ?? []
-  // 新增案件時自動帶入當前使用者簽名人（後端兜底，前端預選提升 UX）
-  if (!editId && form.identifierIds.length === 0) {
-    try {
-      const me = await refApi.myIdentifier ()
-      const myId = (me.data as any)?.id ?? (me.data as any)?.identifierId
-      if (myId && !form.identifierIds.includes (myId)) form.identifierIds = [myId]
-    } catch {
-      const name = auth.user?.displayName
-      if (name) {
-        const found = identifiers.value.find ((i) => i.name === name)
-        if (found && !form.identifierIds.includes (found.id)) form.identifierIds = [found.id]
-      }
-    }
-  }
 
   // 建立模式：套用合理的預設值
   form.methodId = methods.value[0]?.id ?? 0
@@ -603,6 +654,12 @@ async function loadCase (id: number) {
     }
   }
   form.identifierIds = d.identifiers?.map ((x) => x.id).filter ((x): x is number => x != null) ?? []
+  // 快照原始診斷用於簽名人卡片顯示條件（僅診斷有編輯時顯示）
+  originalDiagnosis.value = {
+    pestRowsJson: JSON.stringify (pestRows.value),
+    hintIdsJson: JSON.stringify ([...form.hintIds].sort ((a, b) => a - b)),
+    hintDescription: form.hintDescription ?? '',
+  }
 
   // 由名稱反查 ID (後端詳細回應帶的是名稱而非 ID)
   const crop = cropCategories.value
@@ -691,7 +748,7 @@ async function submit () {
         caseDescription: form.caseDescription,
         hintDescription: form.hintDescription,
         senderId: form.senderId ?? undefined,
-        senderAddress: form.senderAddress,
+        senderAddress: form.senderAddress || undefined,
         senderDistrictId: form.senderDistrictId,
         senderTypeId: form.senderTypeId,
         fieldDistrictId: effectiveFieldDistrictId2 ?? undefined,
@@ -789,6 +846,14 @@ async function runAi () {
             >
               {{ savingSender ? '儲存中…' : '儲存送件人' }}
             </button>
+            <button
+              v-if="!editId"
+              type="button"
+              class="btn btn-sm btn-outline-light"
+              @click="resetSenderForm"
+            >
+              取消
+            </button>
             <template v-if="form.senderId && senderDirty">
               <button
                 type="button"
@@ -842,17 +907,29 @@ async function runAi () {
             </select>
           </div>
           <div class="col-md-5">
-            <label class="form-label">地址</label>
-            <input v-model.trim="form.senderAddress" class="form-control" required />
+            <label class="form-label">地址 (選填)</label>
+            <input v-model.trim="form.senderAddress" class="form-control" />
           </div>
           <div v-if="form.senderId" class="col-12">
             <div class="alert alert-info py-2 mb-0 small">已選用既有送件人 #{{ form.senderId }}，儲存時將沿用該送件人 <button type="button" class="btn btn-sm btn-outline-secondary ms-2" @click="form.senderId = null">取消沿用</button></div>
+          </div>
+          <div v-if="inlineCandidates.length > 0" class="col-12">
+            <div class="border rounded p-2 bg-light">
+              <div class="d-flex align-items-center gap-2">
+                <select v-model="selectedInlineCandidateId" class="form-select form-select-sm flex-grow-1">
+                  <option v-for="c in inlineCandidates" :key="c.senderId" :value="String(c.senderId)">{{ c.name ?? '' }}{{ c.displayName ? '('+c.displayName+')' : '' }} - {{ c.phone ?? '' }} - {{ c.districtName ?? '' }}</option>
+                </select>
+                <button type="button" class="btn btn-sm btn-primary flex-shrink-0" @click="confirmInlineSelection">使用</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary flex-shrink-0" @click="useNewSender">建立新送件人</button>
+              </div>
+              <small class="text-muted">找到 {{ inlineCandidates.length }} 筆相似送件人（關鍵字：{{ inlineCandidatesQuery }}），預設最接近者；其他欄位編輯會更新比對</small>
+            </div>
           </div>
         </div>
       </div>
 
       <!-- 田區位置 -->
-      <div class="card shadow-sm mb-4">
+      <div v-if="fieldLocationVisible" class="card shadow-sm mb-4">
         <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
           <span>田區位置</span>
           <div class="form-check mb-0">
@@ -945,8 +1022,8 @@ async function runAi () {
           </div>
           <div class="col-md-4">
             <label class="form-label d-flex justify-content-between">作物 <button type="button" class="btn btn-sm btn-outline-success py-0" @click="handleCreateCrop">＋新增</button></label>
-            <select v-model.number="form.cropId" class="form-select" required>
-              <option value="0" disabled>請選擇作物</option>
+            <select v-model.number="form.cropId" class="form-select" required :disabled="!selectedCropCategoryId">
+              <option value="0" disabled>{{ selectedCropCategoryId ? '請選擇作物' : '請先選擇作物類別' }}</option>
               <option
                 v-for="cr in mergedCrops"
                 :key="cr.id"
@@ -1025,28 +1102,43 @@ async function runAi () {
             <label class="form-label">建議採取措施</label>
             <textarea v-model.trim="form.hintDescription" class="form-control" rows="2"></textarea>
           </div>
-          <div class="col-md-6">
+          <div class="col-12">
             <label class="form-label">防治建議 (可複選)</label>
-            <div v-for="h in hints" :key="h.id" class="form-check">
-              <input
-                class="form-check-input"
-                type="checkbox"
-                :checked="form.hintIds.includes (h.id)"
-                @change="toggle (form.hintIds, h.id)"
-              />
-              <span class="form-check-label">{{ h.name }}</span>
+            <div class="d-flex flex-wrap gap-3">
+              <label v-for="h in hints" :key="h.id" class="form-check form-check-inline">
+                <input
+                  class="form-check-input"
+                  type="checkbox"
+                  :checked="form.hintIds.includes (h.id)"
+                  @change="toggle (form.hintIds, h.id)"
+                />
+                <span class="form-check-label">{{ h.name }}</span>
+              </label>
             </div>
           </div>
-          <div class="col-md-6">
-            <label class="form-label d-flex justify-content-between">診斷簽名人 (可複選) <button type="button" class="btn btn-sm btn-outline-success py-0" @click="handleCreateIdentifier">＋新增</button></label>
-            <div v-for="i in identifiers" :key="i.id" class="form-check">
-              <input
-                class="form-check-input"
-                type="checkbox"
-                :checked="form.identifierIds.includes (i.id)"
-                @change="toggle (form.identifierIds, i.id)"
-              />
-              <span class="form-check-label">{{ i.name }} <span class="badge ms-1" :class="i.userId ? 'bg-primary' : 'bg-secondary'">{{ i.userId ? '使用者' : '非使用者' }}</span> <span v-if="i.username" class="text-muted small">· {{ i.username }}</span></span>
+        </div>
+      </div>
+
+      <!-- 診斷簽名人獨立卡片：僅診斷有編輯時顯示，預設不勾選 -->
+      <div v-if="signerCardVisible" class="card shadow-sm mb-4">
+        <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+          <span>診斷簽名人 (可複選)</span>
+          <button type="button" class="btn btn-sm btn-outline-light py-0" @click="handleCreateIdentifier">＋新增</button>
+        </div>
+        <div class="card-body">
+          <div class="row g-2">
+            <div v-for="i in identifiers" :key="i.id" class="col-md-4">
+              <div class="form-check d-flex align-items-center gap-1 m-0 p-2 border rounded">
+                <input
+                  class="form-check-input flex-shrink-0 m-0"
+                  type="checkbox"
+                  :checked="form.identifierIds.includes (i.id)"
+                  @change="toggle (form.identifierIds, i.id)"
+                />
+                <span class="form-check-label text-truncate flex-shrink-0" style="width:90px" :title="i.name">{{ i.name }}</span>
+                <span class="badge flex-shrink-0 text-center" style="width:64px" :class="i.userId ? 'bg-primary' : 'bg-secondary'">{{ i.userId ? '使用者' : '非使用者' }}</span>
+                <span class="text-muted small flex-shrink-0 text-truncate ms-2" style="width:80px" :title="i.username ?? ''">{{ i.username ?? '' }}</span>
+              </div>
             </div>
           </div>
         </div>
