@@ -22,6 +22,7 @@ import com.d0w0b.phytotrack.models.CaseIdentifier;
 import com.d0w0b.phytotrack.models.CasePestCategory;
 import com.d0w0b.phytotrack.models.CaseStatus;
 import com.d0w0b.phytotrack.models.Crop;
+import com.d0w0b.phytotrack.models.CropCategory;
 import com.d0w0b.phytotrack.models.Damage;
 import com.d0w0b.phytotrack.models.Delivery;
 import com.d0w0b.phytotrack.models.District;
@@ -59,6 +60,17 @@ class CaseRepositoryTest {
   @Autowired
   private SenderRepository senderRepository;
 
+  // 業務初始無作物種子：測試自建（保持測試獨立於種子）
+  private Crop ensureTestCrop () {
+    return cropRepository.findAll ().stream ().findFirst ().orElseGet (() -> {
+      CropCategory category = cropCategoryRepository.findAll ().stream ().findFirst ().orElseThrow ();
+      Crop c = new Crop ();
+      c.setCrop ("測試稻作");
+      c.setCropCategory (category);
+      return cropRepository.save (c);
+    });
+  }
+
   @Autowired
   private DistrictRepository districtRepository;
 
@@ -67,6 +79,9 @@ class CaseRepositoryTest {
 
   @Autowired
   private CropRepository cropRepository;
+
+  @Autowired
+  private CropCategoryRepository cropCategoryRepository;
 
   @Autowired
   private MethodRepository methodRepository;
@@ -114,8 +129,14 @@ class CaseRepositoryTest {
     sender.setSenderType (senderType);
     sender = senderRepository.save (sender);
 
-    // 參照資料 (Crop / Method / Service / Delivery) 取自種子資料
-    Crop crop = cropRepository.findAll ().stream ().findFirst ().orElseThrow ();
+    // 參照資料 (Method / Service / Delivery) 取自種子資料；Crop 業務初始無種子，自建
+    Crop crop = cropRepository.findAll ().stream ().findFirst ().orElseGet (() -> {
+      CropCategory category = cropCategoryRepository.findAll ().stream ().findFirst ().orElseThrow ();
+      Crop c = new Crop ();
+      c.setCrop ("測試稻作");
+      c.setCropCategory (category);
+      return cropRepository.save (c);
+    });
     Method method = methodRepository.findAll ().stream ().findFirst ().orElseThrow ();
     Service service = serviceRepository.findAll ().stream ().findFirst ().orElseThrow ();
     Delivery delivery = deliveryRepository.findAll ().stream ().findFirst ().orElseThrow ();
@@ -190,8 +211,16 @@ class CaseRepositoryTest {
   @Test
   void findAll_withFilter_shouldCombineConditionsWithAnd () {
     User user = saveUser ("filter-and-user");
-    Crop rice = cropRepository.findById (1L).orElseThrow ();
-    Crop citrus = cropRepository.findById (36L).orElseThrow ();
+    // 業務初始無作物種子：自建兩筆（取代舊 findById(1L/36L)）
+    CropCategory grainCategory = cropCategoryRepository.findAll ().stream ().findFirst ().orElseThrow ();
+    Crop rice = new Crop ();
+    rice.setCrop ("測試稻作");
+    rice.setCropCategory (grainCategory);
+    rice = cropRepository.save (rice);
+    Crop citrus = new Crop ();
+    citrus.setCrop ("測試柑橘");
+    citrus.setCropCategory (grainCategory);
+    citrus = cropRepository.save (citrus);
     Service diagnosis = serviceRepository.findById (1L).orElseThrow ();
     Service consultation = serviceRepository.findById (3L).orElseThrow ();
 
@@ -199,9 +228,9 @@ class CaseRepositoryTest {
     Case riceResolved = saveCase (user, rice, diagnosis, "和乙", LocalDate.of (2026, 8, 15), CaseStatus.RESOLVED);
     Case citrusPending = saveCase (user, citrus, consultation, "和丙", LocalDate.of (2026, 8, 20), CaseStatus.PENDING);
 
-    // cropId=1 AND status=PENDING → 僅稻作且待處理
+    // cropId=rice AND status=PENDING → 僅稻作且待處理
     // 頁面尺寸取大 (共享 test DB 可能有整合測試殘留案件)，確保斷言與殘留量無關
-    Specification<Case> spec = CaseSpecifications.build (new CaseFilter (1L, null, null, null, null, "PENDING"), CaseStatus.PENDING);
+    Specification<Case> spec = CaseSpecifications.build (new CaseFilter (rice.getCropId (), null, null, null, null, "PENDING"), CaseStatus.PENDING);
     Page<Case> page = caseRepository.findAll (spec, PageRequest.of (0, 100));
 
     assertThat (page.getContent ())
@@ -210,14 +239,15 @@ class CaseRepositoryTest {
         .doesNotContain (riceResolved.getCaseId (), citrusPending.getCaseId ());
     assertThat (page.getContent ())
         .allSatisfy (c -> assertThat (c.getStatus ()).isEqualTo (CaseStatus.PENDING));
+    final Long riceId = rice.getCropId ();
     assertThat (page.getContent ())
-        .allSatisfy (c -> assertThat (c.getCrop ().getCropId ()).isEqualTo (1L));
+        .allSatisfy (c -> assertThat (c.getCrop ().getCropId ()).isEqualTo (riceId));
   }
 
   @Test
   void findAll_withSenderNamePartialMatch_shouldReturnMatchingCases () {
     User user = saveUser ("filter-name-user");
-    Crop rice = cropRepository.findById (1L).orElseThrow ();
+    Crop rice = ensureTestCrop ();
     Service diagnosis = serviceRepository.findById (1L).orElseThrow ();
 
     Case zhangsan = saveCase (user, rice, diagnosis, "比對-張小明", LocalDate.of (2026, 8, 1), CaseStatus.PENDING);
@@ -238,7 +268,7 @@ class CaseRepositoryTest {
   @Test
   void findAll_withDateRange_shouldReturnCasesInRange () {
     User user = saveUser ("filter-date-user");
-    Crop rice = cropRepository.findById (1L).orElseThrow ();
+    Crop rice = ensureTestCrop ();
     Service diagnosis = serviceRepository.findById (1L).orElseThrow ();
 
     Case inRange = saveCase (user, rice, diagnosis, "期-張小明", LocalDate.of (2026, 8, 15), CaseStatus.PENDING);
@@ -263,7 +293,7 @@ class CaseRepositoryTest {
   @Test
   void findAll_withoutFilter_shouldReturnAll () {
     User user = saveUser ("filter-all-user");
-    Crop rice = cropRepository.findById (1L).orElseThrow ();
+    Crop rice = ensureTestCrop ();
     Service diagnosis = serviceRepository.findById (1L).orElseThrow ();
 
     Case first = saveCase (user, rice, diagnosis, "全-張小明", LocalDate.of (2026, 8, 1), CaseStatus.PENDING);

@@ -189,6 +189,14 @@ sqlite3 backend/diagnoses.db "PRAGMA table_info (identifiers);"
 sqlite3 backend/diagnoses.db "ALTER TABLE identifiers ADD COLUMN former_user_id INTEGER REFERENCES users(user_id);"
 ```
 
+## 7.3 業務初始基準與縣市鄉鎮管理
+
+業務初始 `schema-baseline.sql`（表結構＋參照種子，不含作物／業務資料）為測試／開發建庫基準：`application-test.yaml` 以 `schema-locations: classpath:schema-baseline.sql` 明確指定；開發庫（`backend/diagnoses.db`）以 `schema.sql`（已同步為業務初始）重建。縣市鄉鎮可經參照資料管理頁增改刪（`ADMIN`，被引用回 `409`）。
+
+## 7.4 既有資料庫殘留 (`cities/districts.sort_order` 孤兒欄位)
+
+本版本移除縣市鄉鎮 `sort_order` 欄位並改依 `id` 排序（`GET /api/ref/cities` 回應不再含 `sortOrder`）。Hibernate `ddl-auto: update` 不會刪除舊欄，既有 `backend/diagnoses.db` 的殘留欄位無害（JPA 不再映射），無需動作；新庫直接無該欄。如需清理可建表搬資料（參照 7.1 模式，非強制）。
+
 ## 8. CSV 匯出欄位順序變更 (BREAKING)
 
 本版本依 `docs/diagnoses.typ` 紙本邏輯與後續 7+2 項調整重排 `GET /api/cases/export` 的欄位順序。舊版以欄位索引解析者請改以表頭解析。

@@ -57,6 +57,8 @@ public interface CaseRepository
   boolean existsByCaseHintsHintHintId (Long hintId);
   boolean existsByCasePestCategoriesPestCategoryPestCategoryId (Long pestCategoryId);
   boolean existsByCaseIdentifiersIdentifierIdentifierId (Long identifierId);
+  boolean existsByFieldDistrictDistrictId (Long districtId);
+  boolean existsBySenderDistrictDistrictId (Long districtId);
 
   // 送件人刪除保護
   boolean existsBySenderSenderId (Long senderId);

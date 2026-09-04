@@ -19,6 +19,8 @@ public interface SenderRepository extends JpaRepository<Sender, Long> {
 
   boolean existsBySenderTypeSenderTypeId (Long senderTypeId);
 
+  boolean existsByDistrictDistrictId (Long districtId);
+
   @Query ("SELECT s FROM Sender s WHERE LOWER (s.name) LIKE LOWER (CONCAT ('%', :q, '%')) "
       + "OR LOWER (s.phone) LIKE LOWER (CONCAT ('%', :q, '%')) "
       + "OR LOWER (s.displayName) LIKE LOWER (CONCAT ('%', :q, '%'))")

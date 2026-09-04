@@ -68,6 +68,32 @@ public final class ReferenceDtos {
       Long cropCategoryId) {
   }
 
+  /** 縣市寫入請求 */
+  public record CityCreateRequest (@NotBlank (message = "縣市名稱不可為空白")
+      @Size (max = 50, message = "縣市名稱不可超過 50 字元")
+      String name) {
+  }
+
+  public record CityUpdateRequest (@NotBlank (message = "縣市名稱不可為空白")
+      @Size (max = 50, message = "縣市名稱不可超過 50 字元")
+      String name) {
+  }
+
+  /** 鄉鎮市區寫入請求 */
+  public record DistrictCreateRequest (@NotBlank (message = "鄉鎮市區名稱不可為空白")
+      @Size (max = 50, message = "鄉鎮市區名稱不可超過 50 字元")
+      String name,
+      @NotNull (message = "縣市不可為空")
+      Long cityId) {
+  }
+
+  public record DistrictUpdateRequest (@NotBlank (message = "鄉鎮市區名稱不可為空白")
+      @Size (max = 50, message = "鄉鎮市區名稱不可超過 50 字元")
+      String name,
+      @NotNull (message = "縣市不可為空")
+      Long cityId) {
+  }
+
   /** 作物分類寫入請求 */
   public record CropCategoryCreateRequest (@NotBlank (message = "分類名稱不可為空白")
       @Size (max = 100, message = "分類名稱不可超過 100 字元")

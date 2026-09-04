@@ -27,6 +27,7 @@ import com.d0w0b.phytotrack.repository.CropCategoryRepository;
 import com.d0w0b.phytotrack.repository.CropRepository;
 import com.d0w0b.phytotrack.repository.DamageRepository;
 import com.d0w0b.phytotrack.repository.DeliveryRepository;
+import com.d0w0b.phytotrack.repository.DistrictRepository;
 import com.d0w0b.phytotrack.repository.HintRepository;
 import com.d0w0b.phytotrack.repository.IdentifierRepository;
 import com.d0w0b.phytotrack.repository.MethodRepository;
@@ -60,6 +61,7 @@ public class ReferenceDataService {
   private final DeliveryRepository deliveryRepository;
   private final ServiceRepository serviceRepository;
   private final CityRepository cityRepository;
+  private final DistrictRepository districtRepository;
   private final SenderTypeRepository senderTypeRepository;
   private final IdentifierRepository identifierRepository;
   private final CaseRepository caseRepository;
@@ -75,6 +77,7 @@ public class ReferenceDataService {
                               DeliveryRepository deliveryRepository,
                               ServiceRepository serviceRepository,
                               CityRepository cityRepository,
+                              DistrictRepository districtRepository,
                               SenderTypeRepository senderTypeRepository,
                               IdentifierRepository identifierRepository,
                               CaseRepository caseRepository,
@@ -89,6 +92,7 @@ public class ReferenceDataService {
     this.deliveryRepository = deliveryRepository;
     this.serviceRepository = serviceRepository;
     this.cityRepository = cityRepository;
+    this.districtRepository = districtRepository;
     this.senderTypeRepository = senderTypeRepository;
     this.identifierRepository = identifierRepository;
     this.caseRepository = caseRepository;
@@ -497,6 +501,68 @@ public class ReferenceDataService {
       throw new ApiException ("REFERENCE_IN_USE", HttpStatus.CONFLICT, "已被案件引用，無法刪除");
     }
     cropRepository.delete (e);
+  }
+
+  // ===== 縣市 / 鄉鎮市區 =====
+
+  @Transactional
+  public IdNameResponse createCity (String name) {
+    City e = new City ();
+    e.setCity (name.trim ());
+    cityRepository.save (e);
+    return new IdNameResponse (e.getCityId (), e.getCity ());
+  }
+
+  @Transactional
+  public IdNameResponse updateCity (Long id, String name) {
+    City e = cityRepository.findById (id)
+        .orElseThrow (() -> new ApiException ("REFERENCE_NOT_FOUND", HttpStatus.NOT_FOUND, "縣市不存在"));
+    e.setCity (name.trim ());
+    return new IdNameResponse (e.getCityId (), e.getCity ());
+  }
+
+  @Transactional
+  public void deleteCity (Long id) {
+    City e = cityRepository.findById (id)
+        .orElseThrow (() -> new ApiException ("REFERENCE_NOT_FOUND", HttpStatus.NOT_FOUND, "縣市不存在"));
+    if (districtRepository.existsByCityCityId (id)) {
+      throw new ApiException ("REFERENCE_IN_USE", HttpStatus.CONFLICT, "縣市下仍有鄉鎮市區，無法刪除");
+    }
+    cityRepository.delete (e);
+  }
+
+  @Transactional
+  public IdNameResponse createDistrict (String name, Long cityId) {
+    City city = cityRepository.findById (cityId)
+        .orElseThrow (() -> new ApiException ("REFERENCE_NOT_FOUND", HttpStatus.NOT_FOUND, "縣市不存在"));
+    District e = new District ();
+    e.setDistrict (name.trim ());
+    e.setCity (city);
+    districtRepository.save (e);
+    return new IdNameResponse (e.getDistrictId (), e.getDistrict ());
+  }
+
+  @Transactional
+  public IdNameResponse updateDistrict (Long id, String name, Long cityId) {
+    District e = districtRepository.findById (id)
+        .orElseThrow (() -> new ApiException ("REFERENCE_NOT_FOUND", HttpStatus.NOT_FOUND, "鄉鎮市區不存在"));
+    City city = cityRepository.findById (cityId)
+        .orElseThrow (() -> new ApiException ("REFERENCE_NOT_FOUND", HttpStatus.NOT_FOUND, "縣市不存在"));
+    e.setDistrict (name.trim ());
+    e.setCity (city);
+    return new IdNameResponse (e.getDistrictId (), e.getDistrict ());
+  }
+
+  @Transactional
+  public void deleteDistrict (Long id) {
+    District e = districtRepository.findById (id)
+        .orElseThrow (() -> new ApiException ("REFERENCE_NOT_FOUND", HttpStatus.NOT_FOUND, "鄉鎮市區不存在"));
+    if (senderRepository.existsByDistrictDistrictId (id)
+        || caseRepository.existsByFieldDistrictDistrictId (id)
+        || caseRepository.existsBySenderDistrictDistrictId (id)) {
+      throw new ApiException ("REFERENCE_IN_USE", HttpStatus.CONFLICT, "已被送件人或案件引用，無法刪除");
+    }
+    districtRepository.delete (e);
   }
 
   @Transactional

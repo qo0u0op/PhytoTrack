@@ -149,6 +149,15 @@ export const refAdminApi = {
   createSenderType: (data: { name: string }) => http.post ('/admin/ref/sender-types', data),
   updateSenderType: (id: number, data: { name: string }) => http.put (`/admin/ref/sender-types/${id}`, data),
   deleteSenderType: (id: number) => http.delete (`/admin/ref/sender-types/${id}`),
+  // cities
+  createCity: (data: { name: string }) => http.post ('/admin/ref/cities', data),
+  updateCity: (id: number, data: { name: string }) => http.put (`/admin/ref/cities/${id}`, data),
+  deleteCity: (id: number) => http.delete (`/admin/ref/cities/${id}`),
+  // districts
+  createDistrict: (data: { name: string; cityId: number }) => http.post ('/admin/ref/districts', data),
+  updateDistrict: (id: number, data: { name: string; cityId: number }) =>
+    http.put (`/admin/ref/districts/${id}`, data),
+  deleteDistrict: (id: number) => http.delete (`/admin/ref/districts/${id}`),
   // crops
   createCrop: (data: { name: string; cropCategoryId: number }) => http.post ('/admin/ref/crops', data),
   updateCrop: (id: number, data: { name: string; cropCategoryId: number }) =>

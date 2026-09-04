@@ -481,7 +481,7 @@ class PhytoTrackIntegrationTest {
   void senderManagement_searchDeleteProtectionAndViewerMasking () throws Exception {
     String adminToken = login ("admin", "admin123");
 
-    // 取得參照資料
+    // 取得參照資料（首筆即未知，預設地址為未知／未知）
     long districtId = firstNestedId ("/api/ref/cities", adminToken, "districts");
     long senderTypeId = firstId ("/api/ref/sender-types", adminToken);
     long methodId = firstId ("/api/ref/methods", adminToken);
@@ -552,8 +552,8 @@ class PhytoTrackIntegrationTest {
         .as ("VIEWER 不應取得送件人電話").isTrue ();
     assertThat (viewerNode.path ("senderAddress").isNull () || viewerNode.path ("senderAddress").asText ().isEmpty ())
         .as ("VIEWER 不應取得送件人地址").isTrue ();
-    assertThat (viewerNode.path ("senderDistrictName").asText ()).isEqualTo ("中正區");
-    assertThat (viewerNode.path ("senderCityName").asText ()).isEqualTo ("臺北市");
+    assertThat (viewerNode.path ("senderDistrictName").asText ()).isEqualTo ("未知");
+    assertThat (viewerNode.path ("senderCityName").asText ()).isEqualTo ("未知");
 
     // STAFF/ADMIN 查詢含完整資料
     mockMvc.perform (get ("/api/cases/{id}", caseId)
@@ -618,7 +618,18 @@ class PhytoTrackIntegrationTest {
   private long firstCropId (String url, String token) throws Exception {
     JsonNode array = getJson (url, token);
     assertThat (array.isArray () && array.size () > 0).as ("參照資料 %s 應有種子資料", url).isTrue ();
-    return array.get (0).path ("crops").get (0).path ("id").asLong ();
+    JsonNode crops = array.get (0).path ("crops");
+    // 業務初始無作物種子：為空時自建（保持測試獨立於種子）
+    if (crops.isArray () && crops.size () > 0) return crops.get (0).path ("id").asLong ();
+    long categoryId = array.get (0).path ("id").asLong ();
+    MvcResult created = mockMvc.perform (post ("/api/admin/ref/crops")
+            .header (HttpHeaders.AUTHORIZATION, bearer (token))
+            .contentType (MediaType.APPLICATION_JSON)
+            .content ("""
+                {"name":"測試作物_%s","cropCategoryId":%d}
+                """.formatted (System.nanoTime (), categoryId)))
+        .andExpect (status ().isCreated ()).andReturn ();
+    return objectMapper.readTree (created.getResponse ().getContentAsString (StandardCharsets.UTF_8)).path ("id").asLong ();
   }
 
   private long firstPestCategoryId (String url, String token) throws Exception {

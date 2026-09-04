@@ -5,21 +5,23 @@ import { refApi, refAdminApi } from '../api'
 
 type IdName = { id: number; name: string }
 type TabKey =
+  | 'cities'
+  | 'districts'
+  | 'senderTypes'
+  | 'services'
+  | 'deliveries'
+  | 'methods'
+  | 'cropCategories'
   | 'damages'
   | 'hints'
-  | 'methods'
-  | 'deliveries'
-  | 'services'
-  | 'senderTypes'
   | 'crops'
-  | 'cropCategories'
   | 'pestCategories'
 
 function escapeHtml (s: string) {
   return s.replace (/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!))
 }
 
-const currentTab = ref<TabKey>('damages')
+const currentTab = ref<TabKey>('cities')
 const loading = ref (true)
 // 篩選：名稱關鍵字與 (病蟲害分類限定) 害物類型
 const filterQ = ref ('')
@@ -34,6 +36,9 @@ const services = ref<IdName[]>([])
 const senderTypes = ref<IdName[]>([])
 const crops = ref<{ id: number; name: string; cropCategoryId?: number }[]>([])
 const cropCategories = ref<IdName[]>([])
+const cities = ref<{ id: number; name: string; districts: { id: number; name: string }[] }[]>([])
+const districts = ref<{ id: number; name: string; cityId?: number }[]>([])
+const selectedCityId = ref<number | null>(null)
 const pestCategories = ref<{ id: number; code: string; name: string; pestTypeId: number; sortOrder: number }[]>([])
 const pestTypes = ref<{ id: number; name: string }[]>([])
 
@@ -41,17 +46,18 @@ const pestTypes = ref<{ id: number; name: string }[]>([])
 async function loadAll () {
   loading.value = true
   try {
-    const [damRes, hintRes, methodRes, deliverRes, serviceRes, senderTypeRes, cropCatRes, pestTypeRes] =
-      await Promise.all ([
-        refApi.damages (),
-        refApi.hints (),
-        refApi.methods (),
-        refApi.deliveries (),
-        refApi.services (),
-        refApi.senderTypes (),
-        refApi.cropCategories (),
-        refApi.pestTypes (),
-      ])
+  const [damRes, hintRes, methodRes, deliverRes, serviceRes, senderTypeRes, cropCatRes, pestTypeRes, cityRes] =
+    await Promise.all ([
+      refApi.damages (),
+      refApi.hints (),
+      refApi.methods (),
+      refApi.deliveries (),
+      refApi.services (),
+      refApi.senderTypes (),
+      refApi.cropCategories (),
+      refApi.pestTypes (),
+      refApi.cities (),
+    ])
     damages.value = (damRes.data as IdName[]) ?? []
     hints.value = (hintRes.data as IdName[]) ?? []
     methods.value = (methodRes.data as IdName[]) ?? []
@@ -62,6 +68,11 @@ async function loadAll () {
     const cats = cropCatRes.data as { id: number; name: string; crops: { id: number; name: string }[] }[]
     cropCategories.value = cats.map ((c) => ({ id: c.id, name: c.name }))
     crops.value = cats.flatMap ((c) => c.crops.map ((cr) => ({ id: cr.id, name: cr.name, cropCategoryId: c.id })))
+    // cities 含 districts（縣市鄉鎮管理）
+    const cityList = (cityRes.data as { id: number; name: string; districts: { id: number; name: string }[] }[]) ?? []
+    cities.value = cityList.map ((c) => ({ id: c.id, name: c.name, districts: c.districts ?? [] }))
+    districts.value = cityList.flatMap ((c) => (c.districts ?? []).map ((d) => ({ id: d.id, name: d.name, cityId: c.id })))
+    // 鄉鎮篩選預設全部縣市（selectedCityId 為 null），不預選首縣市
     // pestTypes 含 categories
     const pts = pestTypeRes.data as { id: number; name: string; categories: { id: number; code: string; name: string; sortOrder: number }[] }[]
     pestTypes.value = pts.map ((p) => ({ id: p.id, name: p.name }))
@@ -84,7 +95,7 @@ onMounted (loadAll)
 
 // 通用新增/編輯/刪除處理
 async function handleCreate () {
-  if (['damages', 'hints', 'methods', 'deliveries', 'services', 'senderTypes', 'cropCategories'].includes (currentTab.value)) {
+  if (['damages', 'hints', 'methods', 'deliveries', 'services', 'senderTypes', 'cropCategories', 'cities'].includes (currentTab.value)) {
     const { value: name } = await Swal.fire ({
       title: '新增',
       input: 'text',
@@ -119,7 +130,40 @@ async function handleCreate () {
         case 'cropCategories':
           await refAdminApi.createCropCategory ({ name: name.trim () })
           break
+        case 'cities':
+          await refAdminApi.createCity ({ name: name.trim () })
+          break
       }
+      await loadAll ()
+      Swal.fire ({ icon: 'success', title: '已新增', timer: 1200, showConfirmButton: false })
+    } catch {}
+  } else if (currentTab.value === 'districts') {
+    if (cities.value.length === 0) {
+      Swal.fire ({ icon: 'warning', title: '請先建立縣市' })
+      return
+    }
+    const { value: form } = await Swal.fire ({
+      title: '新增鄉鎮市區',
+      html: `
+        <input id="swal-district-name" class="swal2-input" placeholder="鄉鎮市區名稱" />
+        <select id="swal-district-city" class="swal2-select">
+          ${cities.value.map ((c) => `<option value="${c.id}" ${c.id === selectedCityId.value ? 'selected' : ''}>${escapeHtml (c.name)}</option>`).join ('')}
+        </select>
+      `,
+      showCancelButton: true,
+      confirmButtonText: '新增',
+      cancelButtonText: '取消',
+      preConfirm: () => {
+        const name = (document.getElementById ('swal-district-name') as HTMLInputElement).value.trim ()
+        const cityId = Number ((document.getElementById ('swal-district-city') as HTMLSelectElement).value)
+        if (!name) return Swal.showValidationMessage ('名稱不可為空白')
+        if (!cityId) return Swal.showValidationMessage ('請選擇縣市')
+        return { name, cityId }
+      },
+    })
+    if (!form) return
+    try {
+      await refAdminApi.createDistrict (form)
       await loadAll ()
       Swal.fire ({ icon: 'success', title: '已新增', timer: 1200, showConfirmButton: false })
     } catch {}
@@ -192,7 +236,7 @@ async function handleCreate () {
 }
 
 async function handleEdit (item: any) {
-  if (['damages', 'hints', 'methods', 'deliveries', 'services', 'senderTypes', 'cropCategories'].includes (currentTab.value)) {
+  if (['damages', 'hints', 'methods', 'deliveries', 'services', 'senderTypes', 'cropCategories', 'cities'].includes (currentTab.value)) {
     const { value: name } = await Swal.fire ({
       title: '編輯',
       input: 'text',
@@ -229,7 +273,36 @@ async function handleEdit (item: any) {
         case 'cropCategories':
           await refAdminApi.updateCropCategory (item.id, { name: trimmed })
           break
+        case 'cities':
+          await refAdminApi.updateCity (item.id, { name: trimmed })
+          break
       }
+      await loadAll ()
+      Swal.fire ({ icon: 'success', title: '已更新', timer: 1200, showConfirmButton: false })
+    } catch {}
+  } else if (currentTab.value === 'districts') {
+    const { value: form } = await Swal.fire ({
+      title: '編輯鄉鎮市區',
+      html: `
+        <input id="swal-district-name" class="swal2-input" placeholder="鄉鎮市區名稱" value="${escapeHtml (item.name)}" />
+        <select id="swal-district-city" class="swal2-select">
+          ${cities.value.map ((c) => `<option value="${c.id}" ${c.id === (item as any).cityId ? 'selected' : ''}>${escapeHtml (c.name)}</option>`).join ('')}
+        </select>
+      `,
+      showCancelButton: true,
+      confirmButtonText: '儲存',
+      cancelButtonText: '取消',
+      preConfirm: () => {
+        const name = (document.getElementById ('swal-district-name') as HTMLInputElement).value.trim ()
+        const cityId = Number ((document.getElementById ('swal-district-city') as HTMLSelectElement).value)
+        if (!name) return Swal.showValidationMessage ('名稱不可為空白')
+        if (!cityId) return Swal.showValidationMessage ('請選擇縣市')
+        return { name, cityId }
+      },
+    })
+    if (!form) return
+    try {
+      await refAdminApi.updateDistrict (item.id, form)
       await loadAll ()
       Swal.fire ({ icon: 'success', title: '已更新', timer: 1200, showConfirmButton: false })
     } catch {}
@@ -329,6 +402,12 @@ async function handleDelete (item: any) {
       case 'cropCategories':
         await refAdminApi.deleteCropCategory (item.id)
         break
+      case 'cities':
+        await refAdminApi.deleteCity (item.id)
+        break
+      case 'districts':
+        await refAdminApi.deleteDistrict (item.id)
+        break
       case 'pestCategories':
         await refAdminApi.deletePestCategory (item.id)
         break
@@ -339,19 +418,27 @@ async function handleDelete (item: any) {
 }
 
 const tabs: { key: TabKey; label: string }[] = [
+  { key: 'cities', label: '縣市' },
+  { key: 'districts', label: '鄉鎮市區' },
+  { key: 'senderTypes', label: '身分別' },
+  { key: 'services', label: '服務類別' },
+  { key: 'deliveries', label: '送件方式' },
+  { key: 'methods', label: '耕種方式' },
+  { key: 'cropCategories', label: '作物類別' },
   { key: 'damages', label: '被害部位' },
   { key: 'hints', label: '防治建議' },
-  { key: 'methods', label: '耕種方式' },
-  { key: 'deliveries', label: '送件方式' },
-  { key: 'services', label: '服務類別' },
-  { key: 'senderTypes', label: '身分別' },
-  { key: 'cropCategories', label: '作物類別' },
 ]
 
 const currentList = computed<any[]>(() => {
   const q = filterQ.value.trim ().toLowerCase ()
   const matchQ = (name: string) => !q || name.toLowerCase ().includes (q)
   switch (currentTab.value) {
+    case 'cities':
+      return cities.value.filter ((d) => matchQ (d.name))
+    case 'districts': {
+      const cityId = selectedCityId.value
+      return districts.value.filter ((d) => (!cityId || d.cityId === cityId) && matchQ (d.name))
+    }
     case 'damages':
       return damages.value.filter ((d) => matchQ (d.name))
     case 'hints':
@@ -404,7 +491,7 @@ function onPageInputConfirm () {
   if (num > totalPages.value) num = totalPages.value
   goToPage (num - 1)
 }
-watch ([currentTab, filterQ, filterPestTypeId], () => {
+watch ([currentTab, filterQ, filterPestTypeId, selectedCityId], () => {
   page.value = 0
   pageInput.value = 1
 })
@@ -446,6 +533,12 @@ const pagedList = computed (() => {
               <option v-for="p in pestTypes" :key="p.id" :value="p.id">{{ p.name }}</option>
             </select>
           </div>
+          <div v-if="currentTab === 'districts'" class="col-md-4">
+            <select v-model.number="selectedCityId" class="form-select form-select-sm">
+              <option :value="null">全部縣市</option>
+              <option v-for="c in cities" :key="c.id" :value="c.id">{{ c.name }}</option>
+            </select>
+          </div>
           <div class="col-md-4 text-muted small">
             {{ currentList.length }} 筆
           </div>
@@ -462,6 +555,7 @@ const pagedList = computed (() => {
               <th style="width:60px;min-width:60px">ID</th>
               <th style="width:160px;min-width:160px">名稱</th>
               <th v-if="currentTab === 'crops'" style="width:120px;min-width:120px">分類</th>
+              <th v-if="currentTab === 'districts'" style="width:120px;min-width:120px">縣市</th>
               <th v-if="currentTab === 'pestCategories'" style="width:90px;min-width:90px">代碼</th>
               <th v-if="currentTab === 'pestCategories'" style="width:100px;min-width:100px">類型</th>
               <th v-if="currentTab === 'pestCategories'" style="width:70px;min-width:70px">排序</th>
@@ -476,6 +570,7 @@ const pagedList = computed (() => {
               <td>{{ item.id }}</td>
               <td class="text-truncate" style="max-width:160px" :title="item.name">{{ item.name }}</td>
               <td v-if="currentTab === 'crops'" class="text-truncate" style="max-width:120px" :title="cropCategories.find ((c) => c.id === (item as any).cropCategoryId)?.name ?? '—'">{{ cropCategories.find ((c) => c.id === (item as any).cropCategoryId)?.name ?? '—' }}</td>
+              <td v-if="currentTab === 'districts'" class="text-truncate" style="max-width:120px" :title="cities.find ((c) => c.id === (item as any).cityId)?.name ?? '—'">{{ cities.find ((c) => c.id === (item as any).cityId)?.name ?? '—' }}</td>
               <td v-if="currentTab === 'pestCategories'" class="text-truncate" style="max-width:90px" :title="(item as any).code">{{ (item as any).code }}</td>
               <td v-if="currentTab === 'pestCategories'" class="text-truncate" style="max-width:100px" :title="pestTypes.find ((p) => p.id === (item as any).pestTypeId)?.name ?? '—'">{{ pestTypes.find ((p) => p.id === (item as any).pestTypeId)?.name ?? '—' }}</td>
               <td v-if="currentTab === 'pestCategories'">{{ (item as any).sortOrder }}</td>

@@ -14,8 +14,12 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.d0w0b.phytotrack.dto.ReferenceDtos.ActiveUpdateRequest;
 import com.d0w0b.phytotrack.dto.ReferenceDtos.BindSignerRequest;
+import com.d0w0b.phytotrack.dto.ReferenceDtos.CityCreateRequest;
+import com.d0w0b.phytotrack.dto.ReferenceDtos.CityUpdateRequest;
 import com.d0w0b.phytotrack.dto.ReferenceDtos.CropCreateRequest;
 import com.d0w0b.phytotrack.dto.ReferenceDtos.CropUpdateRequest;
+import com.d0w0b.phytotrack.dto.ReferenceDtos.DistrictCreateRequest;
+import com.d0w0b.phytotrack.dto.ReferenceDtos.DistrictUpdateRequest;
 import com.d0w0b.phytotrack.dto.ReferenceDtos.CropCategoryCreateRequest;
 import com.d0w0b.phytotrack.dto.ReferenceDtos.CropCategoryUpdateRequest;
 import com.d0w0b.phytotrack.dto.ReferenceDtos.IdNameCreateRequest;
@@ -193,6 +197,39 @@ public class ReferenceDataAdminController {
   @DeleteMapping ("/sender-types/{id}")
   public ResponseEntity<Void> deleteSenderType (@PathVariable Long id) {
     service.deleteSenderType (id);
+    return ResponseEntity.noContent ().build ();
+  }
+
+  // ===== cities / districts =====
+  @PostMapping ("/cities")
+  public ResponseEntity<IdNameResponse> createCity (@Valid @RequestBody CityCreateRequest req) {
+    return ResponseEntity.status (HttpStatus.CREATED).body (service.createCity (req.name ()));
+  }
+
+  @PutMapping ("/cities/{id}")
+  public ResponseEntity<IdNameResponse> updateCity (@PathVariable Long id, @Valid @RequestBody CityUpdateRequest req) {
+    return ResponseEntity.ok (service.updateCity (id, req.name ()));
+  }
+
+  @DeleteMapping ("/cities/{id}")
+  public ResponseEntity<Void> deleteCity (@PathVariable Long id) {
+    service.deleteCity (id);
+    return ResponseEntity.noContent ().build ();
+  }
+
+  @PostMapping ("/districts")
+  public ResponseEntity<IdNameResponse> createDistrict (@Valid @RequestBody DistrictCreateRequest req) {
+    return ResponseEntity.status (HttpStatus.CREATED).body (service.createDistrict (req.name (), req.cityId ()));
+  }
+
+  @PutMapping ("/districts/{id}")
+  public ResponseEntity<IdNameResponse> updateDistrict (@PathVariable Long id, @Valid @RequestBody DistrictUpdateRequest req) {
+    return ResponseEntity.ok (service.updateDistrict (id, req.name (), req.cityId ()));
+  }
+
+  @DeleteMapping ("/districts/{id}")
+  public ResponseEntity<Void> deleteDistrict (@PathVariable Long id) {
+    service.deleteDistrict (id);
     return ResponseEntity.noContent ().build ();
   }
 

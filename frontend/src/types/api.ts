@@ -132,6 +132,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/ref/districts/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["updateDistrict"];
+        post?: never;
+        delete: operations["deleteDistrict"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/ref/deliveries/{id}": {
         parameters: {
             query?: never;
@@ -191,6 +207,22 @@ export interface paths {
         put: operations["updateCropCategory"];
         post?: never;
         delete: operations["deleteCropCategory"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/ref/cities/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["updateCity"];
+        post?: never;
+        delete: operations["deleteCity"];
         options?: never;
         head?: never;
         patch?: never;
@@ -500,6 +532,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/ref/districts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["createDistrict"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/ref/deliveries": {
         parameters: {
             query?: never;
@@ -558,6 +606,22 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["createCropCategory"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/ref/cities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["createCity"];
         delete?: never;
         options?: never;
         head?: never;
@@ -988,7 +1052,7 @@ export interface components {
             name?: string;
             displayName?: string;
             phone?: string;
-            address: string;
+            address?: string;
             /** Format: int64 */
             districtId: number;
             /** Format: int64 */
@@ -1128,12 +1192,20 @@ export interface components {
             /** Format: int64 */
             pestTypeId: number;
         };
+        DistrictUpdateRequest: {
+            name: string;
+            /** Format: int64 */
+            cityId: number;
+        };
         CropUpdateRequest: {
             name: string;
             /** Format: int64 */
             cropCategoryId: number;
         };
         CropCategoryUpdateRequest: {
+            name: string;
+        };
+        CityUpdateRequest: {
             name: string;
         };
         DeactivateRequestResponse: {
@@ -1176,7 +1248,7 @@ export interface components {
             senderName?: string;
             senderDisplayName?: string;
             senderPhone?: string;
-            senderAddress: string;
+            senderAddress?: string;
             /** Format: int64 */
             senderDistrictId: number;
             /** Format: int64 */
@@ -1247,12 +1319,20 @@ export interface components {
             /** Format: int64 */
             userId: number;
         };
+        DistrictCreateRequest: {
+            name: string;
+            /** Format: int64 */
+            cityId: number;
+        };
         CropCreateRequest: {
             name: string;
             /** Format: int64 */
             cropCategoryId: number;
         };
         CropCategoryCreateRequest: {
+            name: string;
+        };
+        CityCreateRequest: {
             name: string;
         };
         ActiveUpdateRequest: {
@@ -1306,8 +1386,6 @@ export interface components {
             /** Format: int64 */
             id?: number;
             name?: string;
-            /** Format: int32 */
-            sortOrder?: number;
         };
         Pageable: {
             /** Format: int32 */
@@ -1846,6 +1924,52 @@ export interface operations {
             };
         };
     };
+    updateDistrict: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DistrictUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["IdNameResponse"];
+                };
+            };
+        };
+    };
+    deleteDistrict: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     updateDelivery: {
         parameters: {
             query?: never;
@@ -2011,6 +2135,52 @@ export interface operations {
         };
     };
     deleteCropCategory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    updateCity: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CityUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["IdNameResponse"];
+                };
+            };
+        };
+    };
+    deleteCity: {
         parameters: {
             query?: never;
             header?: never;
@@ -2537,6 +2707,30 @@ export interface operations {
             };
         };
     };
+    createDistrict: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DistrictCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["IdNameResponse"];
+                };
+            };
+        };
+    };
     createDelivery: {
         parameters: {
             query?: never;
@@ -2619,6 +2813,30 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["CropCategoryCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["IdNameResponse"];
+                };
+            };
+        };
+    };
+    createCity: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CityCreateRequest"];
             };
         };
         responses: {
