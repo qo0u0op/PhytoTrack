@@ -1,0 +1,54 @@
+# PhytoTrack 配置範例（phytotrack.toml）
+# Windows 可攜：與 exe 同目錄的 config/phytotrack.toml
+# Unix：$XDG_CONFIG_HOME/phytotrack/phytotrack.toml（預設 ~/.config/phytotrack/phytotrack.toml）
+# 僅 AI_API_KEY 建議以 env AI_API_KEY 覆蓋，其餘皆走此檔
+
+[server]
+# 服務埠，可改 9090 等避免衝突
+port = 8080
+
+[app.jwt]
+# 首次啟動若無此值將自動亂數生成並寫回此檔
+secret = "phytotrack-dev-secret-please-change-in-production-0123456789"
+expiration-ms = 3600000
+
+[app.bootstrap]
+# 首次建庫時註冊帳號：dev/test 建 admin/staff/viewer 三帳，prod 僅 admin（staff/viewer 即使配置亦忽略）
+# prod 僅 admin/admin123 生效，且僅「資料庫為空首次啟動」時寫入，後續不回落（刪庫重建才再生）
+admin-username = "admin"
+admin-password = "admin123"
+# dev/test 專用，prod 忽略
+staff-username = "staff"
+staff-password = "staff123"
+viewer-username = "viewer"
+viewer-password = "viewer123"
+
+[ai]
+# AI 總開關：false 時 /api/ai/* 回 404 且前端隱藏 AI 入口
+enabled = true
+base-url = "http://localhost:11435"
+model = "qwen_qwen2.5-coder-3b-instruct-q8_0"
+api-key = "llama-local-dummy-key"
+
+[app.cors]
+# CORS 白名單（逗號分隔），prod 建議明確列出前端位址
+allowed-origins = ""
+
+[app.rate-limit]
+enabled = true
+requests-per-minute = 10
+window-seconds = 60
+
+[app.security-headers]
+enabled = false
+
+[app.ui]
+auto-open-browser = true
+
+[springdoc]
+api-docs-enabled = true
+swagger-ui-enabled = true
+
+# 可選：覆蓋資料庫與日誌位置（預設由 BinaryPaths 依 OS 決定）
+# spring.datasource.url = "jdbc:sqlite:./data/diagnoses.db"
+# logging.file.name = "logs/phytotrack.log"

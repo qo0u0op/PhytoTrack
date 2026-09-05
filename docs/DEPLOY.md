@@ -247,3 +247,39 @@ mvn spring-boot:run -Dspring-boot.run.profiles=postgres  # 或 ./mvnw ... (Unix/
 ```
 
 搭配 `application-postgres.yaml` 設定連線資訊，並使用既有 schema 資料 (`schema.sql` 的 `INSERT` 語句相容 PostgreSQL)。
+
+## 12. Binary 交付（Windows Portable / Unix XDG）
+
+### 目錄契約
+
+| 平台 | 配置 | 資料 | 日誌 | Binary 位置 |
+|------|------|------|------|-------------|
+| Windows Portable | `.\config\phytotrack.toml` | `.\data\diagnoses.db` | `.\logs\phytotrack.log` | 解壓目錄的 `phytotrack.exe` |
+| Unix XDG | `$XDG_CONFIG_HOME/phytotrack/phytotrack.toml`（預設 `~/.config/...`） | `$XDG_DATA_HOME/phytotrack/diagnoses.db`（`~/.local/share/...`） | `$XDG_STATE_HOME/phytotrack/phytotrack.log`（`~/.local/state/...`） | `/usr/bin/phytotrack`（`apt/brew`） |
+
+- 首次啟動若 `phytotrack.toml` 不存在，自動生成預設（含註解、全量鍵、`server.port=8080`、`ai.enabled=true`、`app.jwt.secret=<random>`），並 `mkdirs` 對應目錄；二次啟動不覆蓋。
+- `app.jwt.secret` 首次亂數 48 bytes Base64URL，console 印「首次啟動已生成亂數密鑰，舊 token 失效請重新登入」。
+- 僅 `AI_API_KEY` 支援 `env AI_API_KEY` 覆蓋 TOML，其餘走 `phytotrack.toml`；`backend/.env` 已棄用（僅相容一版，啟動印 WARN）。
+
+### 單一配置 `phytotrack.toml`
+
+見 `backend/phytotrack.toml.example`，全量可配：`server.port`、`spring.datasource.url`、`logging.file.name`、`app.jwt.secret/expiration-ms`、`app.bootstrap.*`、`ai.base-url/model/api-key/enabled`、`app.cors.allowed-origins`、`app.rate-limit.*`、`app.security-headers.enabled`、`springdoc`、`app.ui.auto-open-browser`。
+
+```bash
+# 改 port
+# phytotrack.toml: server.port=9090
+curl http://localhost:9090/actuator/health # 應回 UP
+```
+
+### Windows 防火牆與自動開瀏覽器
+
+- 防火牆：首次啟動偵測 `netsh advfirewall firewall show rule name="PhytoTrack"`，未放行即 console 印 `netsh advfirewall firewall add rule ...` PowerShell 提示，不自動提權；請勿解壓至 `C:\Program Files`（無寫入權限）。
+- 自動開瀏覽器：`ApplicationReadyEvent` 後 `Desktop.browse(http://localhost:${server.port})`，失敗回落 `xdg-open`/`open`，可由 `app.ui.auto-open-browser=false` 關閉。
+
+### Unix 包管理器
+
+```bash
+# 例：deb 安裝後
+phytotrack # 讀 ~/.config/phytotrack/phytotrack.toml，系統級 /etc/phytotrack/phytotrack.toml 為低優先
+systemctl --user enable phytotrack # 若提供 systemd unit
+```

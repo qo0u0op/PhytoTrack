@@ -102,7 +102,6 @@ public class CaseService {
   private final IdentifierService identifierService;
   private final ReferenceDataService referenceDataService;
 
-  @org.springframework.beans.factory.annotation.Autowired
   public CaseService (CaseRepository caseRepository,
                      CaseSearchViewRepository caseSearchViewRepository,
                      SenderRepository senderRepository,
@@ -116,9 +115,9 @@ public class CaseService {
                      HintRepository hintRepository,
                      PestCategoryRepository pestCategoryRepository,
                      IdentifierRepository identifierRepository,
-                     @org.springframework.beans.factory.annotation.Autowired (required = false) UserRepository userRepository,
-                     @org.springframework.beans.factory.annotation.Autowired (required = false) IdentifierService identifierService,
-                     @org.springframework.beans.factory.annotation.Autowired (required = false) ReferenceDataService referenceDataService) {
+                     UserRepository userRepository,
+                     IdentifierService identifierService,
+                     ReferenceDataService referenceDataService) {
     this.caseRepository = caseRepository;
     this.caseSearchViewRepository = caseSearchViewRepository;
     this.senderRepository = senderRepository;
@@ -135,25 +134,6 @@ public class CaseService {
     this.userRepository = userRepository;
     this.identifierService = identifierService;
     this.referenceDataService = referenceDataService;
-  }
-
-  // 相容舊單元測試
-  public CaseService (CaseRepository caseRepository,
-                     CaseSearchViewRepository caseSearchViewRepository,
-                     SenderRepository senderRepository,
-                     SenderTypeRepository senderTypeRepository,
-                     DistrictRepository districtRepository,
-                     MethodRepository methodRepository,
-                     CropRepository cropRepository,
-                     ServiceRepository serviceRepository,
-                     DeliveryRepository deliveryRepository,
-                     DamageRepository damageRepository,
-                     HintRepository hintRepository,
-                     PestCategoryRepository pestCategoryRepository,
-                     IdentifierRepository identifierRepository) {
-    this (caseRepository, caseSearchViewRepository, senderRepository, senderTypeRepository, districtRepository,
-        methodRepository, cropRepository, serviceRepository, deliveryRepository, damageRepository, hintRepository,
-        pestCategoryRepository, identifierRepository, null, null, null);
   }
 
   /** 分頁查詢案件清單 (摘要)；經視圖 `v_case_search` 篩選後回補實體以保留遮蔽 */
@@ -206,7 +186,7 @@ public class CaseService {
     var inlines = request.inlineIdentifiers ();
     boolean hasInline = inlines != null && !inlines.isEmpty ();
     // 僅當兩者皆空才自動帶入
-    if ((identifierIds == null || identifierIds.isEmpty ()) && !hasInline && identifierService != null && userRepository != null) {
+    if ((identifierIds == null || identifierIds.isEmpty ()) && !hasInline) {
       User current = getCurrentUserOrNull ();
       if (current != null) {
         Identifier auto = identifierService.ensureForUser (current);
@@ -362,7 +342,7 @@ public class CaseService {
           request.identifierIds (), request.inlineIdentifiers (), request.inlineCrop ());
     }
     boolean hasInlineUpd = request.inlineIdentifiers () != null && !request.inlineIdentifiers ().isEmpty ();
-    if (request.identifierIds () != null && request.identifierIds ().isEmpty () && !hasInlineUpd && identifierService != null && userRepository != null) {
+    if (request.identifierIds () != null && request.identifierIds ().isEmpty () && !hasInlineUpd) {
       User current = getCurrentUserOrNull ();
       if (current != null) {
         Identifier auto = identifierService.ensureForUser (current);
@@ -543,7 +523,6 @@ public class CaseService {
   }
 
   private User getCurrentUserOrNull () {
-    if (userRepository == null) return null;
     Authentication auth = SecurityContextHolder.getContext ().getAuthentication ();
     if (auth != null && auth.getPrincipal () instanceof UserPrincipal principal) {
       return userRepository.findById (principal.getUserId ()).orElse (null);

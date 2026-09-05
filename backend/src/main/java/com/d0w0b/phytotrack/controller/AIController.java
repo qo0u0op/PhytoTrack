@@ -9,6 +9,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+
 import com.d0w0b.phytotrack.dto.AiDtos.AnalyzeRequest;
 import com.d0w0b.phytotrack.dto.AiDtos.AnalyzeResponse;
 import com.d0w0b.phytotrack.service.AIService;
@@ -23,6 +25,7 @@ import java.util.Map;
  */
 @RestController
 @RequestMapping ("/api/ai")
+@ConditionalOnProperty (name = "ai.enabled", havingValue = "true", matchIfMissing = true)
 public class AIController {
 
   private final AIService aiService;

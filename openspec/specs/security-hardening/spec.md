@@ -30,13 +30,17 @@
 - **WHEN** 以 production profile 啟動且未提供 JWT_SECRET
 - **THEN** 應用程式啟動失敗，並明確提示設定密鑰
 
-### Requirement: 帳號初始化限 dev/test
+### Requirement: 帳號初始化
 
-系統 SHALL 僅於 `dev` 或 `test` profile 建立 `app.bootstrap.*` 預設帳號，`production` 不自動建立任何帳號。
+系統 SHALL 依 profile 決定預設帳號：`dev`/`test` 建立 `admin`/`staff`/`viewer` 三帳號，`prod`（含 binary）僅建立 `admin` 單一帳號與其簽名人；`staff`/`viewer` 於 prod 不自動建立。
 
-#### Scenario: production 無預設帳號
-- **WHEN** 以 `prod` 啟動且無手動帳號
-- **THEN** `admin` 帳號不存在，需由外部初始化
+#### Scenario: dev/test 三帳號
+- **WHEN** 以 `dev` 或 `test` 啟動且無既有帳號
+- **THEN** `admin`、`staff`、`viewer` 皆自動建立
+
+#### Scenario: production 僅 admin
+- **WHEN** 以 `prod` 啟動且無既有帳號
+- **THEN** 僅 `admin` 自動建立（`staff`/`viewer` 不建立），且僅 `admin` 擁有簽名人
 
 ### Requirement: 停用帳號登入處理
 
