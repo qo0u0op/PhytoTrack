@@ -3,12 +3,13 @@ spring:
     # 應用程式名稱（顯示於 Spring 啟動資訊）
     name: PhytoTrack
   config:
-    # 讀取 backend/.env（dotenv 格式，可缺省）。機台特定設定如 AI_BASE_URL/AI_MODEL/AI_API_KEY
-    # 放在 .env 覆寫，未設定時使用 application.yaml 內的預設值。
-    import: optional:file:.env[.properties]
+    # TOML 配置由 PhytotrackTomlEnvironmentPostProcessor 載入（phytotrack.toml），
+    # 此處不再主動 import .env；.env 僅保留 AI_API_KEY 的 env 覆蓋相容（見 .env.example 棄用說明）
+    import: optional:file:./config/phytotrack.toml
   datasource:
-    # SQLite DataSource（本機檔案型資料庫）
-    url: jdbc:sqlite:./diagnoses.db
+    # SQLite DataSource（本機檔案型資料庫），可由 phytotrack.toml 的 spring.datasource.url 覆蓋
+    # 預設由 BinaryPaths 依 OS 決定：Windows 相對 exe 的 data/diagnoses.db，Unix 依 XDG
+    url: ${phytotrack.datasource.url:jdbc:sqlite:./diagnoses.db}
     driver-class-name: org.sqlite.JDBC
     hikari:
       # HikariCP（連線池） - SQLite 相容設定
@@ -64,9 +65,9 @@ management:
       application: ${spring.application.name}
 
 logging:
-  # 日誌主檔（可被 LOGGING_FILE_NAME env 覆寫）；實際滾動規則見 logback-spring.xml
+  # 日誌主檔（可由 phytotrack.toml 的 logging.file.name 覆蓋，預設由 BinaryPaths 依 OS 決定）
   file:
-    name: logs/phytotrack.log
+    name: ${phytotrack.logging.file:logs/phytotrack.log}
 
 # ============================================================
 # 應用程式自訂設定

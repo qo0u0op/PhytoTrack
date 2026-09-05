@@ -31,6 +31,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import com.d0w0b.phytotrack.config.RateLimitFilter;
 import com.d0w0b.phytotrack.config.SecurityConfig;
 import com.d0w0b.phytotrack.dto.AuthDtos.RegisterRequest;
 import com.d0w0b.phytotrack.exception.ApiException;
@@ -59,6 +60,9 @@ class RegisterAvailabilityTest {
   @MockitoBean
   private JwtAuthenticationFilter jwtAuthenticationFilter;
 
+  @MockitoBean
+  private RateLimitFilter rateLimitFilter;
+
   @BeforeEach
   void setUpFilterToPassThrough () throws Exception {
     doAnswer (invocation -> {
@@ -67,6 +71,12 @@ class RegisterAvailabilityTest {
           invocation.getArgument (1, HttpServletResponse.class));
       return null;
     }).when (jwtAuthenticationFilter).doFilter (any (), any (), any ());
+    doAnswer (invocation -> {
+      FilterChain chain = invocation.getArgument (2, FilterChain.class);
+      chain.doFilter (invocation.getArgument (0, HttpServletRequest.class),
+          invocation.getArgument (1, HttpServletResponse.class));
+      return null;
+    }).when (rateLimitFilter).doFilter (any (), any (), any ());
   }
 
   @Test

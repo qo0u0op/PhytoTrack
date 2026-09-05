@@ -3,7 +3,8 @@ package com.d0w0b.phytotrack.service;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Profile;
+import org.springframework.core.env.Environment;
+import org.springframework.core.env.Profiles;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import com.d0w0b.phytotrack.models.Identifier;
@@ -15,11 +16,11 @@ import com.d0w0b.phytotrack.repository.UserRepository;
 /**
  * 啟動時資料初始化 (Data Initializer)
  *
- * 若資料庫沒有管理者/員工帳號，則依 application.yaml 的 app.bootstrap
- * 建立預設帳號 (可覆寫)，方便首次登入。僅於 dev/test 啟用，避免 production 預設密碼落入正式環境。
+ * 依環境決定預設帳號：
+ * - dev/test：建立 admin/staff/viewer 三帳號，方便開發與 VIEWER 遮蔽驗證
+ * - prod：僅建立 admin 單一帳號與其簽名人，避免預設 staff/viewer 落入正式環境
  */
 @Configuration
-@Profile ({"dev", "test"})
 public class DataInitializer implements CommandLineRunner {
 
   private final UserRepository userRepository;
@@ -32,11 +33,13 @@ public class DataInitializer implements CommandLineRunner {
   private final String staffPassword;
   private final String viewerUsername;
   private final String viewerPassword;
+  private final Environment environment;
 
   public DataInitializer (UserRepository userRepository,
                          IdentifierRepository identifierRepository,
                          CaseRepository caseRepository,
                          PasswordEncoder passwordEncoder,
+                         Environment environment,
                          @Value ("${app.bootstrap.admin-username}") String adminUsername,
                          @Value ("${app.bootstrap.admin-password}") String adminPassword,
                          @Value ("${app.bootstrap.staff-username}") String staffUsername,
@@ -47,6 +50,7 @@ public class DataInitializer implements CommandLineRunner {
     this.identifierRepository = identifierRepository;
     this.caseRepository = caseRepository;
     this.passwordEncoder = passwordEncoder;
+    this.environment = environment;
     this.adminUsername = adminUsername;
     this.adminPassword = adminPassword;
     this.staffUsername = staffUsername;
@@ -57,11 +61,17 @@ public class DataInitializer implements CommandLineRunner {
 
   @Override
   public void run (String... args) {
+    boolean isProd = environment.acceptsProfiles (Profiles.of ("prod"));
     // 僅在使用者不存在時建立，避免覆寫或重複
-    User admin = getOrCreateUser (adminUsername, "管理員", adminPassword, User.Role.ROLE_ADMIN);
-    User staff = getOrCreateUser (staffUsername, "診斷員", staffPassword, User.Role.ROLE_STAFF);
-    // 檢視者帳號：供開發環境驗證 VIEWER 角色的遮蔽行為 (如送件人個人資料)
-    getOrCreateUser (viewerUsername, "檢視員", viewerPassword, User.Role.ROLE_VIEWER);
+    // prod：僅 admin 且固定 admin/admin123，忽略 config 的 bootstrap，避免透過 TOML 改 prod 密碼
+    if (isProd) {
+      getOrCreateUser ("admin", "管理員", "admin123", User.Role.ROLE_ADMIN);
+    } else {
+      getOrCreateUser (adminUsername, "管理員", adminPassword, User.Role.ROLE_ADMIN);
+      getOrCreateUser (staffUsername, "診斷員", staffPassword, User.Role.ROLE_STAFF);
+      // 檢視者帳號：供開發環境驗證 VIEWER 角色的遮蔽行為 (如送件人個人資料)
+      getOrCreateUser (viewerUsername, "檢視員", viewerPassword, User.Role.ROLE_VIEWER);
+    }
 
     // 1. 移除預設 3 筆種子（BREAKING）：既有庫若存在則置 active=false（若未被引用則刪除）
     for (String name : new String[]{"張志明", "林雅惠", "陳建宏"}) {
