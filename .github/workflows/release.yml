@@ -60,9 +60,12 @@ jobs:
         run: |
           VERSION=${GITHUB_REF#refs/tags/v}
           VERSION=${VERSION//-/.}
-          # macOS app-version 僅允許 1-3 段數字，截為前 3 段
-          VERSION=$(echo "$VERSION" | cut -d. -f1-3)
           # jpackage app-version 需為數字點分，去除前置 v 與 - 轉 .
+          # macOS 要求 1-3 段且首段不可為 0，截為前 3 段並將 0.x 轉 1.x
+          VERSION=$(echo "$VERSION" | cut -d. -f1-3)
+          if [[ "$VERSION" =~ ^0(\.|$) ]]; then
+            VERSION=$(echo "$VERSION" | sed -E 's/^0+(\.|$)/1\1/')
+          fi
           case "${{ matrix.type }}" in
             deb)
               jpackage --type deb \
