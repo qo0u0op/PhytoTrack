@@ -32,6 +32,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
+import com.d0w0b.phytotrack.config.RateLimitFilter;
 import com.d0w0b.phytotrack.config.SecurityConfig;
 import com.d0w0b.phytotrack.dto.ReferenceDtos.IdNameResponse;
 import com.d0w0b.phytotrack.exception.ApiException;
@@ -61,6 +62,9 @@ class ReferenceDataAdminControllerTest {
   @MockitoBean
   private JwtAuthenticationFilter jwtAuthenticationFilter;
 
+  @MockitoBean
+  private RateLimitFilter rateLimitFilter;
+
   @BeforeEach
   void setUp() throws Exception {
     mockMvc = MockMvcBuilders.webAppContextSetup(context).apply(springSecurity()).build();
@@ -70,6 +74,12 @@ class ReferenceDataAdminControllerTest {
           invocation.getArgument(1, HttpServletResponse.class));
       return null;
     }).when(jwtAuthenticationFilter).doFilter(any(), any(), any());
+    doAnswer(invocation -> {
+      FilterChain chain = invocation.getArgument(2, FilterChain.class);
+      chain.doFilter(invocation.getArgument(0, HttpServletRequest.class),
+          invocation.getArgument(1, HttpServletResponse.class));
+      return null;
+    }).when(rateLimitFilter).doFilter(any(), any(), any());
   }
 
   // 401 未登入

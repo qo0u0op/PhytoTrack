@@ -37,3 +37,19 @@ for u in http://localhost:8080/api/ai/health http://localhost:5173; do
 done
 wait
 '''
+
+[tasks."package"]
+description = "打包前置建置（前端 dist → 後端 static + Fat Jar，供 jpackage）"
+run = '''
+set -e
+echo "[package] 前端建置"
+cd frontend && npm run build
+rm -rf ../backend/src/main/resources/static
+cp -r dist ../backend/src/main/resources/static
+
+echo "[package] 後端 Fat Jar"
+cd ../backend && mvn package -DskipTests
+
+echo "[package] 完成：backend/target/phytotrack-0.0.1-SNAPSHOT.jar（jpackage 由 .github/workflows/release.yml 執行）"
+ls -lh target/phytotrack-0.0.1-SNAPSHOT.jar 2>&1 | head -5
+'''

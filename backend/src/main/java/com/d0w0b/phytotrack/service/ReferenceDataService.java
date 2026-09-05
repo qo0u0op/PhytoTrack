@@ -39,6 +39,9 @@ import com.d0w0b.phytotrack.repository.ServiceRepository;
 
 import java.util.Comparator;
 import java.util.List;
+import java.util.function.BiConsumer;
+import java.util.function.Function;
+import java.util.function.Supplier;
 
 /**
  * 參照資料服務 (Reference Data Service)
@@ -203,132 +206,77 @@ public class ReferenceDataService {
 
   @Transactional
   public IdNameResponse createDamage (String name) {
-    Damage e = new Damage ();
-    e.setDamage (name.trim ());
-    damageRepository.save (e);
-    return new IdNameResponse (e.getDamageId (), e.getDamage ());
+    return createSimple (name, Damage::new, Damage::setDamage, Damage::getDamageId, Damage::getDamage, damageRepository);
   }
 
   @Transactional
   public IdNameResponse updateDamage (Long id, String name) {
-    Damage e = damageRepository.findById (id)
-        .orElseThrow (() -> new ApiException ("REFERENCE_NOT_FOUND", HttpStatus.NOT_FOUND, "被害部位不存在"));
-    e.setDamage (name.trim ());
-    return new IdNameResponse (e.getDamageId (), e.getDamage ());
+    return updateSimple (id, name, damageRepository::findById, Damage::setDamage, Damage::getDamageId, Damage::getDamage, "被害部位不存在");
   }
 
   @Transactional
   public void deleteDamage (Long id) {
-    Damage e = damageRepository.findById (id)
-        .orElseThrow (() -> new ApiException ("REFERENCE_NOT_FOUND", HttpStatus.NOT_FOUND, "被害部位不存在"));
-    if (caseRepository.existsByCaseDamagesDamageDamageId (id)) {
-      throw new ApiException ("REFERENCE_IN_USE", HttpStatus.CONFLICT, "已被案件引用，無法刪除");
-    }
-    damageRepository.delete (e);
+    deleteSimple (id, damageRepository::findById, () -> caseRepository.existsByCaseDamagesDamageDamageId (id), "被害部位不存在", damageRepository);
   }
 
   @Transactional
   public IdNameResponse createHint (String name) {
-    Hint e = new Hint ();
-    e.setHint (name.trim ());
-    hintRepository.save (e);
-    return new IdNameResponse (e.getHintId (), e.getHint ());
+    return createSimple (name, Hint::new, Hint::setHint, Hint::getHintId, Hint::getHint, hintRepository);
   }
 
   @Transactional
   public IdNameResponse updateHint (Long id, String name) {
-    Hint e = hintRepository.findById (id)
-        .orElseThrow (() -> new ApiException ("REFERENCE_NOT_FOUND", HttpStatus.NOT_FOUND, "防治建議不存在"));
-    e.setHint (name.trim ());
-    return new IdNameResponse (e.getHintId (), e.getHint ());
+    return updateSimple (id, name, hintRepository::findById, Hint::setHint, Hint::getHintId, Hint::getHint, "防治建議不存在");
   }
 
   @Transactional
   public void deleteHint (Long id) {
-    Hint e = hintRepository.findById (id)
-        .orElseThrow (() -> new ApiException ("REFERENCE_NOT_FOUND", HttpStatus.NOT_FOUND, "防治建議不存在"));
-    if (caseRepository.existsByCaseHintsHintHintId (id)) {
-      throw new ApiException ("REFERENCE_IN_USE", HttpStatus.CONFLICT, "已被案件引用，無法刪除");
-    }
-    hintRepository.delete (e);
+    deleteSimple (id, hintRepository::findById, () -> caseRepository.existsByCaseHintsHintHintId (id), "防治建議不存在", hintRepository);
   }
 
   @Transactional
   public IdNameResponse createMethod (String name) {
-    Method e = new Method ();
-    e.setMethod (name.trim ());
-    methodRepository.save (e);
-    return new IdNameResponse (e.getMethodId (), e.getMethod ());
+    return createSimple (name, Method::new, Method::setMethod, Method::getMethodId, Method::getMethod, methodRepository);
   }
 
   @Transactional
   public IdNameResponse updateMethod (Long id, String name) {
-    Method e = methodRepository.findById (id)
-        .orElseThrow (() -> new ApiException ("REFERENCE_NOT_FOUND", HttpStatus.NOT_FOUND, "耕種方式不存在"));
-    e.setMethod (name.trim ());
-    return new IdNameResponse (e.getMethodId (), e.getMethod ());
+    return updateSimple (id, name, methodRepository::findById, Method::setMethod, Method::getMethodId, Method::getMethod, "耕種方式不存在");
   }
 
   @Transactional
   public void deleteMethod (Long id) {
-    Method e = methodRepository.findById (id)
-        .orElseThrow (() -> new ApiException ("REFERENCE_NOT_FOUND", HttpStatus.NOT_FOUND, "耕種方式不存在"));
-    if (caseRepository.existsByMethodMethodId (id)) {
-      throw new ApiException ("REFERENCE_IN_USE", HttpStatus.CONFLICT, "已被案件引用，無法刪除");
-    }
-    methodRepository.delete (e);
+    deleteSimple (id, methodRepository::findById, () -> caseRepository.existsByMethodMethodId (id), "耕種方式不存在", methodRepository);
   }
 
   @Transactional
   public IdNameResponse createDelivery (String name) {
-    Delivery e = new Delivery ();
-    e.setDeliver (name.trim ());
-    deliveryRepository.save (e);
-    return new IdNameResponse (e.getDeliverId (), e.getDeliver ());
+    return createSimple (name, Delivery::new, Delivery::setDeliver, Delivery::getDeliverId, Delivery::getDeliver, deliveryRepository);
   }
 
   @Transactional
   public IdNameResponse updateDelivery (Long id, String name) {
-    Delivery e = deliveryRepository.findById (id)
-        .orElseThrow (() -> new ApiException ("REFERENCE_NOT_FOUND", HttpStatus.NOT_FOUND, "送件方式不存在"));
-    e.setDeliver (name.trim ());
-    return new IdNameResponse (e.getDeliverId (), e.getDeliver ());
+    return updateSimple (id, name, deliveryRepository::findById, Delivery::setDeliver, Delivery::getDeliverId, Delivery::getDeliver, "送件方式不存在");
   }
 
   @Transactional
   public void deleteDelivery (Long id) {
-    Delivery e = deliveryRepository.findById (id)
-        .orElseThrow (() -> new ApiException ("REFERENCE_NOT_FOUND", HttpStatus.NOT_FOUND, "送件方式不存在"));
-    if (caseRepository.existsByDeliveryDeliverId (id)) {
-      throw new ApiException ("REFERENCE_IN_USE", HttpStatus.CONFLICT, "已被案件引用，無法刪除");
-    }
-    deliveryRepository.delete (e);
+    deleteSimple (id, deliveryRepository::findById, () -> caseRepository.existsByDeliveryDeliverId (id), "送件方式不存在", deliveryRepository);
   }
 
   @Transactional
   public IdNameResponse createService (String name) {
-    com.d0w0b.phytotrack.models.Service e = new com.d0w0b.phytotrack.models.Service ();
-    e.setService (name.trim ());
-    serviceRepository.save (e);
-    return new IdNameResponse (e.getServiceId (), e.getService ());
+    return createSimple (name, com.d0w0b.phytotrack.models.Service::new, com.d0w0b.phytotrack.models.Service::setService, com.d0w0b.phytotrack.models.Service::getServiceId, com.d0w0b.phytotrack.models.Service::getService, serviceRepository);
   }
 
   @Transactional
   public IdNameResponse updateService (Long id, String name) {
-    com.d0w0b.phytotrack.models.Service e = serviceRepository.findById (id)
-        .orElseThrow (() -> new ApiException ("REFERENCE_NOT_FOUND", HttpStatus.NOT_FOUND, "服務類別不存在"));
-    e.setService (name.trim ());
-    return new IdNameResponse (e.getServiceId (), e.getService ());
+    return updateSimple (id, name, serviceRepository::findById, com.d0w0b.phytotrack.models.Service::setService, com.d0w0b.phytotrack.models.Service::getServiceId, com.d0w0b.phytotrack.models.Service::getService, "服務類別不存在");
   }
 
   @Transactional
   public void deleteService (Long id) {
-    com.d0w0b.phytotrack.models.Service e = serviceRepository.findById (id)
-        .orElseThrow (() -> new ApiException ("REFERENCE_NOT_FOUND", HttpStatus.NOT_FOUND, "服務類別不存在"));
-    if (caseRepository.existsByServiceServiceId (id)) {
-      throw new ApiException ("REFERENCE_IN_USE", HttpStatus.CONFLICT, "已被案件引用，無法刪除");
-    }
-    serviceRepository.delete (e);
+    deleteSimple (id, serviceRepository::findById, () -> caseRepository.existsByServiceServiceId (id), "服務類別不存在", serviceRepository);
   }
 
   @Transactional
@@ -643,6 +591,40 @@ public class ReferenceDataService {
       throw new ApiException ("REFERENCE_IN_USE", HttpStatus.CONFLICT, "已被案件引用，無法刪除");
     }
     pestCategoryRepository.delete (e);
+  }
+
+  // ===== 共用模板：簡化 IdName 類型的重複 CRUD =====
+
+  private <T> IdNameResponse createSimple (String name, Supplier<T> creator, BiConsumer<T, String> setter,
+      Function<T, Long> idGetter, Function<T, String> nameGetter, org.springframework.data.jpa.repository.JpaRepository<T, Long> repo) {
+    String trimmed = name.trim ();
+    T e = creator.get ();
+    setter.accept (e, trimmed);
+    repo.save (e);
+    return new IdNameResponse (idGetter.apply (e), nameGetter.apply (e));
+  }
+
+  private <T> IdNameResponse updateSimple (Long id, String name, Function<Long, java.util.Optional<T>> finder,
+      BiConsumer<T, String> setter, Function<T, Long> idGetter, Function<T, String> nameGetter, String notFoundMsg) {
+    T e = finder.apply (id)
+        .orElseThrow (() -> new ApiException ("REFERENCE_NOT_FOUND", HttpStatus.NOT_FOUND, notFoundMsg));
+    e = setterAndReturn (e, name.trim (), setter);
+    return new IdNameResponse (idGetter.apply (e), nameGetter.apply (e));
+  }
+
+  private <T> T setterAndReturn (T e, String value, BiConsumer<T, String> setter) {
+    setter.accept (e, value);
+    return e;
+  }
+
+  private <T> void deleteSimple (Long id, Function<Long, java.util.Optional<T>> finder,
+      java.util.function.Supplier<Boolean> inUse, String notFoundMsg, org.springframework.data.jpa.repository.JpaRepository<T, Long> repo) {
+    T e = finder.apply (id)
+        .orElseThrow (() -> new ApiException ("REFERENCE_NOT_FOUND", HttpStatus.NOT_FOUND, notFoundMsg));
+    if (inUse.get ()) {
+      throw new ApiException ("REFERENCE_IN_USE", HttpStatus.CONFLICT, "已被案件引用，無法刪除");
+    }
+    repo.delete (e);
   }
 
   private CropCategoryResponse toCropCategoryResponse (CropCategory category) {

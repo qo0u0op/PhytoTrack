@@ -91,6 +91,9 @@ class CaseServiceTest {
   @Mock private HintRepository hintRepository;
   @Mock private PestCategoryRepository pestCategoryRepository;
   @Mock private IdentifierRepository identifierRepository;
+  @Mock private com.d0w0b.phytotrack.repository.UserRepository userRepository;
+  @Mock private IdentifierService identifierService;
+  @Mock private ReferenceDataService referenceDataService;
 
   private CaseService caseService;
 
@@ -99,7 +102,7 @@ class CaseServiceTest {
     caseService = new CaseService (caseRepository, caseSearchViewRepository, senderRepository, senderTypeRepository,
         districtRepository, methodRepository, cropRepository, serviceRepository,
         deliveryRepository, damageRepository, hintRepository, pestCategoryRepository,
-        identifierRepository);
+        identifierRepository, userRepository, identifierService, referenceDataService);
   }
 
   @AfterEach
@@ -116,16 +119,16 @@ class CaseServiceTest {
   /** 組更新請求：狀態與更新契約欄位可選 */
   private CaseUpdateRequest updateReq (String status) {
     return new CaseUpdateRequest (null, null, null, null, null, status,
-        null, null, null, null,
         null, null, null, null, null,
-        null, null, null, null);
+        null, null, null, null, null, null, null,
+        null, null, null, null, null, null, null);
   }
 
   private CaseCreateRequest validRequest () {
     return new CaseCreateRequest (LocalDate.of (2026, 8, 18), "2分地", "約3成", "葉片褐斑", "未用藥",
         null, "王小明", null, "0912345678", "臺中市霧峰區中正路1號", 1L, 1L,
         1L, 36L, 1L, 1L, 1L,
-        List.of (3L), List.of (1L), List.of (1L), null, List.of (1L));
+        List.of (3L), List.of (1L), List.of (1L), null, List.of (1L), null, null);
   }
 
   @Test
@@ -184,9 +187,7 @@ class CaseServiceTest {
       return saved;
     });
 
-    CaseCreateRequest reqWithSenderId = new CaseCreateRequest (LocalDate.of (2026, 8, 18), "2分地", "約3成", "葉片褐斑", "未用藥",
-        99L, "王小明", null, "0912345678", "臺中市霧峰區中正路1號", 1L, 1L,
-        1L, 36L, 1L, 1L, 1L, List.of (3L), List.of (1L), List.of (1L), null, List.of (1L));
+    CaseCreateRequest reqWithSenderId = new CaseCreateRequest (LocalDate.of (2026, 8, 18), "2分地", "約3成", "葉片褐斑", "未用藥", 99L, "王小明", null, "0912345678", "臺中市霧峰區中正路1號", 1L, 1L, 1L, 36L, 1L, 1L, 1L, List.of (3L), List.of (1L), List.of (1L), null, List.of (1L), null, null);
     caseService.create (reqWithSenderId);
 
     // 使用 senderId 沿用既有送件人，不應新建
@@ -202,9 +203,7 @@ class CaseServiceTest {
     when (methodRepository.findById (1L)).thenReturn (Optional.of (method (1L)));
     when (cropRepository.findById (36L)).thenReturn (Optional.empty ());
 
-    CaseCreateRequest reqWithSenderId2 = new CaseCreateRequest (LocalDate.of (2026, 8, 18), "2分地", "約3成", "葉片褐斑", "未用藥",
-        99L, "王小明", null, "0912345678", "臺中市霧峰區中正路1號", 1L, 1L,
-        1L, 36L, 1L, 1L, 1L, List.of (3L), List.of (1L), List.of (1L), null, List.of (1L));
+    CaseCreateRequest reqWithSenderId2 = new CaseCreateRequest (LocalDate.of (2026, 8, 18), "2分地", "約3成", "葉片褐斑", "未用藥", 99L, "王小明", null, "0912345678", "臺中市霧峰區中正路1號", 1L, 1L, 1L, 36L, 1L, 1L, 1L, List.of (3L), List.of (1L), List.of (1L), null, List.of (1L), null, null);
     assertThatThrownBy (() -> caseService.create (reqWithSenderId2))
         .isInstanceOf (ApiException.class)
         .satisfies (e -> {
@@ -271,9 +270,7 @@ class CaseServiceTest {
     when (caseRepository.findById (1L)).thenReturn (Optional.of (c));
 
     CaseResponse response = caseService.update (1L,
-        new CaseUpdateRequest (LocalDate.of (2026, 8, 20), "新面積", null, null, null, "RESOLVED",
-            null, null, null, null, null, null, null, null, null,
-            null, null, null, null));
+        new CaseUpdateRequest (LocalDate.of (2026, 8, 20), "新面積", null, null, null, "RESOLVED", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null));
 
     assertThat (response.cropScale ()).isEqualTo ("新面積");
     // 未提供的欄位應保持原值
@@ -364,10 +361,7 @@ class CaseServiceTest {
     c.setStatus (CaseStatus.CLOSED);
     when (caseRepository.findById (1L)).thenReturn (Optional.of (c));
 
-    CaseUpdateRequest request = new CaseUpdateRequest (LocalDate.of (2026, 8, 19), null, null, null, null, null,
-        null, null, null, null,
-        null, null, null, null, null,
-        null, null, null, null);
+    CaseUpdateRequest request = new CaseUpdateRequest (LocalDate.of (2026, 8, 19), null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 
     assertThatThrownBy (() -> caseService.update (1L, request))
         .isInstanceOf (ApiException.class)
@@ -387,10 +381,7 @@ class CaseServiceTest {
     c.setStatus (CaseStatus.CLOSED);
     when (caseRepository.findById (1L)).thenReturn (Optional.of (c));
 
-    CaseUpdateRequest request = new CaseUpdateRequest (LocalDate.of (2026, 8, 19), null, null, null, null, null,
-        null, null, null, null,
-        null, null, null, null, null,
-        null, null, null, null);
+    CaseUpdateRequest request = new CaseUpdateRequest (LocalDate.of (2026, 8, 19), null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 
     caseService.update (1L, request);
 
@@ -431,10 +422,7 @@ class CaseServiceTest {
     when (senderTypeRepository.findById (1L)).thenReturn (Optional.of (senderType (1L, "農民")));
     when (senderRepository.save (any (Sender.class))).thenAnswer (i -> i.getArgument (0));
 
-    CaseUpdateRequest request = new CaseUpdateRequest (null, null, null, null, null, null,
-        null, null, null, null,
-        "李四", "0911111111", null, null, null,
-        null, null, null, null);
+    CaseUpdateRequest request = new CaseUpdateRequest (null, null, null, null, null, null, null, null, null, null, null, null, "李四", null, "0911111111", null, null, null, null, null, null, null, null, null, null);
     caseService.update (1L, request);
 
     // 新身分：建立新送件人並關聯，原共享送件人不動
@@ -454,10 +442,7 @@ class CaseServiceTest {
     existing.setPhone ("0911111111");
     when (senderRepository.findById (88L)).thenReturn (Optional.of (existing));
 
-    CaseUpdateRequest request = new CaseUpdateRequest (null, null, null, null, null, null,
-        null, null, null, null,
-        88L, "李四", null, "0911111111", null, null, null,
-        null, null, null, null, null);
+    CaseUpdateRequest request = new CaseUpdateRequest (null, null, null, null, null, null, null, null, null, null, null, 88L, "李四", null, "0911111111", null, null, null, null, null, null, null, null, null, null);
     caseService.update (1L, request);
 
     // 使用 senderId 沿用既有送件人，不建立新列
@@ -477,10 +462,7 @@ class CaseServiceTest {
     when (senderTypeRepository.findById (1L)).thenReturn (Optional.of (senderType (1L, "農民")));
     when (senderRepository.save (any (Sender.class))).thenAnswer (i -> i.getArgument (0));
 
-    CaseUpdateRequest request = new CaseUpdateRequest (null, null, null, null, null, null,
-        null, null, null, null,
-        null, null, "臺中市霧峰區新地址", null, null,
-        null, null, null, null);
+    CaseUpdateRequest request = new CaseUpdateRequest (null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, "臺中市霧峰區新地址", null, null, null, null, null, null, null, null, null);
     caseService.update (1L, request);
 
     // 僅更新地址：建立新送件人 (避免改動共享 row)，新地址生效
@@ -497,17 +479,11 @@ class CaseServiceTest {
     when (caseRepository.findById (1L)).thenReturn (Optional.of (c));
     when (damageRepository.findById (3L)).thenReturn (Optional.of (damage (3L)));
 
-    CaseUpdateRequest add = new CaseUpdateRequest (null, null, null, null, null, null,
-        null, null, null, null,
-        null, null, null, null, null,
-        List.of (3L), null, null, null);
+    CaseUpdateRequest add = new CaseUpdateRequest (null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, List.of (3L), null, null, null, null, null, null);
     caseService.update (1L, add);
     assertThat (c.getCaseDamages ()).hasSize (1);
 
-    CaseUpdateRequest clear = new CaseUpdateRequest (null, null, null, null, null, null,
-        null, null, null, null,
-        null, null, null, null, null,
-        List.of (), null, null, null);
+    CaseUpdateRequest clear = new CaseUpdateRequest (null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, List.of (), null, null, null, null, null, null);
     caseService.update (1L, clear);
     assertThat (c.getCaseDamages ()).isEmpty ();
   }
@@ -520,10 +496,7 @@ class CaseServiceTest {
     when (damageRepository.findById (3L)).thenReturn (Optional.of (damage (3L)));
 
     // 重複 id：差集法以 Set 去重，不得建立重複 junction 撞 UNIQUE (case_id, damage_id)
-    CaseUpdateRequest request = new CaseUpdateRequest (null, null, null, null, null, null,
-        null, null, null, null,
-        null, null, null, null, null,
-        List.of (3L, 3L), null, null, null);
+    CaseUpdateRequest request = new CaseUpdateRequest (null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, List.of (3L, 3L), null, null, null, null, null, null);
     caseService.update (1L, request);
 
     assertThat (c.getCaseDamages ()).hasSize (1);

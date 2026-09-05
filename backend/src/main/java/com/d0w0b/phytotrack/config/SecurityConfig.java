@@ -10,12 +10,11 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-
-import org.springframework.beans.factory.annotation.Autowired;
 
 import com.d0w0b.phytotrack.config.RateLimitFilter;
 import com.d0w0b.phytotrack.security.JwtAuthenticationFilter;
@@ -39,7 +38,7 @@ public class SecurityConfig {
   private final RateLimitFilter rateLimitFilter;
 
   public SecurityConfig (JwtAuthenticationFilter jwtAuthenticationFilter,
-      @Autowired (required = false) RateLimitFilter rateLimitFilter) {
+      RateLimitFilter rateLimitFilter) {
     this.jwtAuthenticationFilter = jwtAuthenticationFilter;
     this.rateLimitFilter = rateLimitFilter;
   }
@@ -60,6 +59,9 @@ public class SecurityConfig {
         // 未認證 (無 token / 無效 / 過期)→ 401 統一錯誤格式；已認證角色不足 → 403
         .exceptionHandling (e -> e.authenticationEntryPoint (new RestAuthenticationEntryPoint ()))
         .authorizeHttpRequests (auth -> auth
+            // 公開：前端靜態與 SPA 路由（binary 已內嵌 dist，/ 為前端，Vue Router 接管）
+            .requestMatchers (HttpMethod.GET, "/", "/index.html", "/assets/**", "/vite.svg", "/favicon.ico", "/*.js", "/*.css", "/*.png", "/*.jpg", "/*.svg", "/*.ico",
+                "/login", "/register", "/dashboard", "/cases", "/cases/**", "/users", "/admin/**", "/account").permitAll ()
             // 公開：註冊與登入、放棄停用申請
             .requestMatchers ("/api/auth/register", "/api/auth/login", "/api/auth/abandon-deactivate", "/api/auth/check-username", "/api/auth/check-email").permitAll ()
             // 公開：llama-server 健康檢查
@@ -73,11 +75,9 @@ public class SecurityConfig {
             // 其餘一律需登入
             .anyRequest ().authenticated ())
         // 在標準使用者名稱密碼驗證過濾器之前掛上 JWT 過濾器
-        .addFilterBefore (jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
-    // 速率限制過濾器置於 JWT 之前（匿名亦限流），若 bean 存在才掛載（WebMvcTest 可 mock）
-    if (rateLimitFilter != null) {
-      http.addFilterBefore (rateLimitFilter, JwtAuthenticationFilter.class);
-    }
+        .addFilterBefore (jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+        // 速率限制過濾器置於 JWT 之前（匿名亦限流）
+        .addFilterBefore (rateLimitFilter, JwtAuthenticationFilter.class);
     return http.build ();
   }
 

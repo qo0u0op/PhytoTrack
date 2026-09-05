@@ -1,0 +1,184 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            type: deb
+            artifact: phytotrack-deb
+          - os: windows-latest
+            type: exe
+            artifact: phytotrack-win
+          - os: ubuntu-latest
+            type: app-image
+            artifact: phytotrack-appimage
+          - os: macos-latest
+            type: app-image
+            artifact: phytotrack-macos-aarch64
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+          cache: maven
+
+      - name: Build frontend
+        shell: bash
+        run: |
+          cd frontend
+          npm ci
+          npm run build
+          rm -rf ../backend/src/main/resources/static
+          cp -r dist ../backend/src/main/resources/static
+
+      - name: Build backend
+        shell: bash
+        run: cd backend && mvn --batch-mode package -DskipTests
+
+      - name: Run jpackage
+        shell: bash
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          VERSION=${VERSION//-/.}
+          # jpackage app-version 需為數字點分，去除前置 v 與 - 轉 .
+          # macOS 要求 1-3 段且首段不可為 0，截為前 3 段並將 0.x 轉 1.x
+          VERSION=$(echo "$VERSION" | cut -d. -f1-3)
+          if [[ "$VERSION" =~ ^0(\.|$) ]]; then
+            VERSION=$(echo "$VERSION" | sed -E 's/^0+(\.|$)/1\1/')
+          fi
+          case "${{ matrix.type }}" in
+            deb)
+              jpackage --type deb \
+                --name phytotrack \
+                --input backend/target \
+                --main-jar phytotrack-0.0.1-SNAPSHOT.jar \
+                --main-class org.springframework.boot.loader.launch.JarLauncher \
+                --dest dist \
+                --app-version "$VERSION" \
+                --java-options -Xmx512m \
+                --java-options -Dfile.encoding=UTF-8 \
+                --linux-package-name phytotrack \
+                --linux-app-category Office \
+                --linux-shortcut
+              ;;
+            exe)
+              jpackage --type exe \
+                --name phytotrack \
+                --input backend/target \
+                --main-jar phytotrack-0.0.1-SNAPSHOT.jar \
+                --main-class org.springframework.boot.loader.launch.JarLauncher \
+                --dest dist \
+                --app-version "$VERSION" \
+                --java-options -Xmx512m \
+                --java-options -Dfile.encoding=UTF-8 \
+                --win-shortcut \
+                --win-menu
+              ;;
+            app-image)
+              jpackage --type app-image \
+                --name phytotrack \
+                --input backend/target \
+                --main-jar phytotrack-0.0.1-SNAPSHOT.jar \
+                --main-class org.springframework.boot.loader.launch.JarLauncher \
+                --dest dist \
+                --app-version "$VERSION" \
+                --java-options -Xmx512m \
+                --java-options -Dfile.encoding=UTF-8
+              ;;
+          esac
+
+      - name: Build AppImage (Linux only, not macOS)
+        if: matrix.type == 'app-image' && runner.os == 'Linux'
+        shell: bash
+        run: |
+          if [ ! -d dist/phytotrack ]; then
+            echo "app-image not found in dist/, skip AppImage"
+            exit 0
+          fi
+          # 下載 appimagetool（若無）
+          if ! command -v appimagetool >/dev/null 2>&1; then
+            mkdir -p /tmp/appimage
+            curl -L -o /tmp/appimage/appimagetool https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage
+            chmod +x /tmp/appimage/appimagetool
+            APPIMAGETOOL=/tmp/appimage/appimagetool
+          else
+            APPIMAGETOOL=appimagetool
+          fi
+          # 組 AppDir（可攜，預設 prod）
+          rm -rf dist/AppDir
+          mkdir -p dist/AppDir/usr/bin
+          cp -r dist/phytotrack/* dist/AppDir/usr/bin/
+          cat > dist/AppDir/AppRun << 'APPRUN'
+          #!/bin/sh
+          SELF=$(readlink -f "$0")
+          HERE=${SELF%/*}
+          if echo "$@" | grep -q "spring.profiles.active"; then
+            exec "$HERE/usr/bin/bin/phytotrack" "$@"
+          else
+            exec "$HERE/usr/bin/bin/phytotrack" --spring.profiles.active=prod "$@"
+          fi
+          APPRUN
+          chmod +x dist/AppDir/AppRun
+          mkdir -p dist/AppDir
+          cat > dist/AppDir/phytotrack.desktop << 'DESKTOP'
+          [Desktop Entry]
+          Name=PhytoTrack
+          Comment=農作物病蟲害診斷記錄系統
+          Exec=phytotrack
+          Type=Application
+          Categories=Office;
+          DESKTOP
+          mkdir -p dist/AppDir/usr/bin/config
+          cp backend/phytotrack.toml.example dist/AppDir/usr/bin/config/ 2>/dev/null || true
+          VERSION=${GITHUB_REF#refs/tags/v}
+          VERSION=${VERSION//-/.}
+          VERSION=$(echo "$VERSION" | cut -d. -f1-3)
+          if [[ "$VERSION" =~ ^0(\.|$) ]]; then VERSION=$(echo "$VERSION" | sed -E 's/^0+(\.|$)/1\1/'); fi
+          $APPIMAGETOOL dist/AppDir dist/PhytoTrack-"$VERSION"-x86_64.AppImage || $APPIMAGETOOL --appimage-extract-and-run dist/AppDir dist/PhytoTrack-"$VERSION"-x86_64.AppImage
+          chmod +x dist/PhytoTrack-*.AppImage
+          ls -lh dist/*.AppImage
+
+      - name: Upload installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: dist/*
+          if-no-files-found: warn
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download all installers
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true

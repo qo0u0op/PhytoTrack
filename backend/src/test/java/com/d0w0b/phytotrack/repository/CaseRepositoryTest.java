@@ -299,8 +299,8 @@ class CaseRepositoryTest {
     Case first = saveCase (user, rice, diagnosis, "全-張小明", LocalDate.of (2026, 8, 1), CaseStatus.PENDING);
     Case second = saveCase (user, rice, diagnosis, "全-李小華", LocalDate.of (2026, 8, 15), CaseStatus.RESOLVED);
 
-    // 空 filter 走 findAll (Pageable)，回傳全部 (含本次新增)
-    Page<Case> page = caseRepository.findAll (PageRequest.of (0, 100));
+    // 空 filter 走 findAll (Pageable)，回傳全部 (含本次新增)；用大頁面避免 file DB 自增 ID 超過 100 時分頁截斷
+    Page<Case> page = caseRepository.findAll (PageRequest.of (0, 1000));
 
     assertThat (page.getContent ())
         .extracting (Case::getCaseId)
