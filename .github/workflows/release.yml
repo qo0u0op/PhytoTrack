@@ -19,6 +19,9 @@ jobs:
           - os: ubuntu-latest
             type: app-image
             artifact: phytotrack-appimage
+          - os: macos-latest
+            type: app-image
+            artifact: phytotrack-macos-aarch64
 
     runs-on: ${{ matrix.os }}
 
