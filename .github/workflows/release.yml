@@ -55,27 +55,49 @@ jobs:
       - name: Run jpackage
         shell: bash
         run: |
-          jpackage --type ${{ matrix.type }} \
-            --name phytotrack \
-            --input backend/target \
-            --main-jar phytotrack-0.0.1-SNAPSHOT.jar \
-            --main-class org.springframework.boot.loader.launch.JarLauncher \
-            --dest dist \
-            --app-version ${GITHUB_REF#refs/tags/v} \
-            --java-options -Xmx512m \
-            --java-options -Dfile.encoding=UTF-8 \
-            --linux-package-name phytotrack \
-            --linux-app-category Office \
-            --linux-shortcut \
-            --win-shortcut \
-            --win-menu || jpackage --type app-image \
-              --name phytotrack \
-              --input backend/target \
-              --main-jar phytotrack-0.0.1-SNAPSHOT.jar \
-              --main-class org.springframework.boot.loader.launch.JarLauncher \
-              --dest dist \
-              --app-version ${GITHUB_REF#refs/tags/v} \
-              --java-options -Xmx512m
+          VERSION=${GITHUB_REF#refs/tags/v}
+          VERSION=${VERSION//-/.}
+          # jpackage app-version 需為數字點分，去除前置 v 與 - 轉 .
+          case "${{ matrix.type }}" in
+            deb)
+              jpackage --type deb \
+                --name phytotrack \
+                --input backend/target \
+                --main-jar phytotrack-0.0.1-SNAPSHOT.jar \
+                --main-class org.springframework.boot.loader.launch.JarLauncher \
+                --dest dist \
+                --app-version "$VERSION" \
+                --java-options -Xmx512m \
+                --java-options -Dfile.encoding=UTF-8 \
+                --linux-package-name phytotrack \
+                --linux-app-category Office \
+                --linux-shortcut
+              ;;
+            exe)
+              jpackage --type exe \
+                --name phytotrack \
+                --input backend/target \
+                --main-jar phytotrack-0.0.1-SNAPSHOT.jar \
+                --main-class org.springframework.boot.loader.launch.JarLauncher \
+                --dest dist \
+                --app-version "$VERSION" \
+                --java-options -Xmx512m \
+                --java-options -Dfile.encoding=UTF-8 \
+                --win-shortcut \
+                --win-menu
+              ;;
+            app-image)
+              jpackage --type app-image \
+                --name phytotrack \
+                --input backend/target \
+                --main-jar phytotrack-0.0.1-SNAPSHOT.jar \
+                --main-class org.springframework.boot.loader.launch.JarLauncher \
+                --dest dist \
+                --app-version "$VERSION" \
+                --java-options -Xmx512m \
+                --java-options -Dfile.encoding=UTF-8
+              ;;
+          esac
 
       - name: Upload installer
         uses: actions/upload-artifact@v4
