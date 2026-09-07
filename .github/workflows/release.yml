@@ -56,7 +56,11 @@ jobs:
           VERSION=${VERSION//-/.}
           VERSION=$(echo "$VERSION" | cut -d. -f1-3)
           ICON_ARG=""
-          if [ -f docs/img/icon.png ]; then ICON_ARG="--icon docs/img/icon.png"; fi
+          if [ "$RUNNER_OS" = "Windows" ] && [ -f docs/img/icon.ico ]; then
+            ICON_ARG="--icon docs/img/icon.ico"
+          elif [ -f docs/img/icon.png ]; then
+            ICON_ARG="--icon docs/img/icon.png"
+          fi
           jpackage --type app-image \
             --name phytotrack \
             --input backend/target \

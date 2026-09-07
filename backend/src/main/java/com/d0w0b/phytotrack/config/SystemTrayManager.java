@@ -62,23 +62,14 @@ public class SystemTrayManager {
       this.tray = systemTray;
       systemTray.setTooltip ("PhytoTrack - 農作物病蟲害診斷系統");
 
-      // 圖示：優先 tray-icon.svg，否則 tray-icon.png
+      // 圖示：直接使用 PNG（SVG 在 dorkbox 上不穩定，改用點陣）
       try {
-        var svgUrl = getClass ().getResource ("/tray-icon.svg");
-        if (svgUrl != null) {
-          try {
-            systemTray.setImage (svgUrl);
-          } catch (Exception ex) {
-            var pngUrl = getClass ().getResource ("/tray-icon.png");
-            if (pngUrl != null) systemTray.setImage (pngUrl);
-          }
+        var pngUrl = getClass ().getResource ("/tray-icon.png");
+        if (pngUrl != null) {
+          systemTray.setImage (pngUrl);
         } else {
-          var pngUrl = getClass ().getResource ("/tray-icon.png");
-          if (pngUrl != null) systemTray.setImage (pngUrl);
-          else {
-            File iconFile = resolveIconFile ();
-            if (iconFile != null && iconFile.exists ()) systemTray.setImage (iconFile);
-          }
+          File iconFile = resolveIconFile ();
+          if (iconFile != null && iconFile.exists ()) systemTray.setImage (iconFile);
         }
       } catch (Exception ex) {
         log.debug ("Tray icon 設定失敗：{}", ex.getMessage ());
