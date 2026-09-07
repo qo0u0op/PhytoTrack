@@ -45,11 +45,9 @@ public class BrowserOpener {
     } catch (Exception e) {
       log.debug ("Desktop.browse 失敗：{}", e.getMessage ());
     }
-    // 回落：xdg-open / open
+    // 回落：僅 Linux 用 xdg-open
     try {
-      String os = System.getProperty ("os.name", "").toLowerCase ();
-      String cmd = os.contains ("mac") ? "open" : "xdg-open";
-      new ProcessBuilder (cmd, url).start ();
+      new ProcessBuilder ("xdg-open", url).start ();
     } catch (Exception e) {
       log.warn ("自動開瀏覽器失敗，請手動開啟 {}", url);
     }

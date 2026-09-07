@@ -1,7 +1,7 @@
 package com.d0w0b.phytotrack.config;
 
 import java.io.File;
-import java.net.URISyntaxException;
+import java.net.URL;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
@@ -20,17 +20,33 @@ public final class BinaryPaths {
   }
 
   public static Path exeDir () {
+    // 回落：直接解析 CodeSource URL（處理 file: 與 jar:file: 與 nested:）
     try {
-      // CodeSource 為 jar/exe 所在；開發時為 target/classes，回落 user.dir
-      File codeSource = new File (BinaryPaths.class.getProtectionDomain ().getCodeSource ().getLocation ().toURI ());
+      URL location = BinaryPaths.class.getProtectionDomain ().getCodeSource ().getLocation ();
+      String path = location.getPath ();
+      // 去除 jar: 前綴與 !/ 後綴
+      if (path.contains ("!")) path = path.substring (0, path.indexOf ("!"));
+      if (path.startsWith ("file:")) path = path.substring (5);
+      // URL 解碼
+      path = java.net.URLDecoder.decode (path, java.nio.charset.StandardCharsets.UTF_8);
+      // Windows 下去除開頭 /
+      if (path.matches ("/[A-Za-z]:.*")) path = path.substring (1);
+      File codeSource = new File (path);
       Path dir = codeSource.isFile () ? codeSource.getParentFile ().toPath () : codeSource.toPath ();
-      // 開發時 target/classes -> 回到專案 backend 目錄的父目錄？ 保持簡單：若路徑含 target/classes，回落 user.dir
       String dirStr = dir.toString ();
       if (dirStr.contains ("target" + File.separator + "classes")) {
         return Paths.get (System.getProperty ("user.dir"));
       }
+      // jpackage 的 app-image：jar 位於 app/ 或 lib/app/，需回退至頂層 phytotrack
+      if (dir.getFileName () != null && "app".equals (dir.getFileName ().toString ())) {
+        Path parent = dir.getParent ();
+        if (parent != null && parent.getFileName () != null && "lib".equals (parent.getFileName ().toString ())) {
+          parent = parent.getParent ();
+        }
+        if (parent != null) return parent;
+      }
       return dir;
-    } catch (URISyntaxException e) {
+    } catch (Exception e) {
       return Paths.get (System.getProperty ("user.dir"));
     }
   }
@@ -113,16 +129,19 @@ public final class BinaryPaths {
 
   public static Path configPath () {
     if (isAppImage ()) return appImageConfig ();
-    return isWindows () ? windowsConfig () : xdgConfig ();
+    if (isWindows ()) return windowsConfig ();
+    return xdgConfig ();
   }
 
   public static Path dataPath () {
     if (isAppImage ()) return appImageData ();
-    return isWindows () ? windowsData () : xdgData ();
+    if (isWindows ()) return windowsData ();
+    return xdgData ();
   }
 
   public static Path logPath () {
     if (isAppImage ()) return appImageLog ();
-    return isWindows () ? windowsLog () : xdgLog ();
+    if (isWindows ()) return windowsLog ();
+    return xdgLog ();
   }
 }

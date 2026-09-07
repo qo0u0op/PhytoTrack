@@ -55,6 +55,16 @@ jobs:
           VERSION=${GITHUB_REF#refs/tags/v}
           VERSION=${VERSION//-/.}
           VERSION=$(echo "$VERSION" | cut -d. -f1-3)
+          ICON_ARG=""
+          if [ "$RUNNER_OS" = "Windows" ] && [ -f docs/img/icon.ico ]; then
+            ICON_ARG="--icon docs/img/icon.ico"
+          elif [ -f docs/img/icon.png ]; then
+            ICON_ARG="--icon docs/img/icon.png"
+          fi
+          EXTRA_JAVA=""
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            EXTRA_JAVA="--java-options -Dspring.profiles.active=prod"
+          fi
           jpackage --type app-image \
             --name phytotrack \
             --input backend/target \
@@ -63,7 +73,8 @@ jobs:
             --dest dist \
             --app-version "$VERSION" \
             --java-options -Xmx512m \
-            --java-options -Dfile.encoding=UTF-8
+            --java-options -Dfile.encoding=UTF-8 \
+            $ICON_ARG $EXTRA_JAVA
 
       - name: Build AppImage (Linux only, not macOS)
         if: matrix.type == 'app-image' && runner.os == 'Linux'
@@ -130,33 +141,17 @@ jobs:
           ls -lh dist/*.AppImage
 
 
-      - name: Package Windows portable zip (with pure English bat via cmd)
+      - name: Package Windows portable zip (prod only, no bat, direct exe)
         if: runner.os == 'Windows'
         shell: bash
         run: |
-          # jpackage app-image on Windows produces dist/phytotrack (portable, not installer)
-          if [ ! -d dist/phytotrack ]; then
-            echo "Windows app-image not found"
-            exit 1
-          fi
-          # 純英文 PhytoTrack.bat (ASCII, cmd /c, avoid Big5)
-          cat > dist/phytotrack/PhytoTrack.bat << 'BAT'
-          @echo off
-          REM PhytoTrack launcher - pure ASCII, no Big5
-          REM Default prod (only admin); for dev: PhytoTrack.bat --spring.profiles.active=dev
-          setlocal
-          set "ARGS=%*"
-          echo %ARGS% | findstr /C:"spring.profiles.active" >nul
-          if %errorlevel%==0 (
-            cmd /c "%~dp0\phytotrack\bin\phytotrack.exe" %*
-          ) else (
-            cmd /c "%~dp0\phytotrack\bin\phytotrack.exe" --spring.profiles.active=prod %*
-          )
-          endlocal
-          BAT
-          powershell -Command "Compress-Archive -Path dist/phytotrack -DestinationPath dist/PhytoTrack-win-portable.zip -Force"
-          ls -lh dist/PhytoTrack-win-portable.zip 2>&1 | head -5
-          ls -lh dist/ 2>&1 | head -20
+          if [ ! -d dist/phytotrack ]; then echo "app-image not found, skip"; exit 0; fi
+          VERSION=${GITHUB_REF#refs/tags/v}; VERSION=${VERSION//-/.}; VERSION=$(echo "$VERSION" | cut -d. -f1-3)
+          cp backend/phytotrack.toml.example dist/phytotrack/config/ 2>/dev/null || true
+          # Windows portable directly uses phytotrack.exe (with embedded icon from --icon), no bat
+          powershell -Command "Compress-Archive -Path dist/phytotrack -DestinationPath dist/PhytoTrack-$VERSION-win.zip -Force"
+          ls -lh dist/*.zip
+          rm -rf dist/phytotrack
 
       - name: Upload installer
         uses: actions/upload-artifact@v4
