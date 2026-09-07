@@ -165,8 +165,8 @@ jobs:
           )
           endlocal
           BAT
-          cd dist && powershell -Command "Compress-Archive -Path phytotrack -DestinationPath PhytoTrack-win-portable.zip -Force"
-          ls -lh dist/PhytoTrack-win-portable.zip 2>&1 | head -5 || ls -lh PhytoTrack-win-portable.zip 2>&1 | head -5
+          powershell -Command "Compress-Archive -Path dist/phytotrack -DestinationPath dist/PhytoTrack-win-portable.zip -Force"
+          ls -lh dist/PhytoTrack-win-portable.zip 2>&1 | head -5
           ls -lh dist/ 2>&1 | head -20
 
       - name: Upload installer
