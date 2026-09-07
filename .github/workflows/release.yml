@@ -61,6 +61,10 @@ jobs:
           elif [ -f docs/img/icon.png ]; then
             ICON_ARG="--icon docs/img/icon.png"
           fi
+          EXTRA_JAVA=""
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            EXTRA_JAVA="--java-options -Dspring.profiles.active=prod"
+          fi
           jpackage --type app-image \
             --name phytotrack \
             --input backend/target \
@@ -70,7 +74,7 @@ jobs:
             --app-version "$VERSION" \
             --java-options -Xmx512m \
             --java-options -Dfile.encoding=UTF-8 \
-            $ICON_ARG
+            $ICON_ARG $EXTRA_JAVA
 
       - name: Build AppImage (Linux only, not macOS)
         if: matrix.type == 'app-image' && runner.os == 'Linux'
