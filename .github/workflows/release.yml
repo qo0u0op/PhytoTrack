@@ -55,6 +55,8 @@ jobs:
           VERSION=${GITHUB_REF#refs/tags/v}
           VERSION=${VERSION//-/.}
           VERSION=$(echo "$VERSION" | cut -d. -f1-3)
+          ICON_ARG=""
+          if [ -f docs/img/icon.png ]; then ICON_ARG="--icon docs/img/icon.png"; fi
           jpackage --type app-image \
             --name phytotrack \
             --input backend/target \
@@ -63,7 +65,8 @@ jobs:
             --dest dist \
             --app-version "$VERSION" \
             --java-options -Xmx512m \
-            --java-options -Dfile.encoding=UTF-8
+            --java-options -Dfile.encoding=UTF-8 \
+            $ICON_ARG
 
       - name: Build AppImage (Linux only, not macOS)
         if: matrix.type == 'app-image' && runner.os == 'Linux'
@@ -130,21 +133,16 @@ jobs:
           ls -lh dist/*.AppImage
 
 
-      - name: Package Windows portable zip (prod only)
+      - name: Package Windows portable zip (prod only, no bat, direct exe)
         if: runner.os == 'Windows'
         shell: bash
         run: |
           if [ ! -d dist/phytotrack ]; then echo "app-image not found, skip"; exit 0; fi
           VERSION=${GITHUB_REF#refs/tags/v}; VERSION=${VERSION//-/.}; VERSION=$(echo "$VERSION" | cut -d. -f1-3)
           cp backend/phytotrack.toml.example dist/phytotrack/config/ 2>/dev/null || true
-          cat > dist/phytotrack/PhytoTrack.bat << 'BAT'
-          @echo off
-          REM prod only
-          start "" "%~dp0\phytotrack.exe" --spring.profiles.active=prod %*
-          BAT
+          # Windows portable directly uses phytotrack.exe (with embedded icon from --icon), no bat
           powershell -Command "Compress-Archive -Path dist/phytotrack -DestinationPath dist/PhytoTrack-$VERSION-win.zip -Force"
           ls -lh dist/*.zip
-          # 清理 app-image 目錄，僅保留 zip 供上傳
           rm -rf dist/phytotrack
 
       - name: Upload installer
