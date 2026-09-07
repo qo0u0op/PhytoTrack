@@ -53,7 +53,7 @@ public class SystemTrayManager {
       return;
     }
     try {
-      SystemTray systemTray = SystemTray.get ();
+      SystemTray systemTray = SystemTray.get ("PhytoTrack");
       if (systemTray == null) {
         log.warn ("dorkbox SystemTray 不支援，回落備用視窗");
         createFallbackWindow ();
@@ -62,14 +62,30 @@ public class SystemTrayManager {
       this.tray = systemTray;
       systemTray.setTooltip ("PhytoTrack - 農作物病蟲害診斷系統");
 
-      // 圖示：優先 exeDir/app/icon.png，否則 classpath /icon.png 去背
-      File iconFile = resolveIconFile ();
-      if (iconFile != null && iconFile.exists ()) {
-        systemTray.setImage (iconFile);
-      } else {
-        // 回落：以 classpath URL
-        var url = getClass ().getResource ("/icon.png");
-        if (url != null) systemTray.setImage (url);
+      // 圖示：優先 tray-icon.svg，否則 tray-icon.png
+      try {
+        var svgUrl = getClass ().getResource ("/tray-icon.svg");
+        if (svgUrl != null) {
+          try {
+            systemTray.setImage (svgUrl);
+          } catch (Exception ex) {
+            var pngUrl = getClass ().getResource ("/tray-icon.png");
+            if (pngUrl != null) systemTray.setImage (pngUrl);
+          }
+        } else {
+          var pngUrl = getClass ().getResource ("/tray-icon.png");
+          if (pngUrl != null) systemTray.setImage (pngUrl);
+          else {
+            File iconFile = resolveIconFile ();
+            if (iconFile != null && iconFile.exists ()) systemTray.setImage (iconFile);
+          }
+        }
+      } catch (Exception ex) {
+        log.debug ("Tray icon 設定失敗：{}", ex.getMessage ());
+        File iconFile = resolveIconFile ();
+        if (iconFile != null && iconFile.exists ()) {
+          try { systemTray.setImage (iconFile); } catch (Exception ignored) {}
+        }
       }
 
       systemTray.getMenu ().add (new MenuItem ("開啟 PhytoTrack", e -> openBrowser ()));
@@ -97,15 +113,12 @@ public class SystemTrayManager {
       if (Files.exists (p)) return p.toFile ();
       p = exeDir.resolve ("icon.png");
       if (Files.exists (p)) return p.toFile ();
-      p = exeDir.resolve ("../Resources/icon.png").normalize ();
-      if (Files.exists (p)) return p.toFile ();
-      p = exeDir.resolve ("../Resources/PhytoTrack.png").normalize ();
+      p = exeDir.resolve ("tray-icon.png");
       if (Files.exists (p)) return p.toFile ();
       File dev = new File ("docs/img/icon.png");
       if (dev.exists ()) return dev;
     } catch (Exception ignored) {}
-    // classpath 去背 png（dorkbox 僅支援點陣，Linux 向量另由 .desktop/svg 提供）
-    try (InputStream in = getClass ().getResourceAsStream ("/icon.png")) {
+    try (InputStream in = getClass ().getResourceAsStream ("/tray-icon.png")) {
       if (in != null) {
         Path tmp = Files.createTempFile ("phytotrack-icon", ".png");
         Files.copy (in, tmp, StandardCopyOption.REPLACE_EXISTING);
