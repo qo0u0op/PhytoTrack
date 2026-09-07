@@ -115,6 +115,12 @@
       <artifactId>toml4j</artifactId>
       <version>0.7.2</version>
     </dependency>
+    <!-- SystemTray：AppImage 托盤 -->
+    <dependency>
+      <groupId>com.dorkbox</groupId>
+      <artifactId>SystemTray</artifactId>
+      <version>4.1</version>
+    </dependency>
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-devtools</artifactId>

@@ -10,18 +10,12 @@ jobs:
     strategy:
       matrix:
         include:
-          - os: ubuntu-latest
-            type: deb
-            artifact: phytotrack-deb
           - os: windows-latest
-            type: exe
-            artifact: phytotrack-win
+            type: app-image
+            artifact: phytotrack-win-portable
           - os: ubuntu-latest
             type: app-image
             artifact: phytotrack-appimage
-          - os: macos-latest
-            type: app-image
-            artifact: phytotrack-macos-aarch64
 
     runs-on: ${{ matrix.os }}
 
@@ -55,57 +49,21 @@ jobs:
         shell: bash
         run: cd backend && mvn --batch-mode package -DskipTests
 
-      - name: Run jpackage
+      - name: Run jpackage (portable app-image, not installer)
         shell: bash
         run: |
           VERSION=${GITHUB_REF#refs/tags/v}
           VERSION=${VERSION//-/.}
-          # jpackage app-version 需為數字點分，去除前置 v 與 - 轉 .
-          # macOS 要求 1-3 段且首段不可為 0，截為前 3 段並將 0.x 轉 1.x
           VERSION=$(echo "$VERSION" | cut -d. -f1-3)
-          if [[ "$VERSION" =~ ^0(\.|$) ]]; then
-            VERSION=$(echo "$VERSION" | sed -E 's/^0+(\.|$)/1\1/')
-          fi
-          case "${{ matrix.type }}" in
-            deb)
-              jpackage --type deb \
-                --name phytotrack \
-                --input backend/target \
-                --main-jar phytotrack-0.0.1-SNAPSHOT.jar \
-                --main-class org.springframework.boot.loader.launch.JarLauncher \
-                --dest dist \
-                --app-version "$VERSION" \
-                --java-options -Xmx512m \
-                --java-options -Dfile.encoding=UTF-8 \
-                --linux-package-name phytotrack \
-                --linux-app-category Office \
-                --linux-shortcut
-              ;;
-            exe)
-              jpackage --type exe \
-                --name phytotrack \
-                --input backend/target \
-                --main-jar phytotrack-0.0.1-SNAPSHOT.jar \
-                --main-class org.springframework.boot.loader.launch.JarLauncher \
-                --dest dist \
-                --app-version "$VERSION" \
-                --java-options -Xmx512m \
-                --java-options -Dfile.encoding=UTF-8 \
-                --win-shortcut \
-                --win-menu
-              ;;
-            app-image)
-              jpackage --type app-image \
-                --name phytotrack \
-                --input backend/target \
-                --main-jar phytotrack-0.0.1-SNAPSHOT.jar \
-                --main-class org.springframework.boot.loader.launch.JarLauncher \
-                --dest dist \
-                --app-version "$VERSION" \
-                --java-options -Xmx512m \
-                --java-options -Dfile.encoding=UTF-8
-              ;;
-          esac
+          jpackage --type app-image \
+            --name phytotrack \
+            --input backend/target \
+            --main-jar phytotrack-0.0.1-SNAPSHOT.jar \
+            --main-class org.springframework.boot.loader.launch.JarLauncher \
+            --dest dist \
+            --app-version "$VERSION" \
+            --java-options -Xmx512m \
+            --java-options -Dfile.encoding=UTF-8
 
       - name: Build AppImage (Linux only, not macOS)
         if: matrix.type == 'app-image' && runner.os == 'Linux'
@@ -162,8 +120,15 @@ jobs:
           Categories=Office;
           Terminal=true
           DESKTOP
-          # 產生 1x1 透明占位圖示（倉庫不存 icon，僅 CI 臨時滿足 appimagetool 校驗）
-          echo "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII=" | base64 -d > dist/AppDir/phytotrack.png
+          # 使用專案 icon.svg（Linux tray 優先 SVG，AppDir 用 PNG）
+          if [ -f docs/img/icon.svg ]; then
+            cp docs/img/icon.svg dist/AppDir/phytotrack.svg 2>/dev/null || true
+          fi
+          if [ -f docs/img/icon.png ]; then
+            cp docs/img/icon.png dist/AppDir/phytotrack.png
+          else
+            echo "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII=" | base64 -d > dist/AppDir/phytotrack.png
+          fi
           cp dist/AppDir/phytotrack.png dist/AppDir/.DirIcon 2>/dev/null || true
           mkdir -p dist/AppDir/usr/bin/config
           cp backend/phytotrack.toml.example dist/AppDir/usr/bin/config/ 2>/dev/null || true
@@ -174,6 +139,35 @@ jobs:
           $APPIMAGETOOL dist/AppDir dist/PhytoTrack-"$VERSION"-x86_64.AppImage || $APPIMAGETOOL --appimage-extract-and-run dist/AppDir dist/PhytoTrack-"$VERSION"-x86_64.AppImage
           chmod +x dist/PhytoTrack-*.AppImage
           ls -lh dist/*.AppImage
+
+
+      - name: Package Windows portable zip (with pure English bat via cmd)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          # jpackage app-image on Windows produces dist/phytotrack (portable, not installer)
+          if [ ! -d dist/phytotrack ]; then
+            echo "Windows app-image not found"
+            exit 1
+          fi
+          # 純英文 PhytoTrack.bat (ASCII, cmd /c, avoid Big5)
+          cat > dist/phytotrack/PhytoTrack.bat << 'BAT'
+          @echo off
+          REM PhytoTrack launcher - pure ASCII, no Big5
+          REM Default prod (only admin); for dev: PhytoTrack.bat --spring.profiles.active=dev
+          setlocal
+          set "ARGS=%*"
+          echo %ARGS% | findstr /C:"spring.profiles.active" >nul
+          if %errorlevel%==0 (
+            cmd /c "%~dp0\phytotrack\bin\phytotrack.exe" %*
+          ) else (
+            cmd /c "%~dp0\phytotrack\bin\phytotrack.exe" --spring.profiles.active=prod %*
+          )
+          endlocal
+          BAT
+          cd dist && powershell -Command "Compress-Archive -Path phytotrack -DestinationPath PhytoTrack-win-portable.zip -Force"
+          ls -lh dist/PhytoTrack-win-portable.zip 2>&1 | head -5 || ls -lh PhytoTrack-win-portable.zip 2>&1 | head -5
+          ls -lh dist/ 2>&1 | head -20
 
       - name: Upload installer
         uses: actions/upload-artifact@v4
