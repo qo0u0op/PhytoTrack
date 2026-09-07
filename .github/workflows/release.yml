@@ -90,18 +90,7 @@ jobs:
           #!/bin/sh
           SELF=$(readlink -f "$0")
           HERE=${SELF%/*}
-          # 若無終端（GUI 雙擊）則自動開系統預設終端
-          if [ ! -t 1 ] && [ -z "$PHYTOTRACK_NO_TERMINAL" ]; then
-            for term in x-terminal-emulator gnome-terminal konsole xfce4-terminal xterm; do
-              if command -v "$term" >/dev/null 2>&1; then
-                case "$term" in
-                  gnome-terminal) exec "$term" -- "$SELF" "$@" ;;
-                  konsole) exec "$term" -e "$SELF" "$@" ;;
-                  *) exec "$term" -e "$SELF" "$@" ;;
-                esac
-              fi
-            done
-          fi
+          # 直接進入系統托盤，不開啟終端
           if echo "$@" | grep -q "spring.profiles.active"; then
             exec "$HERE/usr/bin/bin/phytotrack" "$@"
           else
@@ -118,7 +107,7 @@ jobs:
           Icon=phytotrack
           Type=Application
           Categories=Office;
-          Terminal=true
+          Terminal=false
           DESKTOP
           # 使用專案 icon.svg（Linux tray 優先 SVG，AppDir 用 PNG）
           if [ -f docs/img/icon.svg ]; then
