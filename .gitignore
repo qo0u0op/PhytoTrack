@@ -58,7 +58,5 @@ todo.txt
 
 ### Playwright ###
 .playwright-cli/
-.playwright/*
-!.playwright/cli.config.json
-!.playwright/cli.config.terminal.json
+.playwright/
 
