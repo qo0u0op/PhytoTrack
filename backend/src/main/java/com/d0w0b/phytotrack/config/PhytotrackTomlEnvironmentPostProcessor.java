@@ -264,11 +264,9 @@ public class PhytotrackTomlEnvironmentPostProcessor implements EnvironmentPostPr
   }
 
   private void ensurePathProperties (Map<String, Object> props, Path configPath, boolean isWindows) {
-    // 若 TOML 未指定 db/log，則以 BinaryPaths 預設補上
-    // 直接寫入 props 並以 MapPropertySource 高優先加入，確保 application.yaml 的佔位符前已解析
     if (!props.containsKey ("spring.datasource.url")) {
-      Path data = isWindows ? BinaryPaths.windowsData () : BinaryPaths.xdgData ();
-      if (BinaryPaths.isAppImage ()) data = BinaryPaths.appImageData ();
+      Path data = BinaryPaths.isAppImage () ? BinaryPaths.appImageData ()
+          : (isWindows ? BinaryPaths.windowsData () : BinaryPaths.xdgData ());
       String url = "jdbc:sqlite:" + data.toString ().replace ("\\", "/");
       props.put ("spring.datasource.url", url);
       props.put ("phytotrack.datasource.url", url);
@@ -276,8 +274,8 @@ public class PhytotrackTomlEnvironmentPostProcessor implements EnvironmentPostPr
       System.setProperty ("spring.datasource.url", url);
     }
     if (!props.containsKey ("logging.file.name")) {
-      Path log = isWindows ? BinaryPaths.windowsLog () : BinaryPaths.xdgLog ();
-      if (BinaryPaths.isAppImage ()) log = BinaryPaths.appImageLog ();
+      Path log = BinaryPaths.isAppImage () ? BinaryPaths.appImageLog ()
+          : (isWindows ? BinaryPaths.windowsLog () : BinaryPaths.xdgLog ());
       String logStr = log.toString ().replace ("\\", "/");
       props.put ("logging.file.name", logStr);
       props.put ("phytotrack.logging.file", logStr);
