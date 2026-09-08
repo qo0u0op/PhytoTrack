@@ -11,13 +11,16 @@ type AnalyzeRequest = components['schemas']['AnalyzeRequest']
 /** 前後端共用信箱格式（與後端 @Email 語意對齊） */
 export const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
+/** 登入請求（含記住我選項，後端缺省視為 false） */
+export type LoginPayload = LoginRequest & { rememberMe?: boolean }
+
 /** 認證相關 API */
 export const authApi = {
-  login: (data: LoginRequest) => http.post ('/auth/login', data),
+  login: (data: LoginPayload) => http.post ('/auth/login', data),
   register: (data: RegisterRequest) => http.post ('/auth/register', data),
   me: () => http.post ('/auth/me'),
   logout: () => http.post ('/auth/logout'),
-  abandonDeactivate: (data: LoginRequest) => http.post ('/auth/abandon-deactivate', data),
+  abandonDeactivate: (data: LoginPayload) => http.post ('/auth/abandon-deactivate', data),
   checkUsername: (username: string) => http.get ('/auth/check-username', { params: { username } }),
   checkEmail: (email: string) => http.get ('/auth/check-email', { params: { email } }),
 }

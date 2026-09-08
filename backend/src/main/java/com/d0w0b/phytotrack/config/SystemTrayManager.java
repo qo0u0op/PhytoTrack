@@ -22,7 +22,7 @@ import java.time.format.DateTimeFormatter;
 /**
  * 系統匣（dorkbox SystemTray）：Windows / Linux AppIndicator
  * - 支援 Wayland AppIndicator，自動去背
- * - 右鍵選單：開啟 PhytoTrack / 備份資料庫 / 開啟資料夾 / 退出
+ * - 右鍵選單：開啟 PhytoTrack / 備份資料庫 / 開啟資料夾 / 開啟日誌資料夾 / 退出
  * - 系統通知：notify-send / Windows Toast / 備用 Swing
  */
 @Component
@@ -82,6 +82,7 @@ public class SystemTrayManager {
       systemTray.getMenu ().add (new MenuItem ("開啟 PhytoTrack", e -> openBrowser ()));
       systemTray.getMenu ().add (new MenuItem ("備份資料庫", e -> backupDatabase ()));
       systemTray.getMenu ().add (new MenuItem ("開啟資料夾", e -> openDataFolder ()));
+      systemTray.getMenu ().add (new MenuItem ("開啟日誌資料夾", e -> openLogFolder ()));
       systemTray.getMenu ().add (new Separator ());
       systemTray.getMenu ().add (new MenuItem ("退出", e -> {
         systemTray.shutdown ();
@@ -166,6 +167,14 @@ public class SystemTrayManager {
     }
   }
 
+  private void openLogFolder () {
+    try {
+      openFolder (BinaryPaths.logPath ().getParent ());
+    } catch (Exception e) {
+      log.warn ("開啟日誌資料夾失敗：{}", e.getMessage ());
+    }
+  }
+
   private void openFolder (Path dir) {
     try {
       String os = System.getProperty ("os.name", "").toLowerCase ();
@@ -201,7 +210,7 @@ public class SystemTrayManager {
       try {
         javax.swing.JFrame frame = new javax.swing.JFrame ("PhytoTrack");
         frame.setDefaultCloseOperation (javax.swing.JFrame.HIDE_ON_CLOSE);
-        frame.setSize (320, 180);
+        frame.setSize (320, 220);
         frame.setLocationRelativeTo (null);
         // 嘗試置 icon
         try {
@@ -212,16 +221,18 @@ public class SystemTrayManager {
           }
         } catch (Exception ignored) {}
         javax.swing.JPanel panel = new javax.swing.JPanel ();
-        panel.setLayout (new java.awt.GridLayout (4, 1, 6, 6));
+        panel.setLayout (new java.awt.GridLayout (5, 1, 6, 6));
         javax.swing.JButton b1 = new javax.swing.JButton ("開啟 PhytoTrack");
         b1.addActionListener (e -> openBrowser ());
         javax.swing.JButton b2 = new javax.swing.JButton ("備份資料庫");
         b2.addActionListener (e -> backupDatabase ());
         javax.swing.JButton b3 = new javax.swing.JButton ("開啟資料夾");
         b3.addActionListener (e -> openDataFolder ());
+        javax.swing.JButton bLog = new javax.swing.JButton ("開啟日誌資料夾");
+        bLog.addActionListener (e -> openLogFolder ());
         javax.swing.JButton b4 = new javax.swing.JButton ("退出");
         b4.addActionListener (e -> System.exit (0));
-        panel.add (b1); panel.add (b2); panel.add (b3); panel.add (b4);
+        panel.add (b1); panel.add (b2); panel.add (b3); panel.add (bLog); panel.add (b4);
         panel.setBorder (javax.swing.BorderFactory.createEmptyBorder (10, 10, 10, 10));
         frame.add (panel);
         frame.setVisible (true);

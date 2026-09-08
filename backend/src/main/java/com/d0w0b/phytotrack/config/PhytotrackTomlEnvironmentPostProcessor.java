@@ -110,19 +110,13 @@ public class PhytotrackTomlEnvironmentPostProcessor implements EnvironmentPostPr
   private void generateDefaultToml (Path path, boolean isProd) throws IOException {
     Files.createDirectories (path.getParent ());
     String secret = generateSecret ();
-    // prod 僅 admin，dev/test 含三帳號；prod 的 bootstrap 僅 admin/admin123 且後續不回落
-    String bootstrapSection = isProd ? """
+    // 帳號密碼由程式內建預設，設定檔僅以註釋提醒，不可配置
+    String bootstrapSection = """
         [app.bootstrap]
-        admin-username = "admin"
-        admin-password = "admin123"
-        """ : """
-        [app.bootstrap]
-        admin-username = "admin"
-        admin-password = "admin123"
-        staff-username = "staff"
-        staff-password = "staff123"
-        viewer-username = "viewer"
-        viewer-password = "viewer123"
+        # 首次建庫時註冊帳號：dev/test 建 admin/staff/viewer 三帳，prod 僅 admin
+        # 預設帳密由程式內建（admin/admin123、staff/staff123、viewer/viewer123），不在設定檔配置
+        # 首次登入後請立即修改密碼
+        # 帳號密碼不可在設定檔配置，僅此處以註釋提醒
         """;
     String content = """
         # PhytoTrack 配置（phytotrack.toml）

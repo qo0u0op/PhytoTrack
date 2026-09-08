@@ -3,3 +3,8 @@ spring:
     # 開發 profile：允許使用 application.yaml 中的 JWT 開發預設密鑰
     # 啟動方式：mvn spring-boot:run -Dspring-boot.run.profiles=dev（已安裝 mise）或 ./mvnw ...（Unix/macOS）/ .\mvnw.cmd ...（Windows），無 mise 時
     name: PhytoTrack (dev)
+
+app:
+  ui:
+    # dev 自動開啟 vite 即時前端（mise run dev 的 :5173），可由 DEV_FRONTEND_URL 覆蓋
+    dev-frontend-url: ${DEV_FRONTEND_URL:http://localhost:5173/}

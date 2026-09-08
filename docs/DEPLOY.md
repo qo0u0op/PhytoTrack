@@ -33,7 +33,7 @@ mvn spring-boot:run                      # 已安裝 mise (mise 提供 maven 3.9
 | 設定 | 預設 | 說明 |
 |------|------|------|
 | `app.jwt.secret` | 開發用密鑰 | JWT 簽章密鑰。正式環境務必以 `JWT_SECRET` 環境變數覆蓋 |
-| `app.bootstrap.*` | admin/admin123、staff/staff123、viewer/viewer123 | 首次啟動自動建立的管理者、診斷員與檢視者帳號 |
+| `app.bootstrap.*` | 內建預設 admin/admin123 等（不在 `phytotrack.toml` 配置，僅註釋提醒） | 首次啟動自動建立的帳號（`app.bootstrap` 不在設定檔配置，首次登入後請立即修改密碼） |
 | `app.ai.health-url` | `http://localhost:11435/health` | llama-server 存活檢查端點 |
 | `CORS_ALLOWED_ORIGINS` / `app.cors.allowed-origins` | 空（`dev`→`*`、`prod`→拒絕） | CORS 白名單，逗號分隔。例 `https://app.example.com,https://admin.example.com`。同源部署可空，跨源 `prod` 需明確配置，否則瀏覽器阻擋 |
 | `app.rate-limit.enabled` | `true`（`test`→`false`） | 登入/註冊限流開關。`POST /api/auth/login|register|abandon-deactivate` 每 IP 10/min，超限 `429` + `Retry-After: 60` |

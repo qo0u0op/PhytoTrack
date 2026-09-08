@@ -33,21 +33,38 @@ public class JwtTokenProvider {
   /** Token 有效期限 (毫秒) */
   private final long expirationMs;
 
+  /** 記住我時效 (毫秒)，預設 7 天 */
+  private final long rememberMeExpirationMs;
+
   public JwtTokenProvider (@Value ("${app.jwt.secret}") String secret,
-      @Value ("${app.jwt.expiration-ms}") long expirationMs) {
+      @Value ("${app.jwt.expiration-ms}") long expirationMs,
+      @Value ("${app.jwt.remember-me-expiration-ms:604800000}") long rememberMeExpirationMs) {
     this.key = Keys.hmacShaKeyFor (secret.getBytes (StandardCharsets.UTF_8));
     this.expirationMs = expirationMs;
+    this.rememberMeExpirationMs = rememberMeExpirationMs;
   }
 
   /**
-   * 產生 Token
+   * 產生 Token（短效，預設 1 小時）
    *
    * @param user 已驗證的使用者
    * @return 以使用者名稱、使用者 ID、角色為內容的簽章 Token
    */
   public String generateToken (User user) {
+    return generateToken (user, false);
+  }
+
+  /**
+   * 產生 Token（依 rememberMe 選擇時效）
+   *
+   * @param user 已驗證的使用者
+   * @param rememberMe 是否為記住我（true=7 天，false=1 小時）
+   * @return 簽章 Token
+   */
+  public String generateToken (User user, boolean rememberMe) {
+    long expMs = rememberMe ? rememberMeExpirationMs : expirationMs;
     Date now = new Date ();
-    Date expiry = new Date (now.getTime () + expirationMs);
+    Date expiry = new Date (now.getTime () + expMs);
     return Jwts.builder ()
         .issuer ("phytotrack")
         .subject (user.getUsername ())

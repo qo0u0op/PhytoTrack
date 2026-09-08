@@ -43,7 +43,7 @@ mvn spring-boot:run -Dspring-boot.run.profiles=dev          # 已安裝 mise (mi
 
 - 啟動後 Swagger UI：<http://localhost:8080/swagger-ui.html>
 - `dev` profile 允許使用開發預設 JWT 密鑰；**正式環境請以環境變數 `JWT_SECRET` 提供密鑰** (未提供且非 dev 環境時會啟動失敗，見 ADR-004)
-- 首次啟動自動建立預設帳號：`admin / admin123` (ADMIN)、`staff / staff123` (STAFF)、`viewer / viewer123` (VIEWER)，可於 `application.yaml` 的 `app.bootstrap.*` 調整
+- 首次啟動自動建立預設帳號：`admin / admin123` (ADMIN)、`staff / staff123` (STAFF)、`viewer / viewer123` (VIEWER)，由程式內建（`phytotrack.toml` 僅以註釋提醒，不可配置），首次登入後請立即修改密碼
 - 機台特定的 AI 設定 (base-url / 模型名稱 / api-key) 可於 `backend/.env` 覆寫：`cp backend/.env.example backend/.env` 後修改 (未設定時使用預設值)
 
 ### 2. AI 模型 (選用)
