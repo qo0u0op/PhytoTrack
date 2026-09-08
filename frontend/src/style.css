@@ -19,3 +19,20 @@ body {
 .card.shadow-sm:hover {
   box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
 }
+
+/* 深色模式覆蓋（Bootstrap data-bs-theme="dark"） */
+[data-bs-theme="dark"] body {
+  background-color: #212529;
+}
+
+[data-bs-theme="dark"] .hero-section {
+  background: linear-gradient(135deg, #0f5132 0%, #0b3d26 60%, #0a3a7a 100%);
+}
+
+[data-bs-theme="dark"] .card {
+  border-color: #343a40;
+}
+
+[data-bs-theme="dark"] .card.shadow-sm:hover {
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.5) !important;
+}

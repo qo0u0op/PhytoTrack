@@ -12,14 +12,16 @@ PhytoTrack 是**前後分離**的網頁應用：
 - **AI 引擎**：本機 llama.cpp (`llama-server`)，由後端透過 Spring AI (OpenAI 相容格式) 代理呼叫
 
 ```
-瀏覽器 ──▶ Vue 3 前端 (Vite :5173)
-              │  /api 代理
+瀏覽器 ──▶ Vue 3 前端 (Vite :5173 dev / :8080 prod 內嵌)
+              │  /api 代理（dev 代理至 :8080，prod 同 port）
               ▼
           Spring Boot :8080  ──▶ SQLite (diagnoses.db)
               │ Spring AI (OpenAI 相容格式)
               ▼
           llama-server :11435 (本機 GGUF 模型)
 ```
+
+> dev：`mise run dev` 同時起 vite `:5173` 與後端 `:8080`，後端 `BrowserOpener` 自動開 `:5173`；prod/binary：後端同 port 內嵌前端，`BrowserOpener` 開 `http://localhost:${port}/`。
 
 ## 2. 技術選型
 
@@ -30,7 +32,7 @@ PhytoTrack 是**前後分離**的網頁應用：
 | 認證授權 | Spring Security + JWT (jjwt 0.12)+ BCrypt | 無狀態登入、角色權限 (RBAC) |
 | API 規格 | springdoc (OpenAPI 3)+ Swagger UI | Controller 即規格來源，前端型別自動生成 |
 | AI 整合 | Spring AI 2.0 (ChatClient) | 以 OpenAI 相容格式串接本機 llama.cpp |
-| 前端 | Vue 3 + TypeScript + Pinia + Vue Router + Bootstrap 5 | 組合式 API (Composition API)、型別安全 |
+| 前端 | Vue 3 + TypeScript + Pinia + Vue Router + Bootstrap 5 (`data-bs-theme` 深色模式) | 組合式 API、型別安全；`ui-theme`（light/dark/auto，`stores/theme.ts` + `localStorage`） |
 | 錯誤處理 | 全域例外處理 (@RestControllerAdvice) | 統一錯誤結構，避免堆疊外洩 (見 ADR-010) |
 
 ## 3. 後端結構 (分層架構)
@@ -38,14 +40,14 @@ PhytoTrack 是**前後分離**的網頁應用：
 程式位於 `backend/src/main/java/com/d0w0b/phytotrack/`：
 
 ```
-config/     設定類 (Security、CORS、OpenAPI、JPA Auditing)
+config/     設定類 (Security、CORS、OpenAPI、JPA Auditing、BrowserOpener、BinaryPaths、SystemTrayManager)
 controller/ REST 控制器：接收請求、校驗、呼叫 service
 dto/        資料傳輸物件 (record)：API 邊界的請求/回應契約
 exception/  業務例外 + 統一錯誤回應
 models/     JPA 實體 (約 20 個，對應資料表)
 repository/ Spring Data JPA 資料存取層
-security/   JWT 產生/驗證、登入過濾器、UserDetails 實作
-service/    商業邏輯 (Auth、Case、ReferenceData、AI、資料初始化)
+security/   JWT 產生/驗證（雙時效 remember-me）、登入過濾器、UserDetails 實作
+service/    商業邏輯 (Auth、Case、ReferenceData、AI、資料初始化、InitialPasswordPrompter)
 converter/  LocalDate/LocalDateTime 屬性轉換器 (SQLite 相容)
 ```
 
@@ -75,16 +77,99 @@ HTTP 請求
 
 ### 認證授權
 
-- 登入成功後簽發 JWT (含 userId、role)，前端存於 localStorage（見 ADR-012：現無 XSS 面，維持 `localStorage`，遷移 `httpOnly` cookie 需恢復 CSRF 屬破壞性），之後以 `Authorization: Bearer <token>` 帶入；停用帳號登入被拒 (`ACCOUNT_DISABLED`)
+- 登入支援 **記住我**（`POST /api/auth/login` 選填 `rememberMe`）：勾選簽發 7 天 token（`app.jwt.remember-me-expiration-ms`，可由 `JWT_REMEMBER_ME_EXPIRATION_MS` 覆蓋），未勾選或缺省為 1 小時（`app.jwt.expiration-ms`）；前端 `stores/auth.ts` 依旗標分流持久化（勾選 `localStorage`、未勾 `sessionStorage`），登出保留 `lastUsername` 供下次自動帶入
+- JWT (含 userId、role) 前端依記住我分流儲存（見 ADR-012，現無 XSS 面，維持 `localStorage`/`sessionStorage` 雙儲存，遷移 `httpOnly` 需恢復 CSRF 屬破壞性），之後以 `Authorization: Bearer <token>` 帶入；停用帳號登入被拒 (`ACCOUNT_DISABLED`)
 - `JwtAuthenticationFilter` 每請求以 `userId` 查 DB 驗證 `active`，停用帳號的既有 token 立即 401，且以 DB 的最新 `role` 覆蓋 token 內 role (角色變更有即時生效)
 - 角色：`ROLE_VIEWER` (檢視者)/ `ROLE_STAFF` (診斷員)/ `ROLE_ADMIN` (管理者)
 - 權限：建立/更新案件與 AI 診斷需 STAFF+；狀態轉移 `RESOLVED → CLOSED` 僅 ADMIN (`PENDING → RESOLVED` 需 STAFF+)；**已結案案件僅 ADMIN 可修改內容** (STAFF 改內容回 403 `CLOSED_CASE_READONLY`，狀態同值 no-op 合法)；刪除案件與使用者管理僅 ADMIN
 - 送件人更新：update 依「有提供的 name/phone (未提供沿用現送件人身分)」比照 create 的去重語意關聯或建立送件人，不直接修改可能被多案件共享的既有 Sender row (避免撞 `UNIQUE (name, phone)`)
-- 密碼一律 BCrypt 單向雜湊，永不存明文；`/api/auth/register` 僅能建立 VIEWER，防止越權提權
+- 密碼一律 BCrypt 單向雜湊，永不存明文；`/api/auth/register` 僅能建立 VIEWER，防止越權提權；`phytotrack.toml` 的 `[app.bootstrap]` 僅以註釋提醒預設帳密，不提供可配置項（`loadToml` 仍相容舊檔），`app.bootstrap` 預設由程式內建
 - 安全錯誤語意：**未認證** (無 token／無效／過期) 由 `RestAuthenticationEntryPoint` 回 `401 UNAUTHORIZED` (統一錯誤格式)，前端攔截器據此清除本機 token 並導向登入頁；**已登入但角色不足**由全域例外處理回 `403 ACCESS_DENIED` (見 ADR-010)
 - **CORS 白名單**（見 ADR-012）：`CorsConfig` 由 `app.cors.allowed-origins=${CORS_ALLOWED_ORIGINS:}` 驅動，`dev` 為空沿用 `*`，`prod` 為空預設拒絕跨源（不回 `Allow-Origin`），明確白名單才回 `Access-Control-Allow-Origin` + `Vary: Origin`；方法限 `GET/POST/PUT/PATCH/DELETE/OPTIONS`、暴露 `Authorization/Content-Disposition/X-Request-Id`
 - **速率限制**（見 ADR-012）：`POST /api/auth/login|register|abandon-deactivate` 每 IP 10/min（`app.rate-limit.*`），超限回 `429 RATE_LIMITED` + `Retry-After: 60` + `requestId`，`test` 預設關閉，前端 `api/http.ts` 對 `429` 彈「請求過於頻繁」且不重試
 - **安全標頭**（見 ADR-012）：`SecurityHeadersFilter` 於非 dev（`prod` 或 `app.security-headers.enabled=true`）注入 `Content-Security-Policy`（含 `style-src 'unsafe-inline'` 相容 Swagger）、`Strict-Transport-Security: max-age=31536000; includeSubDomains`、`X-Content-Type-Options: nosniff`、`X-Frame-Options: DENY`
+
+### 資料模型（Mermaid ER，在線渲染）
+
+```mermaid
+erDiagram
+    cases ||--o{ case_damages : "1:N"
+    cases ||--o{ case_hints : "1:N"
+    cases ||--o{ case_pest_categories : "1:N"
+    cases ||--o{ case_identifiers : "1:N"
+    cases }o--|| senders : "sender_id"
+    cases }o--|| districts : "field_district_id"
+    cases }o--|| methods : "method_id"
+    cases }o--|| crops : "crop_id"
+    cases }o--|| services : "service_id"
+    cases }o--|| deliveries : "deliver_id"
+    cases }o--|| users : "created_by"
+    senders }o--|| districts : "district_id"
+    senders }o--|| sender_types : "sender_type_id"
+    districts }o--|| cities : "city_id"
+    crops }o--|| crop_categories : "crop_category_id"
+    pest_categories }o--|| pest_types : "pest_type_id"
+    identifiers }o--|| users : "user_id"
+    identifiers }o--|| users : "former_user_id"
+    case_damages }o--|| damages : "damage_id"
+    case_hints }o--|| hints : "hint_id"
+    case_pest_categories }o--|| pest_categories : "pest_category_id"
+    case_identifiers }o--|| identifiers : "identifier_id"
+    cases {
+        int case_id PK
+        date receive_date
+        string crop_scale
+        string damage_scale
+        text case_description
+        int status
+        int sender_id FK
+        int field_district_id FK
+        int created_by FK
+    }
+    senders {
+        int sender_id PK
+        string name
+        string display_name
+        string phone
+        string address
+        int district_id FK
+    }
+    identifiers {
+        int identifier_id PK
+        string identifier
+        int user_id FK
+        int former_user_id FK
+        bool active
+    }
+    users {
+        int user_id PK
+        string username
+        string display_name
+        string role
+        bool active
+    }
+```
+
+> 外部圖由 `docs/d2/diagnoses.d2` 經 `mise run d2` 產生（D2 `sql_table` 精排）
+
+### 系統架構（Mermaid，在線渲染）
+
+```mermaid
+graph TD
+    Browser["瀏覽器<br/>Vue 3 + Pinia<br/>(theme: data-bs-theme)"]
+    Vite["Vite :5173<br/>(dev 代理 /api)"]
+    SpringBoot["Spring Boot :8080<br/>Security / JWT(雙時效) / CaseService<br/>BrowserOpener(dev::5173/prod:/)"]
+    SQLite["SQLite<br/>diagnoses.db<br/>v_case_search"]
+    Llama["llama-server :11435<br/>Spring AI"]
+    Tray["SystemTray<br/>(dorkbox)"]
+
+    Browser -- "/ (dev:5173/prod:8080)" --> Vite
+    Vite -- "/api 代理" --> SpringBoot
+    SpringBoot -- "JPA / SQL" --> SQLite
+    SpringBoot -- "OpenAI 相容" --> Llama
+    SpringBoot -- "ApplicationReadyEvent" --> Tray
+    Tray -- "Open / Backup / Logs / Quit" --> Browser
+```
 
 ### AI 診斷流程
 
@@ -104,13 +189,14 @@ HTTP 請求
 
 ```
 api/      axios 實例 (baseURL /api)+ 型別化 API 函式；攔截器自動附 JWT、統一錯誤彈窗
-stores/   Pinia 狀態 (登入 token / user，持久化於 localStorage)
+stores/   Pinia 狀態：auth（token/user，記住我分流 localStorage/sessionStorage，lastUsername 保留）、theme（light/dark/auto，data-bs-theme + localStorage + matchMedia）
 router/   路由表 + 全域守衛 (登入、角色權限)
-views/    頁面：Home (hero 首頁)、Login、Register、Dashboard、Cases (列表＋篩選工具列)、CaseDetail (明細＋列印診斷單＋即時 AI 診斷)、CaseForm (診斷表單)、Users (管理員)、ReferenceDataAdmin (ADMIN 參照資料管理，頁籤式 CRUD)
+views/    頁面：Home (hero 首頁)、Login（記住我勾選）、Register、Dashboard、Cases (列表＋篩選工具列)、CaseDetail (明細＋列印診斷單＋即時 AI 診斷)、CaseForm (診斷表單)、Users (管理員)、ReferenceDataAdmin (ADMIN 參照資料管理，頁籤式 CRUD)
 types/    openapi-typescript 由 /v3/api-docs 自動生成的 API 型別 (與後端契約同步)
 ```
 
-- 開發時 Vite 將 `/api` 代理至後端 `:8080`，避免 CORS
+- 主題：`stores/theme.ts` 以 `data-bs-theme` 驅動 Bootstrap 5.3 深色模式（`light/dark/auto`，`auto` 跟隨 `prefers-color-scheme`，`localStorage['phytotrack-theme']`，導覽列循環按鈕）
+- 開發時 Vite 將 `/api` 代理至後端 `:8080`，避免 CORS；`BrowserOpener` 於 `dev` 自動開 `:5173`，prod 開同 port `/`
 - API 型別產生方式：後端啟動後執行 `npx openapi-typescript http://localhost:8080/v3/api-docs -o src/types/api.ts`
 - 診斷表單支援縣市→鄉鎮市區分組下拉、多選 (被害部位/病蟲害/防治建議/簽名人)、AI 診斷 (SweetAlert 呈現結果)
 
@@ -121,7 +207,7 @@ types/    openapi-typescript 由 /v3/api-docs 自動生成的 API 型別 (與後
 | POST | /api/auth/register | 公開 | 註冊 (預設 VIEWER)；帳號重複 409 `USERNAME_TAKEN`，非空信箱重複 409 `EMAIL_TAKEN` |
 | GET | /api/auth/check-username | 公開 | 帳號可用性查詢，僅回 `{ available }`（空值視為不可用） |
 | GET | /api/auth/check-email | 公開 | 信箱可用性查詢，僅回 `{ available }`（空值視為可用） |
-| POST | /api/auth/login | 公開 | 登入並取得 JWT |
+| POST | /api/auth/login | 公開 | 登入並取得 JWT（選填 `rememberMe`，true→7 天 `remember-me-expiration-ms`，false/缺省→1 小時）；前端分流持久化 |
 | POST | /api/auth/me | 登入 | 目前使用者 |
 | POST | /api/auth/logout | 登入 | 登出 (JWT 無狀態，前端丟棄 token) |
 | GET | /api/cases | 登入 | 分頁案件列表 (經 `v_case_search` 視圖)；篩選參數：`receiveDateFrom/To`、`status`、`cityId`/`districtId` (縣市必先選)、`senderName`/`senderQuery` (`name/displayName/phone` 三欄合一 LIKE)、`senderTypeId`、`serviceId`/`deliveryId`/`methodId`、`cropCategoryId`/`cropId`、`damageId`、`pestTypeId`/`pestCategoryId`、`hintId`，多參數 AND，前端篩選卡 5 列換行 |
@@ -181,7 +267,8 @@ types/    openapi-typescript 由 /v3/api-docs 自動生成的 API 型別 (與後
 後端設定集中在 `backend/src/main/resources/application.yaml`：
 
 - `app.jwt.secret`：JWT 簽章密鑰，正式環境以環境變數 `JWT_SECRET` 覆蓋
-- `app.bootstrap.*`：首次啟動自動建立的帳號 (admin / staff / viewer)
+- `app.bootstrap.*`：首次啟動自動建立的帳號（程式內建預設，`phytotrack.toml` 僅註釋提醒，不可配置；首次登入後請立即修改）
+- `app.jwt.remember-me-expiration-ms`：記住我時效（預設 7 天，`JWT_REMEMBER_ME_EXPIRATION_MS` 覆蓋）
 - `spring.ai.openai.*`：llama-server 連線設定
 - `app.cors.allowed-origins`：CORS 白名單（`CORS_ALLOWED_ORIGINS`，逗號分隔；`dev` 空→`*`、`prod` 空→拒絕）
 - `app.rate-limit.*`：`enabled` / `requests-per-minute` / `window-seconds`（登入/註冊限流，`test` 預設 false）

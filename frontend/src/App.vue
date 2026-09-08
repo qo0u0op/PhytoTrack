@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
 import { useAuthStore } from './stores/auth'
+import { useThemeStore } from './stores/theme'
 import { authApi } from './api'
 
 // 取得登入狀態與路由 (用於登出後跳轉)
 const auth = useAuthStore ()
+const theme = useThemeStore ()
 const router = useRouter ()
 
 async function handleLogout () {
@@ -97,6 +99,18 @@ async function handleLogout () {
               <router-link class="btn btn-light btn-sm" to="/register">註冊</router-link>
             </li>
           </template>
+          <li class="nav-item ms-2">
+            <button
+              class="btn btn-outline-light btn-sm"
+              :title="`切換主題：目前為 ${theme.theme}`"
+              :aria-label="`切換主題：目前為 ${theme.theme}`"
+              @click="theme.cycle ()"
+            >
+              <i v-if="theme.theme === 'light'" class="bi bi-sun" aria-hidden="true"></i>
+              <i v-else-if="theme.theme === 'dark'" class="bi bi-moon" aria-hidden="true"></i>
+              <i v-else class="bi bi-circle-half" aria-hidden="true"></i>
+            </button>
+          </li>
         </ul>
       </div>
     </div>
