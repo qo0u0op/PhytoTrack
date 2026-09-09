@@ -72,12 +72,12 @@ HTTP 請求
 - **VIEWER 個資遮蔽**：`CaseService.toDetail/toSummary` 依當前角色判斷，VIEWER 的回應不含送件人姓名/電話/地址，但保留縣市鄉鎮與 `senderId`
 - **統計去重鍵**：不重複送件人以 `COALESCE (phone, displayName)` distinct 計數
 - 案件列表篩選以視圖 `v_case_search` (`schema.sql` 以 `LEFT OUTER JOIN` 涵蓋可空關聯，多對多以 `GROUP_CONCAT (DISTINCT name, '、')` 頓號聚合，`CaseSearchView` 以 `@Subselect` 唯讀映射，含 `sender_type_id`) 為基礎，經 `CaseSpecifications.buildView ()` 動態組合 17 欄（`receiveDateFrom/To`、`status`、`cityId`/`districtId`、`senderName/senderQuery` 三欄合一、`senderTypeId`、`serviceId`/`deliveryId`/`methodId`、`cropCategoryId`/`cropId`、`damageId`、`pestTypeId`/`pestCategoryId`、`hintId`，AND 組合，鄉鎮必先選縣市；篩選卡 5 列換行：收件日期區間/狀態｜田區縣市鄉鎮/送件人/身分別｜服務/送件/耕種方式｜作物類別作物/被害部位｜害物/害物類別/建議類別，篩選/分頁/排序與卡片開啟狀態以 URL query 雙向同步，檢視/編輯返回保持）；`status` 為列舉字串契約，由 `CaseService` 解析為 `CaseStatus` 後傳入視圖查詢 (非法值 fail-fast 400 `INVALID_STATUS`)，視圖分頁後回補 `Case` 實體以保留 `VIEWER` 遮蔽；`GET /api/cases/export` 沿用相同 `CaseFilter` 穿透篩選全量匯出（`caseId asc`、UTF-8 BOM、全欄位 `"` 引號、狀態中文 `待處理/已處理/已結案`、表頭 `田區位置/身分別`）
-- 時間戳與建立者由 **JPA Auditing** 自動填寫 (`@CreatedDate`/`@LastModifiedDate`/`@CreatedBy`)，實作 `AuditorAware` 從 SecurityContext 取值 (見 ADR-006)
+- 時間戳與建立者由 **JPA Auditing** 自動填寫 (`@CreatedDate`/`@LastModifiedDate`/`@CreatedBy`)，實作 `AuditorAware` 從 SecurityContext 取值 (見 ADR-006)；檢視與預覽的中繼資料分兩行顯示（`建立者／建立` 與 `編輯者／更新`，`yyyy-MM-dd HH:mm:ss`，`formatTime` 截斷至秒）
 - SQLite 日期欄位以 `converter/` 的字串轉換器處理，避免 Hibernate 7 SQLiteDialect 的 epoch 毫秒寫入/嚴格格式讀取不一致問題
 
 ### 認證授權
 
-- 登入支援 **記住我**（`POST /api/auth/login` 選填 `rememberMe`）：勾選簽發 7 天 token（`app.jwt.remember-me-expiration-ms`，可由 `JWT_REMEMBER_ME_EXPIRATION_MS` 覆蓋），未勾選或缺省為 1 小時（`app.jwt.expiration-ms`）；前端 `stores/auth.ts` 依旗標分流持久化（勾選 `localStorage`、未勾 `sessionStorage`），登出保留 `lastUsername` 供下次自動帶入
+- 登入支援 **記住我**（`POST /api/auth/login` 選填 `rememberMe`）：勾選簽發 7 天 token（`app.jwt.remember-me-expiration-ms`，`phytotrack.toml`），未勾選或缺省為 1 小時（`app.jwt.expiration-ms`）；前端 `stores/auth.ts` 依旗標分流持久化（勾選 `localStorage`、未勾 `sessionStorage`），登出保留 `lastUsername` 供下次自動帶入
 - JWT (含 userId、role) 前端依記住我分流儲存（見 ADR-012，現無 XSS 面，維持 `localStorage`/`sessionStorage` 雙儲存，遷移 `httpOnly` 需恢復 CSRF 屬破壞性），之後以 `Authorization: Bearer <token>` 帶入；停用帳號登入被拒 (`ACCOUNT_DISABLED`)
 - `JwtAuthenticationFilter` 每請求以 `userId` 查 DB 驗證 `active`，停用帳號的既有 token 立即 401，且以 DB 的最新 `role` 覆蓋 token 內 role (角色變更有即時生效)
 - 角色：`ROLE_VIEWER` (檢視者)/ `ROLE_STAFF` (診斷員)/ `ROLE_ADMIN` (管理者)
@@ -268,7 +268,7 @@ types/    openapi-typescript 由 /v3/api-docs 自動生成的 API 型別 (與後
 
 - `app.jwt.secret`：JWT 簽章密鑰，正式環境請於 `phytotrack.toml` 的 `app.jwt.secret` 設定正式密鑰
 - `app.bootstrap.*`：首次啟動自動建立的帳號（程式內建預設，`phytotrack.toml` 僅註釋提醒，不可配置；首次登入後請立即修改）
-- `app.jwt.remember-me-expiration-ms`：記住我時效（預設 7 天，`JWT_REMEMBER_ME_EXPIRATION_MS` 覆蓋）
+- `app.jwt.remember-me-expiration-ms`：記住我時效（預設 7 天，`phytotrack.toml`）
 - `spring.ai.openai.*`：llama-server 連線設定
 - `app.cors.allowed-origins`：CORS 白名單（`app.cors.allowed-origins`，逗號分隔；`dev` 空→`*`、`prod` 空→拒絕）
 - `app.rate-limit.*`：`enabled` / `requests-per-minute` / `window-seconds`（登入/註冊限流，`test` 預設 false）
