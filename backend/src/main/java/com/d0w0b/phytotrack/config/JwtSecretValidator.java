@@ -10,7 +10,7 @@ import org.springframework.stereotype.Component;
  *
  * 目的 (見 ADR-004)：JWT 密鑰若沿用開發預設值，等於所有人都能偽造 Token。
  * 此檢查器在非 dev 環境使用預設密鑰時，於啟動階段直接失敗 (fail-fast)，
- * 避免正式部署時忘了以環境變數 JWT_SECRET 覆蓋。
+ * 避免正式部署時忘了於 phytotrack.toml 的 app.jwt.secret 設定正式密鑰。
  */
 @Component
 public class JwtSecretValidator {
@@ -21,7 +21,7 @@ public class JwtSecretValidator {
   public JwtSecretValidator (Environment environment, @Value ("${app.jwt.secret}") String secret) {
     boolean isDev = environment.acceptsProfiles (Profiles.of ("dev", "test"));
     if (!isDev && DEV_DEFAULT_SECRET.equals (secret)) {
-      throw new IllegalStateException ("JWT 密鑰仍為開發預設值，禁止用於非 dev 環境。請以環境變數 JWT_SECRET 提供正式密鑰。");
+      throw new IllegalStateException ("JWT 密鑰仍為開發預設值，禁止用於非 dev 環境。請於 phytotrack.toml 的 app.jwt.secret 設定正式密鑰。");
     }
   }
 }

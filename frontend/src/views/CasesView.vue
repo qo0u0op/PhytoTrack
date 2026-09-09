@@ -422,6 +422,7 @@ async function viewDetail (id: number) {
   }
   // 彈窗內容以 HTML 插入，所有動態內文必須轉義 (防 XSS)
   const esc = (v?: string | null) => escapeHtml (v ?? '')
+  const formatTime = (v?: string | null) => (v ? String (v).replace ('T', ' ').slice (0, 19) : '—')
   const join = (items?: { id?: number; name?: string }[]) =>
     items?.map ((i) => esc (i.name)).join ('、') ?? '無'
 
@@ -474,7 +475,8 @@ async function viewDetail (id: number) {
         <p><strong>防治建議：</strong>${joinHints (data.hints)}</p>
         <hr />
 
-        <p class="text-muted">建立者：${esc (data.createdByName)}／建立時間：${esc (data.createdAt)}</p>
+        <p class="text-muted">建立者：${esc (data.createdByName)}／建立：${formatTime (data.createdAt)}</p>
+        <p class="text-muted">編輯者：${esc ((data as any).updatedByName ?? data.createdByName ?? '—')}／更新：${formatTime (data.updatedAt)}</p>
       </div>
     `,
     showCancelButton: true,

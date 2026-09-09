@@ -14,19 +14,21 @@ cases: {
   receive_date: date
   crop_scale: varchar(30)
   damage_scale: varchar(30)
-  pest_description: text
+  case_description: text
   hint_description: text
-  status: tinyint(1)
+  status: tinyint(1) # PENDING/RESOLVED/CLOSED (ORDINAL)
   created_at: datetime
   updated_at: datetime
   sender_id: int {constraint: foreign_key}
+  field_district_id: int {constraint: foreign_key}
   method_id: int {constraint: foreign_key}
   crop_id: int {constraint: foreign_key}
   service_id: int {constraint: foreign_key}
   deliver_id: int {constraint: foreign_key}
   created_by: int {constraint: foreign_key}
 }
-# status: 0=診斷中, 1=已完成
+# status: PENDING/RESOLVED/CLOSED (Enum ORDINAL 0/1/2)
+# field_district_id: 田區位置（NOT NULL，v_case_search 以此為主）
 
 # 月報流水號排序依據：receive_date ASC, created_at ASC, case_id ASC
 # case_number 為動態計算：yyyyMM + ROW_NUMBER()，不存入 DB
@@ -53,6 +55,7 @@ case_pest_categories: {
   cpc_id: int {constraint: primary_key}
   case_id: int {constraint: foreign_key}
   pest_category_id: int {constraint: foreign_key}
+  pest_note: varchar(500) # 可空，學名：描述
 }
 
 case_identifiers: {
@@ -66,14 +69,14 @@ case_identifiers: {
 senders: {
   shape: sql_table
   sender_id: int {constraint: primary_key}
-  name: varchar(50)
-  phone: varchar(20)
-  address: varchar(300)
-  district_id: int {constraint: foreign_key}
+  name: varchar(50) # 可空
+  display_name: varchar(50) # 可空，name/displayName 至少一有值
+  phone: varchar(20) # 可空，非空部分唯一
+  address: varchar(300) # 可空
+  district_id: int {constraint: foreign_key} # 送件人戶籍鄉鎮
   sender_type_id: int {constraint: foreign_key}
 }
-# unique constraint: (name, phone)
-# password 欄位由 users 表管理，senders 不儲存登入資訊
+# display_name/phone 至少一有值；VIEWER 遮蔽 name/phone/address
 
 sender_types: {
   shape: sql_table
@@ -86,7 +89,6 @@ cities: {
   shape: sql_table
   city_id: int {constraint: primary_key}
   city: varchar(6)
-  sort_order: tinyint(2)
 }
 
 districts: {
@@ -94,8 +96,8 @@ districts: {
   district_id: int {constraint: primary_key}
   district: varchar(10)
   city_id: int {constraint: foreign_key}
-  sort_order: tinyint(2)
 }
+# sort_order 已移除，改依 city_id/district_id 排序
 
 # ─── 作物層級 ─────────────────────────────────────────
 crops: {
@@ -125,7 +127,6 @@ pest_categories: {
   pest_category_code: char(4)
   pest_category: varchar(30)
   pest_type_id: int {constraint: foreign_key}
-  sort_order: tinyint(2)
 }
 
 # ─── Lookup 表（固定選項，PK 改 int auto）────────────
@@ -164,11 +165,13 @@ services: {
 identifiers: {
   shape: sql_table
   identifier_id: int {constraint: primary_key}
-  identifier: varchar(20)
-  user_id: int {constraint: foreign_key}
+  identifier: varchar(100) # 顯示名稱
+  user_id: int {constraint: foreign_key} # 可空，user IS NULL 為共用簽名人
+  former_user_id: int {constraint: foreign_key} # 可空，解綁前所屬使用者
+  active: tinyint(1)
 }
-# user_id=NULL: 外部專家（僅簽名、無帳號）
-# user_id != NULL: 對應 users.user_id（內部人員兼簽名人）
+# user_id IS NULL + active=true：共用簽名人（可被案件引用）
+# former_user_id：解綁前所屬者（升權/啟用恢復原筆）
 
 # ─── 系統使用者（內部客服/管理員）───────────────────
 users: {
@@ -188,6 +191,10 @@ users: {
 # ─── 關聯線 ──────────────────────────────────────────
 
 cases.sender_id <-> senders.sender_id: {
+  source-arrowhead.shape: cf-many-required
+  target-arrowhead.shape: cf-one-required
+}
+cases.field_district_id <-> districts.district_id: {
   source-arrowhead.shape: cf-many-required
   target-arrowhead.shape: cf-one-required
 }

@@ -4,7 +4,7 @@
 
 ## 功能一覽
 
-- **認證授權**：JWT (無狀態)+ Spring Security + BCrypt，RBAC 三角色 (VIEWER / STAFF / ADMIN)
+- **認證授權**：JWT 雙時效（記住我 7 天 / 一般 1 小時，`remember-me-expiration-ms`）+ Spring Security + BCrypt，RBAC 三角色 (VIEWER / STAFF / ADMIN)，登出保留帳號供下次帶入，深色模式（light/dark/auto，`data-bs-theme`）
 - **案件管理**：建立、編輯、刪除、分頁列表與詳細/預覽查詢（含田區位置/身分別更名）；列表支援 17 欄篩選（收件日期區間/狀態/田區縣市鄉鎮/送件人/身分別/服務/送件方式/耕種方式/作物類別作物/被害部位/害物/害物類別/建議類別，5 列換行，AND 組合）且篩選穿透至 CSV；CSV 匯出（STAFF/ADMIN，`caseId asc`、UTF-8 BOM、全欄位 `"` 引號、狀態中文、表頭田區位置/身分別）
 - **AI 診斷**：以 Spring AI (OpenAI 相容格式) 代理本機 llama.cpp，依案件欄位生成診斷建議
 - **參照資料**：作物 (含分類)、病蟲害 (含分類)、縣市／鄉鎮、耕種方式、服務類別、送件方式、身分別、標的等選單資料
@@ -19,7 +19,7 @@
 | 後端 | Java 21、Spring Boot 4 (`spring-boot-starter-webmvc`)、Spring Data JPA、Spring Security、Spring AI |
 | 資料庫 | SQLite (`hibernate-community-dialects`)，預留 PostgreSQL profile (見 ADR-007) |
 | API 規格 | springdoc-openapi 3.x (單一來源，見 ADR-008) |
-| 前端 | Vue 3 + TypeScript + Vite + Pinia + Vue Router + Bootstrap 5 + axios + SweetAlert2 |
+| 前端 | Vue 3 + TypeScript + Vite + Pinia + Vue Router + Bootstrap 5 (`data-bs-theme`) + axios + SweetAlert2 |
 | AI | llama.cpp (`llama-server` 於 11435)+ Spring AI ChatClient (見 ADR-009) |
 
 ## 專案結構
@@ -42,9 +42,9 @@ mvn spring-boot:run -Dspring-boot.run.profiles=dev          # 已安裝 mise (mi
 ```
 
 - 啟動後 Swagger UI：<http://localhost:8080/swagger-ui.html>
-- `dev` profile 允許使用開發預設 JWT 密鑰；**正式環境請以環境變數 `JWT_SECRET` 提供密鑰** (未提供且非 dev 環境時會啟動失敗，見 ADR-004)
+- `dev` profile 允許使用開發預設 JWT 密鑰；**正式環境請於 `phytotrack.toml` 的 `app.jwt.secret` 設定正式密鑰** (未提供且非 dev 環境時會啟動失敗，見 ADR-004)
 - 首次啟動自動建立預設帳號：`admin / admin123` (ADMIN)、`staff / staff123` (STAFF)、`viewer / viewer123` (VIEWER)，由程式內建（`phytotrack.toml` 僅以註釋提醒，不可配置），首次登入後請立即修改密碼
-- 機台特定的 AI 設定 (base-url / 模型名稱 / api-key) 可於 `backend/.env` 覆寫：`cp backend/.env.example backend/.env` 後修改 (未設定時使用預設值)
+- 機台特定的 AI 設定 (base-url / 模型名稱 / api-key) 請於 `phytotrack.toml` 的 `ai.*` 設定（見 `backend/phytotrack.toml.example`）
 
 ### 2. AI 模型 (選用)
 
@@ -66,7 +66,7 @@ npm install
 npm run dev
 ```
 
-開啟 <http://localhost:5173> (Vite 開發伺服器已將 `/api` 代理至 8080)。
+開啟 <http://localhost:5173> (dev，Vite 即時前端；`mise run dev` 自動開 `:5173`，prod 則開 `http://localhost:8080/`)，導覽列右側可切換主題（light/dark/auto）。
 
 ## 資料庫
 

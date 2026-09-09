@@ -152,7 +152,7 @@ function showAiTip () {
           </router-link>
           <button
             v-if="auth.isStaff"
-            class="btn btn-success btn-sm ms-1"
+            class="btn btn-info text-white btn-sm ms-1"
             :disabled="analyzing"
             @click="runAi"
           >
@@ -258,7 +258,9 @@ function showAiTip () {
             <div class="col-12"><hr class="my-2" /></div>
             <div class="col-12 text-muted">
               建立者：{{ detail.createdByName ?? '—' }}／建立：{{ formatTime (detail.createdAt) }}
-              ／更新：{{ formatTime (detail.updatedAt) }}
+            </div>
+            <div class="col-12 text-muted">
+              編輯者：{{ (detail as any).updatedByName ?? detail.createdByName ?? '—' }}／更新：{{ formatTime (detail.updatedAt) }}
             </div>
           </div>
         </div>

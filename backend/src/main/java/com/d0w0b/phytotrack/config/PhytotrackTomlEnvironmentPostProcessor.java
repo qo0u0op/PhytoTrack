@@ -19,7 +19,7 @@ import java.util.Map;
 /**
  * TOML 配置載入與首次自動生成
  *
- * 優先順序：env AI_API_KEY > TOML > application.yaml 預設
+ * 優先順序：TOML > application.yaml 預設
  * 首次啟動若無 TOML 則生成預設，含亂數 JWT 密鑰
  */
 public class PhytotrackTomlEnvironmentPostProcessor implements EnvironmentPostProcessor {
@@ -35,13 +35,6 @@ public class PhytotrackTomlEnvironmentPostProcessor implements EnvironmentPostPr
     // 亦檢查 spring.profiles.active 屬性（可能尚未解析）
     String profiles = environment.getProperty ("spring.profiles.active", "");
     if (profiles.contains ("test")) return;
-
-    // .env 已棄用：若仍存在則 WARN（僅 AI_API_KEY 仍由 env 覆蓋）
-    Path legacyEnv = Path.of ("backend", ".env");
-    if (!Files.exists (legacyEnv)) legacyEnv = Path.of (".env");
-    if (Files.exists (legacyEnv)) {
-      System.err.println ("[PhytoTrack] WARN backend/.env 已棄用，請遷至 phytotrack.toml（僅 AI_API_KEY 仍支援 env 覆蓋）");
-    }
 
     Path configPath = BinaryPaths.configPath ();
     Path systemConfig = BinaryPaths.systemConfig ();
@@ -74,12 +67,6 @@ public class PhytotrackTomlEnvironmentPostProcessor implements EnvironmentPostPr
     if (Files.exists (primary)) {
       try {
         Map<String, Object> tomlProps = loadToml (primary);
-        // AI_API_KEY 敏感：env 覆蓋 TOML
-        String envKey = System.getenv ("AI_API_KEY");
-        if (envKey != null && !envKey.isBlank ()) {
-          tomlProps.put ("ai.api-key", envKey);
-          tomlProps.put ("spring.ai.openai.api-key", envKey);
-        }
         props.putAll (tomlProps);
       } catch (IOException e) {
         System.err.println ("[PhytoTrack] 載入 TOML 失敗：" + e.getMessage ());
@@ -122,7 +109,7 @@ public class PhytotrackTomlEnvironmentPostProcessor implements EnvironmentPostPr
         # PhytoTrack 配置（phytotrack.toml）
         # Windows 可攜：與 exe 同目錄的 config/phytotrack.toml
         # Unix：$XDG_CONFIG_HOME/phytotrack/phytotrack.toml（預設 ~/.config/phytotrack/phytotrack.toml）
-        # 僅 AI_API_KEY 建議以 env AI_API_KEY 覆蓋，其餘皆走此檔
+        # 所有設定皆走此檔
         # prod 僅 admin 生效（staff/viewer 即使配置亦忽略，首次 admin/admin123 後不回落）
 
         [server]
@@ -251,8 +238,6 @@ public class PhytotrackTomlEnvironmentPostProcessor implements EnvironmentPostPr
     }
     String profiles = environment.getProperty ("spring.profiles.active", "");
     if (profiles != null && profiles.contains ("prod")) return true;
-    String env = System.getenv ("SPRING_PROFILES_ACTIVE");
-    if (env != null && env.contains ("prod")) return true;
     String sys = System.getProperty ("spring.profiles.active", "");
     return sys.contains ("prod");
   }

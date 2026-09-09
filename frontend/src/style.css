@@ -19,3 +19,503 @@ body {
 .card.shadow-sm:hover {
   box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
 }
+
+/* 深色模式覆蓋（Bootstrap data-bs-theme="dark"）— Matcha 主題 */
+:root {
+  --matcha-accent: #25A065;
+  --matcha-accent-42: #00d787;
+  --matcha-accent-text: #FFFDF5;
+  --matcha-link: #9BC4FF;
+  --matcha-danger: #ff0000;
+  --matcha-warning: #ff8700;
+  --matcha-tip: #ffaf00;
+  /* Catppuccin Mocha — 用於篩選/匯出等操作按鈕 */
+  --mocha-blue: #89b4fa;
+  --mocha-lavender: #b4befe;
+  --mocha-sapphire: #74c7ec;
+  --mocha-green: #a6e3a1;
+  --mocha-teal: #94e2d5;
+  --mocha-yellow: #f9e2af;
+  --mocha-peach: #fab387;
+  --mocha-mauve: #cba6f7;
+  --mocha-red: #f38ba8;
+  --mocha-crust: #11111b;
+  --mocha-base: #1e1e2e;
+  --mocha-surface0: #313244;
+  --mocha-surface1: #45475a;
+  --mocha-text: #cdd6f4;
+}
+
+[data-bs-theme="dark"] {
+  --bs-body-bg: #1a201d;
+  --bs-body-color: #FFFDF5;
+  --bs-secondary-color: #9e9e9e; /* 247 MutedText */
+  --bs-tertiary-color: #8a8a8a; /* 245 SubtleText */
+  --bs-emphasis-color: #FFFDF5;
+  --bs-border-color: #2e3833;
+  --bs-link-color: #9BC4FF;
+  --bs-link-hover-color: #b8d6ff;
+  --bs-primary: #25A065;
+  --bs-success: #25A065;
+  --bs-danger: #ff4444;
+  --bs-warning: #ff8700;
+}
+
+[data-bs-theme="dark"] body {
+  background-color: var(--bs-body-bg);
+  color: var(--bs-body-color);
+}
+
+[data-bs-theme="dark"] .hero-section {
+  background: linear-gradient(135deg, #1a3a2a 0%, #143322 60%, #1a2e4a 100%);
+}
+
+[data-bs-theme="dark"] .card {
+  background-color: #242e2a;
+  border-color: #2e3833;
+  color: var(--bs-body-color);
+}
+
+[data-bs-theme="dark"] .card.shadow-sm:hover {
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.6) !important;
+}
+
+[data-bs-theme="dark"] .navbar.bg-success {
+  background-color: #1e3a2e !important; /* Matcha 深綠，取代亮綠 */
+}
+
+[data-bs-theme="dark"] .btn-success {
+  background-color: var(--matcha-accent);
+  border-color: var(--matcha-accent);
+  color: var(--matcha-accent-text);
+}
+
+[data-bs-theme="dark"] .btn-success:hover {
+  background-color: #1e8a55;
+  border-color: #1e8a55;
+}
+
+/* 篩選/匯出等操作按鈕 — Catppuccin Mocha 配色 */
+[data-bs-theme="dark"] .btn-primary {
+  background-color: var(--mocha-blue);
+  border-color: var(--mocha-blue);
+  color: var(--mocha-crust);
+}
+
+[data-bs-theme="dark"] .btn-primary:hover {
+  background-color: #7098e0;
+  border-color: #7098e0;
+  color: var(--mocha-crust);
+}
+
+[data-bs-theme="dark"] .btn-outline-primary {
+  color: var(--mocha-blue);
+  border-color: var(--mocha-blue);
+}
+
+[data-bs-theme="dark"] .btn-outline-primary:hover {
+  background-color: var(--mocha-blue);
+  border-color: var(--mocha-blue);
+  color: var(--mocha-crust);
+}
+
+[data-bs-theme="dark"] .btn-outline-success {
+  color: var(--mocha-green);
+  border-color: var(--mocha-green);
+}
+
+[data-bs-theme="dark"] .btn-outline-success:hover {
+  background-color: var(--mocha-green);
+  border-color: var(--mocha-green);
+  color: var(--mocha-crust);
+}
+
+[data-bs-theme="dark"] .btn-outline-secondary {
+  color: #f5e0dc !important;
+  border-color: var(--mocha-surface1) !important;
+}
+
+[data-bs-theme="dark"] .btn-outline-secondary:hover {
+  background-color: var(--mocha-surface0) !important;
+  border-color: var(--mocha-surface0) !important;
+  color: #ffffff !important;
+}
+
+[data-bs-theme="dark"] .btn.btn-sm.btn-outline-secondary.ms-2 {
+  color: #f5e0dc !important;
+  border-color: #6c7086 !important;
+}
+
+[data-bs-theme="dark"] .btn.btn-sm.btn-outline-secondary.ms-2:hover {
+  background-color: var(--mocha-surface0) !important;
+  border-color: var(--mocha-surface0) !important;
+  color: #ffffff !important;
+}
+
+[data-bs-theme="dark"] .btn-outline-danger {
+  color: var(--mocha-red);
+  border-color: var(--mocha-red);
+}
+
+[data-bs-theme="dark"] .btn-outline-danger:hover {
+  background-color: var(--mocha-red);
+  border-color: var(--mocha-red);
+  color: var(--mocha-crust);
+}
+
+[data-bs-theme="dark"] .text-muted {
+  color: #9e9e9e !important; /* 247 */
+}
+
+[data-bs-theme="dark"] .form-control,
+[data-bs-theme="dark"] .form-select {
+  background-color: #1e2623;
+  border-color: #2e3833;
+  color: #FFFDF5;
+}
+
+[data-bs-theme="dark"] .form-control:focus,
+[data-bs-theme="dark"] .form-select:focus {
+  border-color: var(--matcha-accent);
+  box-shadow: 0 0 0 0.25rem rgba(37, 160, 101, 0.25);
+}
+
+[data-bs-theme="dark"] a {
+  color: var(--matcha-link);
+}
+
+/* 表格：修正在深色下 thead.table-light 白底白字問題 */
+[data-bs-theme="dark"] .table {
+  --bs-table-bg: #242e2a;
+  --bs-table-color: #FFFDF5;
+  --bs-table-border-color: #2e3833;
+  --bs-table-striped-bg: #1e2623;
+  --bs-table-hover-bg: #2a332e;
+  --bs-table-hover-color: #FFFDF5;
+}
+
+[data-bs-theme="dark"] .table-light {
+  --bs-table-bg: #2a332e;
+  --bs-table-color: #FFFDF5;
+  --bs-table-border-color: #2e3833;
+}
+
+[data-bs-theme="dark"] .table thead th,
+[data-bs-theme="dark"] .table-light th {
+  color: #FFFDF5;
+  background-color: #2a332e;
+  border-color: #2e3833;
+}
+
+/* Alert：避免白底白字，改為 Matcha 暗色 */
+[data-bs-theme="dark"] .alert {
+  --bs-alert-bg: #2a332e;
+  --bs-alert-color: #FFFDF5;
+  --bs-alert-border-color: #2e3833;
+  color: var(--bs-alert-color);
+  background-color: var(--bs-alert-bg);
+  border-color: var(--bs-alert-border-color);
+}
+
+[data-bs-theme="dark"] .alert-success {
+  --bs-alert-bg: #1e3a2e;
+  --bs-alert-color: #c8f0d8;
+  --bs-alert-border-color: #25A065;
+}
+
+[data-bs-theme="dark"] .alert-warning {
+  --bs-alert-bg: #3a2e1a;
+  --bs-alert-color: #ffe8c2;
+  --bs-alert-border-color: #ff8700;
+}
+
+[data-bs-theme="dark"] .alert-danger {
+  --bs-alert-bg: #3a1e1e;
+  --bs-alert-color: #ffcccc;
+  --bs-alert-border-color: #ff4444;
+}
+
+[data-bs-theme="dark"] .alert-info {
+  --bs-alert-bg: #1e2a3a;
+  --bs-alert-color: #c2d9ff;
+  --bs-alert-border-color: #9BC4FF;
+}
+
+/* Modal / Offcanvas */
+[data-bs-theme="dark"] .modal-content {
+  background-color: #242e2a;
+  color: #FFFDF5;
+  border-color: #2e3833;
+}
+
+[data-bs-theme="dark"] .modal-header,
+[data-bs-theme="dark"] .modal-footer {
+  border-color: #2e3833;
+}
+
+[data-bs-theme="dark"] .btn-close {
+  filter: invert(1) grayscale(100%) brightness(200%);
+}
+
+/* SweetAlert2 彈窗 */
+[data-bs-theme="dark"] .swal2-popup {
+  background-color: #242e2a !important;
+  color: #FFFDF5 !important;
+  border: 1px solid #2e3833;
+}
+
+[data-bs-theme="dark"] .swal2-title,
+[data-bs-theme="dark"] .swal2-html-container {
+  color: #FFFDF5 !important;
+}
+
+[data-bs-theme="dark"] .swal2-input,
+[data-bs-theme="dark"] .swal2-select {
+  background-color: #1e2623 !important;
+  border-color: #2e3833 !important;
+  color: #FFFDF5 !important;
+}
+
+[data-bs-theme="dark"] .swal2-actions .swal2-confirm {
+  background-color: var(--mocha-green) !important;
+  color: var(--mocha-crust) !important;
+}
+
+[data-bs-theme="dark"] .swal2-actions .swal2-cancel {
+  background-color: #3a4440 !important;
+  color: #FFFDF5 !important;
+}
+
+/* 卡片綠色 header、徽章、AI 狀態、搜尋候選、下拉選單區分 */
+[data-bs-theme="dark"] .card-header.bg-success {
+  background-color: #1e3a2e !important;
+  color: #FFFDF5 !important;
+  border-color: #2e3833 !important;
+}
+
+[data-bs-theme="dark"] .badge.bg-light {
+  background-color: var(--mocha-surface0) !important;
+  color: var(--mocha-text) !important;
+}
+
+[data-bs-theme="dark"] .badge.bg-warning {
+  background-color: var(--mocha-yellow) !important;
+  color: var(--mocha-crust) !important;
+}
+
+[data-bs-theme="dark"] .badge.bg-success {
+  background-color: var(--mocha-green) !important;
+  color: var(--mocha-crust) !important;
+}
+
+[data-bs-theme="dark"] .badge.bg-danger {
+  background-color: var(--mocha-red) !important;
+  color: var(--mocha-crust) !important;
+}
+
+[data-bs-theme="dark"] .badge.bg-secondary {
+  background-color: var(--mocha-surface1) !important;
+  color: var(--mocha-text) !important;
+}
+
+[data-bs-theme="dark"] .badge.bg-white {
+  background-color: var(--mocha-green) !important;
+  color: #11111b !important;
+  border-color: var(--mocha-green) !important;
+}
+
+[data-bs-theme="dark"] .badge.bg-white.text-success {
+  background-color: var(--mocha-green) !important;
+  color: #11111b !important;
+  border-color: var(--mocha-green) !important;
+}
+
+[data-bs-theme="dark"] .text-success {
+  color: var(--mocha-green) !important;
+}
+
+[data-bs-theme="dark"] .text-danger {
+  color: var(--mocha-red) !important;
+}
+
+[data-bs-theme="dark"] .text-warning {
+  color: var(--mocha-yellow) !important;
+}
+
+/* outline 按鈕停用狀態 */
+[data-bs-theme="dark"] .btn-outline-primary:disabled,
+[data-bs-theme="dark"] .btn-outline-success:disabled,
+[data-bs-theme="dark"] .btn-outline-secondary:disabled,
+[data-bs-theme="dark"] .btn-outline-danger:disabled,
+[data-bs-theme="dark"] .btn-outline-warning:disabled,
+[data-bs-theme="dark"] .btn-outline-light:disabled {
+  color: #6c7086 !important;
+  border-color: #313244 !important;
+  background-color: transparent !important;
+  opacity: 0.5;
+}
+
+/* 使用者指出的 8 類遺漏：btn/border/badge/card-header */
+[data-bs-theme="dark"] .btn.btn-success.btn-sm {
+  background-color: var(--mocha-green) !important;
+  border-color: var(--mocha-green) !important;
+  color: var(--mocha-crust) !important;
+}
+
+[data-bs-theme="dark"] .btn.btn-sm.btn-light {
+  background-color: var(--mocha-surface0) !important;
+  border-color: var(--mocha-surface1) !important;
+  color: #f5e0dc !important; /* 更亮：rosewater */
+}
+
+[data-bs-theme="dark"] .btn.btn-sm.btn-light:hover {
+  background-color: var(--mocha-surface1) !important;
+  border-color: var(--mocha-surface1) !important;
+  color: #ffffff !important;
+}
+
+[data-bs-theme="dark"] .btn.btn-sm.btn-warning,
+[data-bs-theme="dark"] .btn-warning {
+  background-color: var(--mocha-yellow) !important;
+  border-color: var(--mocha-yellow) !important;
+  color: var(--mocha-crust) !important;
+}
+
+[data-bs-theme="dark"] .btn.btn-sm.btn-warning:hover,
+[data-bs-theme="dark"] .btn-warning:hover {
+  background-color: #e6c89a !important;
+  border-color: #e6c89a !important;
+}
+
+[data-bs-theme="dark"] .badge.text-bg-success {
+  background-color: var(--mocha-green) !important;
+  color: var(--mocha-crust) !important;
+}
+
+[data-bs-theme="dark"] .badge.bg-primary {
+  background-color: var(--mocha-blue) !important;
+  color: var(--mocha-crust) !important;
+}
+
+[data-bs-theme="dark"] .card-header.bg-warning {
+  background-color: #3a2e1a !important;
+  color: var(--mocha-yellow) !important;
+  border-color: #2e3833 !important;
+}
+
+[data-bs-theme="dark"] .card-header.bg-warning.text-dark {
+  color: var(--mocha-yellow) !important;
+}
+
+[data-bs-theme="dark"] .btn.btn-sm.btn-outline-warning {
+  color: var(--mocha-yellow) !important;
+  border-color: var(--mocha-yellow) !important;
+}
+
+[data-bs-theme="dark"] .btn.btn-sm.btn-outline-warning:hover {
+  background-color: var(--mocha-yellow) !important;
+  border-color: var(--mocha-yellow) !important;
+  color: var(--mocha-crust) !important;
+}
+
+[data-bs-theme="dark"] .btn-outline-warning {
+  color: var(--mocha-yellow) !important;
+  border-color: var(--mocha-yellow) !important;
+}
+
+[data-bs-theme="dark"] .btn-outline-warning:hover {
+  background-color: var(--mocha-yellow) !important;
+  border-color: var(--mocha-yellow) !important;
+  color: var(--mocha-crust) !important;
+}
+
+/* 搜尋候選白底黑字修正 */
+[data-bs-theme="dark"] .bg-light {
+  background-color: #242e2a !important;
+  color: #FFFDF5 !important;
+}
+
+[data-bs-theme="dark"] .border.bg-light {
+  background-color: #242e2a !important;
+  border-color: #2e3833 !important;
+}
+
+/* 下拉選單：可下拉 vs 鎖定（disabled）區分 */
+[data-bs-theme="dark"] .form-select:not(:disabled) {
+  background-color: #1e2623;
+  border-color: var(--mocha-blue);
+  color: #FFFDF5;
+  cursor: pointer;
+}
+
+[data-bs-theme="dark"] .form-select:disabled {
+  background-color: #1a201d !important;
+  border-color: #313244 !important;
+  color: #6c7086 !important;
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+[data-bs-theme="dark"] .dropdown-menu {
+  background-color: #242e2a;
+  border-color: #2e3833;
+}
+
+[data-bs-theme="dark"] .dropdown-item {
+  color: #FFFDF5;
+}
+
+[data-bs-theme="dark"] .dropdown-item:hover {
+  background-color: #2a332e;
+  color: #FFFDF5;
+}
+
+/* form-check-input、btn-info、btn-success 遺漏補強 */
+[data-bs-theme="dark"] .form-check-input {
+  background-color: #313244;
+  border-color: #6c7086;
+}
+
+[data-bs-theme="dark"] .form-check-input:checked {
+  background-color: var(--mocha-blue) !important;
+  border-color: var(--mocha-blue) !important;
+}
+
+[data-bs-theme="dark"] .form-check-input:focus {
+  border-color: var(--mocha-blue);
+  box-shadow: 0 0 0 0.25rem rgba(137, 180, 250, 0.25);
+}
+
+[data-bs-theme="dark"] .btn-info {
+  background-color: var(--mocha-sapphire) !important;
+  border-color: var(--mocha-sapphire) !important;
+  color: var(--mocha-crust) !important;
+}
+
+[data-bs-theme="dark"] .btn-info:hover {
+  background-color: #5eb3e6 !important;
+  border-color: #5eb3e6 !important;
+  color: var(--mocha-crust) !important;
+}
+
+[data-bs-theme="dark"] .btn-info.text-white {
+  color: var(--mocha-crust) !important;
+}
+
+[data-bs-theme="dark"] .btn-success {
+  background-color: var(--mocha-green) !important;
+  border-color: var(--mocha-green) !important;
+  color: var(--mocha-crust) !important;
+}
+
+[data-bs-theme="dark"] .btn-success:hover {
+  background-color: #8fd492 !important;
+  border-color: #8fd492 !important;
+  color: var(--mocha-crust) !important;
+}
+
+[data-bs-theme="dark"] .btn.btn-success {
+  background-color: var(--mocha-green) !important;
+  border-color: var(--mocha-green) !important;
+  color: var(--mocha-crust) !important;
+}

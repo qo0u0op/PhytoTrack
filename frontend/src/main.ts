@@ -9,6 +9,11 @@ import 'bootstrap-icons/font/bootstrap-icons.css'
 import './style.css'
 import App from './App.vue'
 import router from './router'
+import { useThemeStore } from './stores/theme'
 
 // 建立 Vue 應用：掛載 Pinia (狀態管理) 與 Router (路由)
-createApp (App).use (createPinia ()).use (router).mount ('#app')
+// 主題需早於 mount 寫入 data-bs-theme，避免首屏白閃
+const pinia = createPinia ()
+const app = createApp (App).use (pinia).use (router)
+useThemeStore (pinia).init ()
+app.mount ('#app')

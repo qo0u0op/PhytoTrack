@@ -6,7 +6,7 @@
 
 | 能力 | spec | 內容摘要 | 狀態 |
 |---|---|---|---|
-| security-hardening | `security-hardening` | AI 輸出轉義、`open-in-view: false`、JWT fail-fast | ✅ 已實作 (Phase 0) |
+| security-hardening | `security-hardening` | AI 輸出轉義、`open-in-view: false`、JWT fail-fast、設定檔僅註釋（`phytotrack.toml` 無帳密明文） | ✅ 已實作 (Phase 0，已同步 `remove-default-credentials`) |
 | api-observability | `api-observability` | 統一錯誤形狀 (`details`＋`requestId`)、requestId 進日誌 | ✅ 已實作 (僅含已交付項) |
 | case-search | `case-search` | 案件列表 17 欄篩選（5 列換行）且篩選穿透至 CSV；列表狀態（篩選/分頁/排序與卡片開啟）以 URL query 雙向同步，檢視/編輯返回保持 | ✅ 已實作 (Phase 1，已 archive 2026-09-02 + 2026-09-02 增量) |
 | case-lifecycle | `case-lifecycle` | 狀態列舉 (PENDING/RESOLVED/CLOSED)、轉移規則、更新契約補全、int→列舉遷移 | ✅ 已實作 (Phase 1) |
@@ -16,12 +16,14 @@
 | reference-data-admin | `reference-data-admin` | ADMIN CRUD 參照資料 (被引用拒刪)＋管理頁 | ✅ 已實作 (Phase 1) |
 | sender-management | `sender-management` | 送件人管理：displayName、去重合併 (人工確認)、ADMIN 硬刪除 (被引用拒刪)、VIEWER 個資遮蔽 (保留縣市鄉鎮)、統計去重鍵 `COALESCE (phone, displayName)` | ✅ 已實作 (Phase 1) |
 | ops-backup | `ops-backup` | SQLite 帶時間戳備份腳本＋文件 | ✅ 已實作 (Phase 1，已 archive 2026-08-27) |
+| ui-theme | `ui-theme` | 深色模式三態（light/dark/auto，`data-bs-theme`，`stores/theme.ts`，導覽列循環） | ✅ 已實作 (`add-dark-mode`) |
+| ops-binary-packaging | `ops-binary-packaging` | Binary 交付（雙 `app-image`、SystemTray、真實圖示）、dev 開 `:5173` | ✅ 已實作 (`binary-packaging` + `dev-browser-opens-vite`) |
 
 ## Phase 1 範圍
 
 - **8 能力**：case-search、case-lifecycle、case-statistics、case-report、user-admin、reference-data-admin、sender-management、ops-backup（已全數 archive 至 2026-09-02）
 - 每能力一個獨立 OpenSpec change (spec 已在主規格，`skip_specs: true`)，建議順序：case-search (已交付)→ case-lifecycle (已交付)→ case-statistics (已交付)→ case-report (已交付)→ user-admin (已交付)→ reference-data-admin (已交付)→ sender-management (已交付)→ ops-backup (已交付)
-- 後續增量：`csv-export-format` (2026-09-02)、`case-display-filter-export` (2026-09-02) 與 `case-list-state-persist` (2026-09-02) 已於 Phase 1 後交付，涵蓋 CSV 格式、篩選 5 列重排與列表狀態保持
+- 後續增量：`csv-export-format` (2026-09-02)、`case-display-filter-export` (2026-09-02)、`case-list-state-persist` (2026-09-02) 已交付；`add-remember-me`（雙時效 JWT + 登出保留帳號）、`add-dark-mode`（`ui-theme`）、`remove-default-credentials`（TOML 僅註釋）、`dev-browser-opens-vite`（dev 開 `:5173`）已交付並待封存
 - **排除**：security-hardening (已交付)、api-observability 剩餘項 (Actuator 精簡、滾動 logback 日誌) 歸 **Phase 2**
 
 ## 能力間依賴與遷移注意
@@ -58,7 +60,7 @@
 
 ### C 維持現狀 (審查判定安全)
 
-CSRF off (Bearer header 無 cookie 面)、無狀態登出 (前端丟 token)、登入錯誤訊息統一 (防帳號列舉)、HS256 簽章 (jjwt 固定 HMAC key 無 alg confusion)、`JWT_SECRET` fail-fast、500 泛化訊息不洩內部、`npm audit` 0 漏洞。
+CSRF off (Bearer header 無 cookie 面)、無狀態登出 (前端丟 token)、登入錯誤訊息統一 (防帳號列舉)、HS256 簽章 (jjwt 固定 HMAC key 無 alg confusion)、`app.jwt.secret` fail-fast、500 泛化訊息不洩內部、`npm audit` 0 漏洞。
 
 ## 產出約定
 
