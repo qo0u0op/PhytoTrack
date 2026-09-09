@@ -45,7 +45,7 @@ spring:
       chat:
         options:
           # 需對應 llama-server 載入的模型名稱（可查 GET /v1/models）
-          model: qwen_qwen2.5-coder-3b-instruct-q8_0
+          model: qwen_qwen3vl-8b-instruct-q4_k_m
           temperature: 0.7
           max-tokens: 512
 

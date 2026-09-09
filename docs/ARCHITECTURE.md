@@ -177,7 +177,7 @@ graph TD
 
 1. 前端表單收集欄位 → `POST /api/ai/analyze`（`ai.provider` 決定 `local` 本機或 `external` 外部，預設 `local`）
 2. `AIService` 經 `ViewerFilter` 將個人資料（`name/phone/address/displayName` → `***`）過濾，僅保留 Viewer 可見範圍後組出 System + User 提示詞
-3. Spring AI `ChatClient` 以 OpenAI 相容格式送至對應 `base-url`，非串流 `.call ()` 等待完整回覆 → 回傳建議文字與耗時（外部模式日誌標 `provider=external`，不印明文）
+3. Spring AI `ChatClient` 經 `OpenAiHeaderCustomizer` 注入 `ai.headers`（`x-opencode-session=auto` 時每次 UUID）後以 OpenAI 相容格式送至對應 `base-url`，非串流 `.call ()` 等待完整回覆 → 回傳建議文字與耗時（外部模式日誌標 `provider=external`，不印明文）
 4. `GET /api/ai/health` 依 `provider` 探測對應端點（`local` 查 `health`，`external` 查 `base-url`），前端顯示模型狀態與「外部模式：僅送 Viewer 可見資料」提示
 
 ### 監控與日誌 (Phase 2, api-observability)

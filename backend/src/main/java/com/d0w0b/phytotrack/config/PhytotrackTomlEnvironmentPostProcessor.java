@@ -123,7 +123,7 @@ public class PhytotrackTomlEnvironmentPostProcessor implements EnvironmentPostPr
         [ai]
         enabled = true
         base-url = "http://localhost:11435"
-        model = "qwen_qwen2.5-coder-3b-instruct-q8_0"
+        model = "qwen_qwen3vl-8b-instruct-q4_k_m"
         api-key = "llama-local-dummy-key"
 
         [app.cors]
@@ -201,6 +201,15 @@ public class PhytotrackTomlEnvironmentPostProcessor implements EnvironmentPostPr
       map.put ("ai.api-key", apiKey);
       map.put ("spring.ai.openai.api-key", apiKey);
     }
+    // ai.headers.* -> ai.headers.* 透傳（OpenAI 相容通用，auto 時每次 UUID）
+    try {
+      com.moandjiezana.toml.Toml headersTable = toml.getTable ("ai.headers");
+      if (headersTable != null) {
+        for (Map.Entry<String, Object> e : headersTable.toMap ().entrySet ()) {
+          if (e.getValue () != null) map.put ("ai.headers." + e.getKey (), String.valueOf (e.getValue ()));
+        }
+      }
+    } catch (Exception ignored) {}
     // app.cors
     String cors = toml.getString ("app.cors.allowed-origins");
     if (cors != null) map.put ("app.cors.allowed-origins", cors);
