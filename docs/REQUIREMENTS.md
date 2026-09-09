@@ -1,29 +1,33 @@
 # 需求總覽 (Phase 1)
 
-本文件為 10 份能力契約 (`openspec/specs/*/spec.md`) 的執行總覽：實作狀態、Phase 1 範圍與能力間依賴。詳細契約以各 spec 為準。
+本文件為 16 份能力契約 (`openspec/specs/*/spec.md`) 的執行總覽：實作狀態、Phase 1 範圍與能力間依賴。詳細契約以各 spec 為準。
 
 ## 能力狀態一覽
 
 | 能力 | spec | 內容摘要 | 狀態 |
 |---|---|---|---|
-| security-hardening | `security-hardening` | AI 輸出轉義、`open-in-view: false`、JWT fail-fast、設定檔僅註釋（`phytotrack.toml` 無帳密明文） | ✅ 已實作 (Phase 0，已同步 `remove-default-credentials`) |
-| api-observability | `api-observability` | 統一錯誤形狀 (`details`＋`requestId`)、requestId 進日誌 | ✅ 已實作 (僅含已交付項) |
+| security-hardening | `security-hardening` | AI 輸出轉義、`open-in-view: false`、JWT fail-fast、設定檔僅註釋（`phytotrack.toml` 無帳密明文） | ✅ 已實作 (Phase 0，已同步 `remove-default-credentials` / `remove-env-support`) |
+| security-review | `security-review` | 速率限制、CORS 白名單、安全標頭（`remove-env-support` 後僅 TOML） | ✅ 已實作 |
+| api-observability | `api-observability` | 統一錯誤形狀 (`details`＋`requestId`)、requestId 進日誌、Actuator `health/info` | ✅ 已實作 (僅含已交付項) |
 | case-search | `case-search` | 案件列表 17 欄篩選（5 列換行）且篩選穿透至 CSV；列表狀態（篩選/分頁/排序與卡片開啟）以 URL query 雙向同步，檢視/編輯返回保持 | ✅ 已實作 (Phase 1，已 archive 2026-09-02 + 2026-09-02 增量) |
 | case-lifecycle | `case-lifecycle` | 狀態列舉 (PENDING/RESOLVED/CLOSED)、轉移規則、更新契約補全、int→列舉遷移 | ✅ 已實作 (Phase 1) |
 | case-statistics | `case-statistics` | 統計 API (總數／本月／待處理／topN／比例／趨勢)＋ Dashboard 視圖 | ✅ 已實作 (Phase 1) |
-| case-report | `case-report` | 案件明細/預覽/列印診斷單（田區位置/身分別更名）、CSV 匯出（田區位置/身分別、5 列邏輯、全欄位引號、收件編號 asc、狀態中文） | ✅ 已實作 (Phase 1，已 archive 2026-09-02) |
-| user-admin | `user-admin` | ADMIN 改角色、啟停用 (含既有 token 拒絕)、重設密碼 | ✅ 已實作 (Phase 1) |
+| case-report | `case-report` | 案件明細/預覽/列印診斷單（田區位置/身分別更名）、CSV 匯出、中繼資料兩行（`建立者／建立` 與 `編輯者／更新`） | ✅ 已實作 (Phase 1，已 archive 2026-09-02 + `unify-case-metadata-display`) |
+| user-admin | `user-admin` | ADMIN 改角色、啟停用 (含既有 token 拒絕)、重設密碼、記住我雙儲存 | ✅ 已實作 (Phase 1 + `add-remember-me`) |
 | reference-data-admin | `reference-data-admin` | ADMIN CRUD 參照資料 (被引用拒刪)＋管理頁 | ✅ 已實作 (Phase 1) |
-| sender-management | `sender-management` | 送件人管理：displayName、去重合併 (人工確認)、ADMIN 硬刪除 (被引用拒刪)、VIEWER 個資遮蔽 (保留縣市鄉鎮)、統計去重鍵 `COALESCE (phone, displayName)` | ✅ 已實作 (Phase 1) |
-| ops-backup | `ops-backup` | SQLite 帶時間戳備份腳本＋文件 | ✅ 已實作 (Phase 1，已 archive 2026-08-27) |
-| ui-theme | `ui-theme` | 深色模式三態（light/dark/auto，`data-bs-theme`，`stores/theme.ts`，導覽列循環） | ✅ 已實作 (`add-dark-mode`) |
+| sender-management | `sender-management` | 送件人管理：displayName、去重合併 (人工確認)、ADMIN 硬刪除 (被引用拒刪)、VIEWER 個資遮蔽 (保留縣市鄉鎮)、統計去重鍵 `COALESCE (phone, displayName)`、AI 送審隔離 | ✅ 已實作 (Phase 1 + `ai-external-provider-viewer-guard`) |
+| ops-backup | `ops-backup` | SQLite 帶時間戳備份腳本（含 WAL `-wal/-shm`）＋文件 | ✅ 已實作 (Phase 1，已 archive 2026-08-27 + `persistence`) |
+| ops-binary | `ops-binary` | XDG 可攜路徑（`BinaryPaths` 三模式） | ✅ 已實作 (`binary-config-xdg-portable`) |
 | ops-binary-packaging | `ops-binary-packaging` | Binary 交付（雙 `app-image`、SystemTray、真實圖示）、dev 開 `:5173` | ✅ 已實作 (`binary-packaging` + `dev-browser-opens-vite`) |
+| persistence | `persistence` | 本地優先 SQLite（WAL + pool=5，列表不快取，統計可選 30s） | ✅ 已實作 (`remove-postgres-server-db` + `ctx-spec-adr-sync`) |
+| ui-theme | `ui-theme` | 深色模式三態（light/dark/auto，`data-bs-theme`，`stores/theme.ts`，導覽列循環） | ✅ 已實作 (`add-dark-mode`) |
+| ai-provider | `ai-provider` | 外部 OpenAI 相容 provider（`ai.provider` + `ai.headers` 通用，Viewer 過濾） | ✅ 已實作 (`ai-external-provider-viewer-guard` + `openai-header-abstract`) |
 
 ## Phase 1 範圍
 
 - **8 能力**：case-search、case-lifecycle、case-statistics、case-report、user-admin、reference-data-admin、sender-management、ops-backup（已全數 archive 至 2026-09-02）
 - 每能力一個獨立 OpenSpec change (spec 已在主規格，`skip_specs: true`)，建議順序：case-search (已交付)→ case-lifecycle (已交付)→ case-statistics (已交付)→ case-report (已交付)→ user-admin (已交付)→ reference-data-admin (已交付)→ sender-management (已交付)→ ops-backup (已交付)
-- 後續增量：`csv-export-format` (2026-09-02)、`case-display-filter-export` (2026-09-02)、`case-list-state-persist` (2026-09-02) 已交付；`add-remember-me`（雙時效 JWT + 登出保留帳號）、`add-dark-mode`（`ui-theme`）、`remove-default-credentials`（TOML 僅註釋）、`dev-browser-opens-vite`（dev 開 `:5173`）已交付並待封存
+- 後續增量：`csv-export-format` (2026-09-02)、`case-display-filter-export` (2026-09-02)、`case-list-state-persist` (2026-09-02) 已交付；`add-remember-me`（雙時效 JWT + 登出保留帳號）、`add-dark-mode`（`ui-theme`）、`remove-default-credentials`（TOML 僅註釋）、`dev-browser-opens-vite`（dev 開 `:5173`）、`remove-env-support`（僅 TOML）、`ai-external-provider-viewer-guard`（外部 AI + Viewer 隔離）、`openai-header-abstract`（通用 header）、`remove-postgres-server-db`/`persistence`（本地 WAL）與 `unify-case-metadata-display`（兩行中繼資料）已交付並封存
 - **排除**：security-hardening (已交付)、api-observability 剩餘項 (Actuator 精簡、滾動 logback 日誌) 歸 **Phase 2**
 
 ## 能力間依賴與遷移注意
