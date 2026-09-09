@@ -28,10 +28,11 @@ public class OpenAiHeaderCustomizer implements OpenAiHttpClientBuilderCustomizer
   public void customize (SpringAiOpenAiHttpClient.Builder builder) {
     builder.interceptor (chain -> {
       var request = chain.request ();
+      String host = request.url ().host ();
+      boolean isOpencode = host != null && host.contains ("opencode.ai");
       Map<String, String> headers = new HashMap<> ();
       try {
         Map<String, String> configured = Binder.get (env).bind ("ai.headers", Map.class).orElse (Map.of ());
-        // Binder with raw Map needs cast, fallback to manual read if empty
         if (configured.isEmpty ()) {
           configured = new HashMap<> ();
           for (String key : new String[]{"x-opencode-session", "User-Agent"}) {
@@ -42,6 +43,10 @@ public class OpenAiHeaderCustomizer implements OpenAiHttpClientBuilderCustomizer
         headers.putAll (configured);
       } catch (Exception ignored) {}
 
+      // opencode.ai 必須帶 x-opencode-session，未配置時自動補 auto
+      if (isOpencode && !headers.containsKey ("x-opencode-session")) {
+        headers.put ("x-opencode-session", "auto");
+      }
       if (headers.isEmpty ()) return chain.proceed (request);
 
       var builderReq = request.newBuilder ();
@@ -50,7 +55,6 @@ public class OpenAiHeaderCustomizer implements OpenAiHttpClientBuilderCustomizer
         if ("auto".equalsIgnoreCase (v)) v = UUID.randomUUID ().toString ();
         builderReq.header (e.getKey (), v);
       }
-      // 若未配置 UA，補預設
       if (!headers.containsKey ("User-Agent")) {
         builderReq.header ("User-Agent", "PhytoTrack/1.0 (openai-compatible)");
       }

@@ -1,1 +1,1 @@
-org.springframework.boot.env.EnvironmentPostProcessor=com.d0w0b.phytotrack.config.PhytotrackTomlEnvironmentPostProcessor
+org.springframework.context.ApplicationListener=com.d0w0b.phytotrack.config.PhytotrackTomlEnvironmentPostProcessor

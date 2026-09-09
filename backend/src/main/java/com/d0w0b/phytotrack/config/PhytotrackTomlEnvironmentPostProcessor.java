@@ -1,12 +1,11 @@
 package com.d0w0b.phytotrack.config;
 
 import com.moandjiezana.toml.Toml;
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.env.EnvironmentPostProcessor;
+import org.springframework.boot.context.event.ApplicationEnvironmentPreparedEvent;
+import org.springframework.context.ApplicationListener;
 import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.core.env.MapPropertySource;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -22,12 +21,13 @@ import java.util.Map;
  * 優先順序：TOML > application.yaml 預設
  * 首次啟動若無 TOML 則生成預設，含亂數 JWT 密鑰
  */
-public class PhytotrackTomlEnvironmentPostProcessor implements EnvironmentPostProcessor {
+public class PhytotrackTomlEnvironmentPostProcessor implements ApplicationListener<ApplicationEnvironmentPreparedEvent> {
 
   private static final SecureRandom RANDOM = new SecureRandom ();
 
   @Override
-  public void postProcessEnvironment (ConfigurableEnvironment environment, SpringApplication application) {
+  public void onApplicationEvent (ApplicationEnvironmentPreparedEvent event) {
+    ConfigurableEnvironment environment = event.getEnvironment ();
     // 測試環境不走 XDG/可攜，沿用 application-test.yaml
     for (String p : environment.getActiveProfiles ()) {
       if ("test".equals (p)) return;
@@ -200,6 +200,27 @@ public class PhytotrackTomlEnvironmentPostProcessor implements EnvironmentPostPr
     if (apiKey != null) {
       map.put ("ai.api-key", apiKey);
       map.put ("spring.ai.openai.api-key", apiKey);
+    }
+    // ai 推理參數（可選）
+    Double temp = toml.getDouble ("ai.temperature");
+    if (temp != null) {
+      map.put ("app.ai.temperature", temp);
+      map.put ("spring.ai.openai.chat.options.temperature", temp);
+    }
+    Long maxTokens = toml.getLong ("ai.max-tokens");
+    if (maxTokens != null) {
+      map.put ("app.ai.max-tokens", maxTokens);
+      map.put ("spring.ai.openai.chat.options.max-tokens", maxTokens);
+    }
+    Long maxCtx = toml.getLong ("ai.max-context-tokens");
+    if (maxCtx != null) {
+      map.put ("app.ai.max-context-tokens", maxCtx);
+      map.put ("spring.ai.openai.chat.options.max-context-tokens", maxCtx);
+    }
+    String reasoning = toml.getString ("ai.reasoning-effort");
+    if (reasoning != null) {
+      map.put ("app.ai.reasoning-effort", reasoning);
+      map.put ("spring.ai.openai.chat.options.reasoning-effort", reasoning);
     }
     // ai.headers.* -> ai.headers.* 透傳（OpenAI 相容通用，auto 時每次 UUID）
     try {

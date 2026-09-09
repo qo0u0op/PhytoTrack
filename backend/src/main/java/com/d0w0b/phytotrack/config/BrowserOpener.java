@@ -37,37 +37,56 @@ public class BrowserOpener {
 
   @EventListener (ApplicationReadyEvent.class)
   public void open () {
-    // dev 指向 vite，prod 指向同 port 內嵌前端（/）
-    String url = isDev ? devFrontendUrl : "http://localhost:" + port + "/";
-    if (!autoOpen) {
-      System.out.println ("[PhytoTrack] Server started at " + url + " (auto-open disabled)");
-      return;
-    }
-    if (isDev) {
-      System.out.println ("[PhytoTrack] Frontend (vite) at " + url);
-      System.out.println ("[PhytoTrack] API: http://localhost:" + port + "/api, Swagger: http://localhost:" + port + "/swagger-ui/index.html");
-    } else {
-      // binary 已將前端 dist 打進 static，/ 與 /api 同 port
-      System.out.println ("[PhytoTrack] Server started at " + url + " (前端)");
-      System.out.println ("[PhytoTrack] API: " + url + "api, Swagger: " + url + "swagger-ui/index.html");
-    }
-    if (!java.awt.GraphicsEnvironment.isHeadless ()) {
-      try {
-        if (Desktop.isDesktopSupported () && Desktop.getDesktop ().isSupported (Desktop.Action.BROWSE)) {
-          Desktop.getDesktop ().browse (new URI (url));
-          return;
-        }
-      } catch (Throwable e) {
-        log.debug ("Desktop.browse 失敗：{}", e.getMessage ());
-      }
-    } else {
-      log.debug ("Headless 環境，跳過 Desktop.browse");
-    }
-    // 回落：僅 Linux 用 xdg-open（headless 時亦嘗試，失敗僅警告）
     try {
-      new ProcessBuilder ("xdg-open", url).start ();
-    } catch (Throwable e) {
-      log.warn ("自動開瀏覽器失敗，請手動開啟 {}", url);
+      // dev 指向 vite，prod 指向同 port 內嵌前端（/）
+      String url = isDev ? devFrontendUrl : "http://localhost:" + port + "/";
+      if (!autoOpen) {
+        System.out.println ("[PhytoTrack] Server started at " + url + " (auto-open disabled)");
+        return;
+      }
+      if (isDev) {
+        System.out.println ("[PhytoTrack] Frontend (vite) at " + url);
+        System.out.println ("[PhytoTrack] API: http://localhost:" + port + "/api, Swagger: http://localhost:" + port + "/swagger-ui/index.html");
+      } else {
+        // binary 已將前端 dist 打進 static，/ 與 /api 同 port
+        System.out.println ("[PhytoTrack] Server started at " + url + " (前端)");
+        System.out.println ("[PhytoTrack] API: " + url + "api, Swagger: " + url + "swagger-ui/index.html");
+      }
+      // 有顯示環境才嘗試 Desktop.browse，SSH tty 直接跳過避免 XToolkit 毒化
+      String display = System.getenv ("DISPLAY");
+      String wayland = System.getenv ("WAYLAND_DISPLAY");
+      boolean hasDisplay = (display != null && !display.isBlank ()) || (wayland != null && !wayland.isBlank ());
+      if (hasDisplay) {
+        try {
+          if (!java.awt.GraphicsEnvironment.isHeadless ()) {
+            try {
+              if (Desktop.isDesktopSupported () && Desktop.getDesktop ().isSupported (Desktop.Action.BROWSE)) {
+                Desktop.getDesktop ().browse (new URI (url));
+                return;
+              }
+            } catch (Throwable e) {
+              log.debug ("Desktop.browse 失敗：{}", String.valueOf (e.getMessage ()));
+            }
+          } else {
+            log.debug ("Headless 環境，跳過 Desktop.browse");
+          }
+        } catch (Throwable e) {
+          log.debug ("Headless 檢查失敗：{}", String.valueOf (e.getMessage ()));
+        }
+        // 回落 xdg-open（僅有顯示環境時）
+        try {
+          new ProcessBuilder ("xdg-open", url).start ();
+          return;
+        } catch (Throwable e) {
+          log.debug ("xdg-open 失敗：{}", String.valueOf (e.getMessage ()));
+        }
+      } else {
+        log.info ("無 DISPLAY/WAYLAND_DISPLAY，跳過自動開瀏覽器（支援 SSH tty），請手動開啟 {}", url);
+        return;
+      }
+      log.debug ("自動開瀏覽器未成功，請手動開啟 {}", url);
+    } catch (Throwable outer) {
+      log.warn ("自動開瀏覽器異常，跳過（不影響 Server）：{}", String.valueOf (outer.getMessage ()));
     }
   }
 }

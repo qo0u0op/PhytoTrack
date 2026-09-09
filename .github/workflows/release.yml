@@ -135,7 +135,6 @@ jobs:
           VERSION=${GITHUB_REF#refs/tags/v}
           VERSION=${VERSION//-/.}
           VERSION=$(echo "$VERSION" | cut -d. -f1-3)
-          if [[ "$VERSION" =~ ^0(\.|$) ]]; then VERSION=$(echo "$VERSION" | sed -E 's/^0+(\.|$)/1\1/'); fi
           $APPIMAGETOOL dist/AppDir dist/PhytoTrack-"$VERSION"-x86_64.AppImage || $APPIMAGETOOL --appimage-extract-and-run dist/AppDir dist/PhytoTrack-"$VERSION"-x86_64.AppImage
           chmod +x dist/PhytoTrack-*.AppImage
           ls -lh dist/*.AppImage

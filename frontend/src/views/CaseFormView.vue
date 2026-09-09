@@ -1151,7 +1151,7 @@ async function runAi () {
       </div>
 
       <div v-if="diagnosisVisible" class="d-flex gap-2 justify-content-end align-items-center">
-        <small v-if="aiProvider === 'external'" class="text-muted me-auto">外部模式：僅送 Viewer 可見資料</small>
+        <small v-if="aiProvider === 'external'" class="text-muted me-auto">AI 外部模式：僅送 Viewer 可見資料</small>
         <button
           v-if="auth.isStaff"
           type="button"

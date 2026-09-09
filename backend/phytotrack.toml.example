@@ -28,6 +28,11 @@ provider = "local"
 base-url = "http://localhost:11435"
 model = "qwen_qwen3vl-8b-instruct-q4_k_m"
 api-key = "llama-local-dummy-key"
+# 推理參數（可選，覆蓋 application.yaml 預設）
+temperature = 0.1
+max-tokens = 4096
+max-context-tokens = 128000
+reasoning-effort = "high"
 # 外部範例（provider = "external" 時）：
 # base-url = "https://api.openai.com/v1"
 # model = "gpt-4o"

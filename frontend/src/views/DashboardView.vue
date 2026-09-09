@@ -11,6 +11,7 @@ type CaseStatistics = components['schemas']['CaseStatisticsResponse']
 // 統計總覽 (由 GET /cases/statistics 提供)＋AI 連線狀態
 const stats = ref<CaseStatistics | null>(null)
 const modelHealthy = ref<boolean | null>(null)
+const aiProvider = ref ('local')
 const period = ref<'HISTORICAL' | 'ANNUAL' | 'MONTHLY' | 'HALF_YEAR'>('HISTORICAL')
 const selectedYear = ref<number | null>(null)
 const selectedMonth = ref<number | null>(new Date ().getMonth () + 1)
@@ -52,7 +53,9 @@ onMounted (async () => {
   await loadStats ()
   try {
     const { data } = await aiApi.health ()
-    modelHealthy.value = (data as unknown as { healthy: boolean }).healthy
+    const d = data as any
+    modelHealthy.value = d.healthy
+    if (d.provider) aiProvider.value = d.provider
   } catch {
     modelHealthy.value = false
   }
@@ -154,7 +157,9 @@ const barColor = (status?: string) =>
       <div class="col-md-3">
         <div class="card shadow-sm">
           <div class="card-body">
-            <h6 class="text-muted">模型狀態</h6>
+            <h6 class="text-muted d-flex justify-content-between align-items-center">模型狀態
+              <span v-if="aiProvider === 'external'" class="badge bg-info" style="font-size: 0.65rem;">外部</span>
+            </h6>
             <div class="fs-1 fw-bold">
               <span v-if="modelHealthy === null" class="text-warning">…</span>
               <span v-else-if="modelHealthy" class="text-success">已連線</span>

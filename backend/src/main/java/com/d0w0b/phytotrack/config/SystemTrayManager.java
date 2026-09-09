@@ -41,19 +41,36 @@ public class SystemTrayManager {
   }
 
   static {
-    System.setProperty ("java.awt.headless", "false");
-    // dorkbox 自動偵測，必要時可強制：SystemTray.FORCE_TRAY_TYPE
+    // 勿強制 headless=false：無 X11/Wayland 時會使 AWT 初始化崩潰，致整個 Spring 啟動失敗
+    // 僅在有顯示環境時由 dorkbox 按需初始化
     SystemTray.AUTO_SIZE = true;
   }
 
   @EventListener (ApplicationReadyEvent.class)
   public void init () {
-    if (!trayEnabled) {
-      log.info ("系統匣已關閉（app.tray.enabled=false）");
-      return;
-    }
     try {
-      SystemTray systemTray = SystemTray.get ("PhytoTrack");
+      if (!trayEnabled) {
+        log.info ("系統匣已關閉（app.tray.enabled=false）");
+        return;
+      }
+      // 先檢查環境變數，避免無顯示時觸發 AWT/XToolkit 導致類別毒化（NoClassDefFoundError）
+      String display = System.getenv ("DISPLAY");
+      String wayland = System.getenv ("WAYLAND_DISPLAY");
+      if ((display == null || display.isBlank ()) && (wayland == null || wayland.isBlank ())) {
+        log.info ("無 DISPLAY/WAYLAND_DISPLAY，跳過系統匣（支援 SSH tty）");
+        return;
+      }
+      try {
+        if (java.awt.GraphicsEnvironment.isHeadless ()) {
+          log.info ("Headless 環境，跳過系統匣");
+          return;
+        }
+      } catch (Throwable e) {
+        log.warn ("Headless 檢查失敗，跳過系統匣：{}", String.valueOf (e.getMessage ()));
+        return;
+      }
+      try {
+        SystemTray systemTray = SystemTray.get ("PhytoTrack");
       if (systemTray == null) {
         log.warn ("dorkbox SystemTray 不支援，回落備用視窗");
         createFallbackWindow ();
@@ -92,9 +109,20 @@ public class SystemTrayManager {
       log.info ("dorkbox SystemTray 已建立，port={}", port);
       // 系統通知（預設）
       showNotification ("PhytoTrack", "已啟動並常駐系統匣（右鍵可備份/退出）");
-    } catch (Exception e) {
-      log.warn ("dorkbox 匣建立失敗：{}，回落備用視窗", e.getMessage ());
-      try { createFallbackWindow (); } catch (Exception ex) { log.warn ("備用視窗失敗：{}", ex.getMessage ()); }
+    } catch (Throwable e) {
+      log.warn ("dorkbox 匣建立失敗：{}，跳過系統匣（不影響 Server）", String.valueOf (e.getMessage ()), e);
+      // 回落視窗亦需有顯示環境才嘗試，避免在 headless 時二次觸發 XToolkit
+      try {
+        String d = System.getenv ("DISPLAY");
+        String w = System.getenv ("WAYLAND_DISPLAY");
+        boolean hasDisplay = (d != null && !d.isBlank ()) || (w != null && !w.isBlank ());
+        if (hasDisplay && !java.awt.GraphicsEnvironment.isHeadless ()) {
+          createFallbackWindow ();
+        }
+      } catch (Throwable ex) { log.warn ("備用視窗失敗：{}", String.valueOf (ex.getMessage ())); }
+    }
+    } catch (Throwable outer) {
+      log.warn ("系統匣初始化失敗，跳過（不影響 Server）：{}", String.valueOf (outer.getMessage ()), outer);
     }
   }
 

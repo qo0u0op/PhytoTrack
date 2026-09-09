@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { aiApi, caseApi } from '../api'
 import { useAuthStore } from '../stores/auth'
@@ -32,6 +32,13 @@ const analyzing = ref (false)
 const aiSuggestion = ref<string | null>(null)
 const aiElapsed = ref<number | null>(null)
 const aiError = ref<string | null>(null)
+const aiProvider = ref ('local')
+onMounted (async () => {
+  try {
+    const { data } = await aiApi.health ()
+    if ((data as any).provider) aiProvider.value = (data as any).provider
+  } catch {}
+})
 
 async function load () {
   loading.value = true
@@ -116,12 +123,13 @@ async function runAi () {
 }
 
 function showAiTip () {
-  // 手機無 hover，改以點擊彈窗顯示提示；桌機則同時支援 title hover
+  const base = '依本案件欄位 (作物、被害部位、病蟲害、病害描述) 呼叫 AI 提供初步診斷與防治建議。'
+  const extra = aiProvider.value === 'external' ? '<br><br><small class="text-muted">外部模式：僅送 Viewer 可見資料（已遮蔽姓名/電話/地址）</small>' : ''
   import ('sweetalert2').then (({ default: Swal }) => {
     Swal.fire ({
       icon: 'info',
       title: 'AI 診斷提示',
-      text: '依本案件欄位 (作物、被害部位、病蟲害、病害描述) 呼叫 AI 提供初步診斷與防治建議。',
+      html: `<div class="text-start">${base}${extra}</div>`,
       confirmButtonText: '了解',
     })
   })
@@ -166,7 +174,8 @@ function showAiTip () {
             @click="showAiTip"
             @keydown.enter="showAiTip"
             style="cursor: help; user-select: none;"
-            aria-label="AI 診斷說明"
+            :aria-label="aiProvider === 'external' ? 'AI 診斷說明（外部模式：僅送 Viewer 可見資料）' : 'AI 診斷說明'"
+            :title="aiProvider === 'external' ? '外部模式：僅送 Viewer 可見資料' : 'AI 診斷說明'"
           >ⓘ</span>
         </div>
       </div>

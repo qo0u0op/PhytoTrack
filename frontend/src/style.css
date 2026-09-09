@@ -70,6 +70,70 @@ body {
   background: linear-gradient(135deg, #1a3a2a 0%, #143322 60%, #1a2e4a 100%);
 }
 
+[data-bs-theme="dark"] .btn-light.btn-lg {
+  background-color: #f5e0dc !important;
+  border-color: #f5e0dc !important;
+  color: #1e1e2e !important;
+}
+
+[data-bs-theme="dark"] .btn-light.btn-lg:hover {
+  background-color: #ffffff !important;
+  border-color: #ffffff !important;
+  color: #1e1e2e !important;
+}
+
+[data-bs-theme="dark"] .hero-section .btn-light.btn-lg {
+  background-color: #f5e0dc !important;
+  border-color: #f5e0dc !important;
+  color: #1e1e2e !important;
+}
+
+[data-bs-theme="dark"] .hero-section .btn-light.btn-lg:hover {
+  background-color: #ffffff !important;
+  border-color: #ffffff !important;
+  color: #1e1e2e !important;
+}
+
+[data-bs-theme="dark"] .hero-section .btn-outline-light.btn-lg {
+  color: #f5e0dc !important;
+  border-color: #f5e0dc !important;
+}
+
+[data-bs-theme="dark"] .hero-section .btn-outline-light.btn-lg:hover {
+  background-color: #f5e0dc !important;
+  border-color: #f5e0dc !important;
+  color: #1e1e2e !important;
+}
+
+[data-bs-theme="dark"] .btn-outline-light.btn-lg {
+  color: #f5e0dc !important;
+  border-color: #f5e0dc !important;
+}
+
+[data-bs-theme="dark"] .btn-outline-light.btn-lg:hover {
+  background-color: #f5e0dc !important;
+  border-color: #f5e0dc !important;
+  color: #1e1e2e !important;
+}
+
+[data-bs-theme="dark"] ::selection {
+  background-color: var(--mocha-blue) !important;
+  color: var(--mocha-crust) !important;
+}
+
+[data-bs-theme="dark"] ::-moz-selection {
+  background-color: var(--mocha-blue) !important;
+  color: var(--mocha-crust) !important;
+}
+
+[data-bs-theme="dark"] .form-control::selection,
+[data-bs-theme="dark"] .form-select::selection,
+[data-bs-theme="dark"] input::selection,
+[data-bs-theme="dark"] textarea::selection {
+  background-color: var(--mocha-blue) !important;
+  color: var(--mocha-crust) !important;
+}
+
 [data-bs-theme="dark"] .card {
   background-color: #242e2a;
   border-color: #2e3833;
@@ -372,6 +436,53 @@ body {
   background-color: var(--mocha-surface1) !important;
   border-color: var(--mocha-surface1) !important;
   color: #ffffff !important;
+}
+
+/* 依使用者指定：四顆按鈕換 Mocha 其他色（dark） */
+[data-bs-theme="dark"] .btn.btn-sm.btn-light.me-1 {
+  background-color: var(--mocha-teal) !important;
+  border-color: var(--mocha-teal) !important;
+  color: var(--mocha-crust) !important;
+}
+
+[data-bs-theme="dark"] .btn.btn-sm.btn-light.me-1:hover {
+  background-color: #7dd3c0 !important;
+  border-color: #7dd3c0 !important;
+  color: var(--mocha-crust) !important;
+}
+
+[data-bs-theme="dark"] .btn.btn-sm.btn-outline-secondary.ms-2 {
+  color: var(--mocha-peach) !important;
+  border-color: var(--mocha-peach) !important;
+}
+
+[data-bs-theme="dark"] .btn.btn-sm.btn-outline-secondary.ms-2:hover {
+  background-color: var(--mocha-peach) !important;
+  border-color: var(--mocha-peach) !important;
+  color: var(--mocha-crust) !important;
+}
+
+[data-bs-theme="dark"] .btn.btn-light.btn-sm {
+  background-color: var(--mocha-mauve) !important;
+  border-color: var(--mocha-mauve) !important;
+  color: var(--mocha-crust) !important;
+}
+
+[data-bs-theme="dark"] .btn.btn-light.btn-sm:hover {
+  background-color: #b8a0e0 !important;
+  border-color: #b8a0e0 !important;
+  color: var(--mocha-crust) !important;
+}
+
+[data-bs-theme="dark"] .btn.btn-sm.btn-outline-secondary.flex-shrink-0 {
+  color: var(--mocha-sapphire) !important;
+  border-color: var(--mocha-sapphire) !important;
+}
+
+[data-bs-theme="dark"] .btn.btn-sm.btn-outline-secondary.flex-shrink-0:hover {
+  background-color: var(--mocha-sapphire) !important;
+  border-color: var(--mocha-sapphire) !important;
+  color: var(--mocha-crust) !important;
 }
 
 [data-bs-theme="dark"] .btn.btn-sm.btn-warning,
