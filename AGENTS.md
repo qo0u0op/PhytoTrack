@@ -57,5 +57,5 @@
 ## 文件
 
 - `README.md`：快速啟動權威來源
-- `docs/adr/ADR-001~011`：架構決策，實作前先查
+- `docs/adr/ADR-001~013`：架構決策，實作前先查
 - `docs/ARCHITECTURE.md`/`DEPLOY.md`/`E2E.md`、`docs/REQUIREMENTS.md`、`openspec/specs` 為契約基準

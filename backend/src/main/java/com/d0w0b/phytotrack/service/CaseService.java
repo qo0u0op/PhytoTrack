@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.d0w0b.phytotrack.dto.CaseDtos.CaseCreateRequest;
 import com.d0w0b.phytotrack.dto.CaseDtos.CaseFilter;
 import com.d0w0b.phytotrack.dto.CaseDtos.CaseResponse;
+import com.d0w0b.phytotrack.util.validation.InputSanitizer;
 import com.d0w0b.phytotrack.dto.CaseDtos.CaseSummaryResponse;
 import com.d0w0b.phytotrack.dto.CaseDtos.CaseUpdateRequest;
 import com.d0w0b.phytotrack.dto.StatisticsDtos.CaseStatisticsResponse;

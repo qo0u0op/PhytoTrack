@@ -13,6 +13,7 @@ import com.d0w0b.phytotrack.dto.AuthDtos.AuthResponse;
 import com.d0w0b.phytotrack.dto.AuthDtos.LoginRequest;
 import com.d0w0b.phytotrack.dto.AuthDtos.RegisterRequest;
 import com.d0w0b.phytotrack.dto.AuthDtos.UserResponse;
+import com.d0w0b.phytotrack.util.validation.InputSanitizer;
 import com.d0w0b.phytotrack.exception.ApiException;
 import com.d0w0b.phytotrack.models.DeactivateRequest;
 import com.d0w0b.phytotrack.models.Identifier;

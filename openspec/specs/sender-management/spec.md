@@ -193,3 +193,11 @@ VIEWER 角色 SHALL NOT 取得送件人姓名、電話與地址，但 SHALL 可�
 #### Scenario: 返回列表恢復狀態
 - **WHEN** 使用者從編輯頁返回列表（儲存後或取消）
 - **THEN** 列表的篩選、分頁與排序恢復為進入編輯前的狀態
+
+### Requirement: 重構不改變行為
+
+重構 SHALL 不改變任何 spec 行為與 API 契約，僅減少分支與重複；既有測試 SHALL 保持通過。
+
+#### Scenario: 測試綠燈
+- **WHEN** 執行 `mvn test`
+- **THEN** 148 測通過且 API 回應與重構前一致
