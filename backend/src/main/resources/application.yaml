@@ -80,6 +80,12 @@ app:
     expiration-ms: 3600000
     # 記住我時長（毫秒）：預設 7 天，勾選記住我時使用
     remember-me-expiration-ms: 604800000
+  tray:
+    # 系統匣：僅 prod 啟用，dev/test 預設關閉
+    enabled: false
+  ui:
+    # 自動開瀏覽器：僅 prod 啟用，dev/test 預設關閉
+    auto-open-browser: false
   ai:
     # llama-server / LlamaStash proxy 存活檢查端點（不含 /v1 前綴）
     health-url: http://localhost:11435/health
@@ -123,3 +129,7 @@ springdoc:
 app:
   security-headers:
     enabled: true
+  tray:
+    enabled: true
+  ui:
+    auto-open-browser: true

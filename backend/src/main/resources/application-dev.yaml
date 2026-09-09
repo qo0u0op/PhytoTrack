@@ -5,6 +5,9 @@ spring:
     name: PhytoTrack (dev)
 
 app:
+  tray:
+    enabled: false
   ui:
-    # dev 自動開啟 vite 即時前端（mise run dev 的 :5173），可由 DEV_FRONTEND_URL 覆蓋
+    auto-open-browser: false
+    # dev 自動開啟 vite 即時前端（mise run dev 的 :5173），可由 DEV_FRONTEND_URL 覆蓋（僅 auto-open 為 true 時生效）
     dev-frontend-url: ${DEV_FRONTEND_URL:http://localhost:5173/}
