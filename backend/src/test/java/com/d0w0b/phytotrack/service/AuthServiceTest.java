@@ -113,12 +113,44 @@ class AuthServiceTest {
     when (authenticationManager.authenticate (any (UsernamePasswordAuthenticationToken.class)))
         .thenReturn (authentication);
     when (userRepository.findByUsername ("admin")).thenReturn (Optional.of (existingUser));
-    when (jwtTokenProvider.generateToken (existingUser)).thenReturn ("jwt-token");
+    when (jwtTokenProvider.generateToken (existingUser, false)).thenReturn ("jwt-token");
 
     AuthResponse response = authService.login (new LoginRequest ("admin", "secret123"));
 
     assertThat (response.token ()).isEqualTo ("jwt-token");
     assertThat (response.user ().role ()).isEqualTo ("ROLE_ADMIN");
+  }
+
+  @Test
+  void login_rememberMeFalse_shouldIssueShortLivedToken () {
+    UserPrincipal principal = UserPrincipal.from (existingUser);
+    Authentication authentication =
+        new UsernamePasswordAuthenticationToken (principal, null, principal.getAuthorities ());
+    when (authenticationManager.authenticate (any (UsernamePasswordAuthenticationToken.class)))
+        .thenReturn (authentication);
+    when (userRepository.findByUsername ("admin")).thenReturn (Optional.of (existingUser));
+    when (jwtTokenProvider.generateToken (existingUser, false)).thenReturn ("short-token");
+
+    AuthResponse response = authService.login (new LoginRequest ("admin", "secret123", false));
+
+    assertThat (response.token ()).isEqualTo ("short-token");
+    verify (jwtTokenProvider).generateToken (existingUser, false);
+  }
+
+  @Test
+  void login_rememberMeTrue_shouldIssueLongLivedToken () {
+    UserPrincipal principal = UserPrincipal.from (existingUser);
+    Authentication authentication =
+        new UsernamePasswordAuthenticationToken (principal, null, principal.getAuthorities ());
+    when (authenticationManager.authenticate (any (UsernamePasswordAuthenticationToken.class)))
+        .thenReturn (authentication);
+    when (userRepository.findByUsername ("admin")).thenReturn (Optional.of (existingUser));
+    when (jwtTokenProvider.generateToken (existingUser, true)).thenReturn ("long-token");
+
+    AuthResponse response = authService.login (new LoginRequest ("admin", "secret123", true));
+
+    assertThat (response.token ()).isEqualTo ("long-token");
+    verify (jwtTokenProvider).generateToken (existingUser, true);
   }
 
   @Test

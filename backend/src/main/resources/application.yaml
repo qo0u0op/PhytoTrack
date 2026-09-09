@@ -79,6 +79,8 @@ app:
     secret: ${JWT_SECRET:phytotrack-dev-secret-please-change-in-production-0123456789}
     # Token 有效期限（毫秒）：預設 1 小時
     expiration-ms: 3600000
+    # 記住我時長（毫秒）：預設 7 天，勾選記住我時使用
+    remember-me-expiration-ms: ${JWT_REMEMBER_ME_EXPIRATION_MS:604800000}
   ai:
     # llama-server / LlamaStash proxy 存活檢查端點（不含 /v1 前綴）
     health-url: ${AI_BASE_URL:http://localhost:11435}/health

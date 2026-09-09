@@ -37,7 +37,11 @@ public final class AuthDtos {
 
   /** 登入請求 */
   public record LoginRequest (@NotBlank (message = "帳號不可為空白") String username,
-      @NotBlank (message = "密碼不可為空白") String password) {
+      @NotBlank (message = "密碼不可為空白") String password,
+      Boolean rememberMe) {
+    public LoginRequest (String username, String password) {
+      this (username, password, null);
+    }
   }
 
   /** 登入成功回應：攜帶 JWT 與使用者資訊 */

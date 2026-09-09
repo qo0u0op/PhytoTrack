@@ -9,7 +9,7 @@ const auth = useAuthStore ()
 const router = useRouter ()
 const route = useRoute ()
 
-const form = reactive ({ username: '', password: '' })
+const form = reactive ({ username: auth.lastUsername ?? '', password: '', rememberMe: false })
 const loading = ref (false)
 
 async function submit () {
@@ -17,7 +17,7 @@ async function submit () {
   try {
     const { data } = await authApi.login ({ ...form })
     // 登入成功：寫入狀態並跳回原本想去的頁面 (或儀表板)
-    auth.setAuth (data.token!, data.user!)
+    auth.setAuth (data.token!, data.user!, form.rememberMe)
     Swal.fire ({ icon: 'success', title: '登入成功', timer: 1200, showConfirmButton: false })
     router.push (String (route.query.redirect ?? '/dashboard'))
   } catch (e: any) {
@@ -36,7 +36,7 @@ async function submit () {
         try {
           await authApi.abandonDeactivate ({ ...form })
           const { data } = await authApi.login ({ ...form })
-          auth.setAuth (data.token!, data.user!)
+          auth.setAuth (data.token!, data.user!, form.rememberMe)
           Swal.fire ({ icon: 'success', title: '已放棄停用申請並登入', timer: 1200, showConfirmButton: false })
           router.push (String (route.query.redirect ?? '/dashboard'))
           return
@@ -70,6 +70,10 @@ async function submit () {
           <div class="mb-3">
             <label class="form-label">密碼</label>
             <input v-model="form.password" type="password" class="form-control" required />
+          </div>
+          <div class="mb-3 form-check">
+            <input v-model="form.rememberMe" type="checkbox" class="form-check-input" id="rememberMe" />
+            <label class="form-check-label" for="rememberMe">記住我</label>
           </div>
           <button class="btn btn-success w-100" :disabled="loading">
             {{ loading ? '登入中…' : '登入' }}

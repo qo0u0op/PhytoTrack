@@ -141,7 +141,8 @@ public class AuthService {
 
     User user = userRepository.findByUsername (principal.getUsername ())
         .orElseThrow (() -> new ApiException ("USER_NOT_FOUND", HttpStatus.NOT_FOUND, "使用者不存在"));
-    return new AuthResponse (jwtTokenProvider.generateToken (user), toResponse (user));
+    boolean rememberMe = Boolean.TRUE.equals (request.rememberMe ());
+    return new AuthResponse (jwtTokenProvider.generateToken (user, rememberMe), toResponse (user));
   }
 
   /** 依目前登入者的安全主體 (Principal) 查詢使用者資訊 */

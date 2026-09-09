@@ -12,6 +12,8 @@ import java.net.URI;
 
 /**
  * 啟動後自動開瀏覽器，預設開啟，可由 app.ui.auto-open-browser 關閉
+ * - dev profile：開啟 vite 即時前端（app.ui.dev-frontend-url，預設 :5173）
+ * - prod/binary：開啟同 port 內嵌前端（/）
  */
 @Component
 public class BrowserOpener {
@@ -20,23 +22,35 @@ public class BrowserOpener {
 
   private final int port;
   private final boolean autoOpen;
+  private final String devFrontendUrl;
+  private final boolean isDev;
 
   public BrowserOpener (@Value ("${server.port:8080}") int port,
-      @Value ("${app.ui.auto-open-browser:true}") boolean autoOpen) {
+      @Value ("${app.ui.auto-open-browser:true}") boolean autoOpen,
+      @Value ("${app.ui.dev-frontend-url:http://localhost:5173/}") String devFrontendUrl,
+      @Value ("${spring.profiles.active:}") String activeProfiles) {
     this.port = port;
     this.autoOpen = autoOpen;
+    this.devFrontendUrl = devFrontendUrl;
+    this.isDev = activeProfiles != null && activeProfiles.contains ("dev");
   }
 
   @EventListener (ApplicationReadyEvent.class)
   public void open () {
+    // dev 指向 vite，prod 指向同 port 內嵌前端（/）
+    String url = isDev ? devFrontendUrl : "http://localhost:" + port + "/";
     if (!autoOpen) {
-      System.out.println ("[PhytoTrack] Server started at http://localhost:" + port + "/ (auto-open disabled)");
+      System.out.println ("[PhytoTrack] Server started at " + url + " (auto-open disabled)");
       return;
     }
-    // 預設開啟前端（/），binary 已將前端 dist 打進 static，/ 與 /api 同 port
-    String url = "http://localhost:" + port + "/";
-    System.out.println ("[PhytoTrack] Server started at " + url + " (前端)");
-    System.out.println ("[PhytoTrack] API: " + url + "api, Swagger: " + url + "swagger-ui/index.html");
+    if (isDev) {
+      System.out.println ("[PhytoTrack] Frontend (vite) at " + url);
+      System.out.println ("[PhytoTrack] API: http://localhost:" + port + "/api, Swagger: http://localhost:" + port + "/swagger-ui/index.html");
+    } else {
+      // binary 已將前端 dist 打進 static，/ 與 /api 同 port
+      System.out.println ("[PhytoTrack] Server started at " + url + " (前端)");
+      System.out.println ("[PhytoTrack] API: " + url + "api, Swagger: " + url + "swagger-ui/index.html");
+    }
     try {
       if (Desktop.isDesktopSupported () && Desktop.getDesktop ().isSupported (Desktop.Action.BROWSE)) {
         Desktop.getDesktop ().browse (new URI (url));

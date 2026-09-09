@@ -11,17 +11,14 @@ port = 8080
 # 首次啟動若無此值將自動亂數生成並寫回此檔
 secret = "phytotrack-dev-secret-please-change-in-production-0123456789"
 expiration-ms = 3600000
+# 勾選「記住我」時的 token 時效（毫秒），預設 7 天
+remember-me-expiration-ms = 604800000
 
 [app.bootstrap]
-# 首次建庫時註冊帳號：dev/test 建 admin/staff/viewer 三帳，prod 僅 admin（staff/viewer 即使配置亦忽略）
-# prod 僅 admin/admin123 生效，且僅「資料庫為空首次啟動」時寫入，後續不回落（刪庫重建才再生）
-admin-username = "admin"
-admin-password = "admin123"
-# dev/test 專用，prod 忽略
-staff-username = "staff"
-staff-password = "staff123"
-viewer-username = "viewer"
-viewer-password = "viewer123"
+# 首次建庫時註冊帳號：dev/test 建 admin/staff/viewer 三帳，prod 僅 admin
+# 預設帳密由程式內建（admin/admin123、staff/staff123、viewer/viewer123），不在設定檔配置
+# 首次登入後請立即修改密碼
+# 帳號密碼不可在設定檔配置，僅此處以註釋提醒
 
 [ai]
 # AI 總開關：false 時 /api/ai/* 回 404 且前端隱藏 AI 入口
@@ -44,6 +41,8 @@ enabled = false
 
 [app.ui]
 auto-open-browser = true
+# dev 模式自動開啟的 vite 位址（僅 dev profile 有效，prod 固定開同 port /）
+# dev-frontend-url = "http://localhost:5173/"
 
 [springdoc]
 api-docs-enabled = true
