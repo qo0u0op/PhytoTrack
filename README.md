@@ -17,7 +17,7 @@
 | 層 | 技術 |
 | --- | --- |
 | 後端 | Java 21、Spring Boot 4 (`spring-boot-starter-webmvc`)、Spring Data JPA、Spring Security、Spring AI |
-| 資料庫 | SQLite (`hibernate-community-dialects`)，預留 PostgreSQL profile (見 ADR-007) |
+| 資料庫 | SQLite (`hibernate-community-dialects`)，本地優先（PostgreSQL 路徑已移除，見 ADR-007 修訂） |
 | API 規格 | springdoc-openapi 3.x (單一來源，見 ADR-008) |
 | 前端 | Vue 3 + TypeScript + Vite + Pinia + Vue Router + Bootstrap 5 (`data-bs-theme`) + axios + SweetAlert2 |
 | AI | llama.cpp (`llama-server` 於 11435)+ Spring AI ChatClient (見 ADR-009) |
@@ -70,9 +70,8 @@ npm run dev
 
 ## 資料庫
 
-- SQLite 檔案位於 `backend/diagnoses.db` (clone 即跑、零安裝)
+- SQLite 檔案位於 `backend/diagnoses.db` (clone 即跑、零安裝)，本地優先（PostgreSQL 已移除，見 ADR-007 修訂）
 - 資料表與種子資料由 `backend/src/main/resources/schema.sql` 建立 (`IF NOT EXISTS` 冪等)，Hibernate 以 `ddl-auto: update` 同步實體
-- 擴充至 PostgreSQL 只需切換 `application-postgres.yaml` profile (見 ADR-007)
 - 備份：`bash scripts/backup.sh` 產生帶時間戳備份至 `backups/` (見 `docs/DEPLOY.md` §6)
 
 ## 測試與驗證

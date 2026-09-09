@@ -186,6 +186,8 @@ public class PhytotrackTomlEnvironmentPostProcessor implements EnvironmentPostPr
       map.put ("ai.enabled", aiEnabled);
       map.put ("app.ai.enabled", aiEnabled);
     }
+    String provider = toml.getString ("ai.provider");
+    if (provider != null) map.put ("app.ai.provider", provider);
     String baseUrl = toml.getString ("ai.base-url");
     if (baseUrl != null) {
       map.put ("AI_BASE_URL", baseUrl);

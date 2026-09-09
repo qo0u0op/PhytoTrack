@@ -87,6 +87,8 @@ app:
     # 自動開瀏覽器：僅 prod 啟用，dev/test 預設關閉
     auto-open-browser: false
   ai:
+    # 供應商：local（本機 llama.cpp）或 external（外部 OpenAI 相容），預設 local
+    provider: local
     # llama-server / LlamaStash proxy 存活檢查端點（不含 /v1 前綴）
     health-url: http://localhost:11435/health
   bootstrap:

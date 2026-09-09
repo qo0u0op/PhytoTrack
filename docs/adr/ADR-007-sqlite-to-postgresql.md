@@ -31,3 +31,11 @@
 - SQLite 無真正的並發寫入、DDL 能力弱——對 <5 人團隊刻意接受
 - **保持可移植性的代價**：不寫 SQLite 專屬 SQL、不依賴 Hibernate 自動 DDL 產生的方言差異；升級前需用 Flyway 或 dump 遷移既有資料
 - 暫不引進 Flyway：現況以 `schema.sql` 單一來源即可，待規模與併發需求出現再遷 (YAGNI，見 ADR 索引)
+
+---
+
+**修訂 — 2026-09-09：確定不上線，PostgreSQL 路徑已移除**
+
+確定以本地單機 SQLite 為最終形態，不上線以保障個人資料主權。`application-postgres.yaml` 與相關文件已刪除，後續以 `phytotrack.toml` 與本地備份為主。
+
+**權衡**：零運維、資料不出機、5 人並發足夠 vs 喪失多寫並發、集中備份與水平擴展。本地優先下，備份與還原以 `scripts/backup.sh` 與檔案複製為主，不再提供伺服器 DB 遷移路徑。

@@ -28,12 +28,14 @@ PhytoTrack 是**前後分離**的網頁應用：
 | 面向 | 選擇 | 說明 |
 |------|------|------|
 | 後端框架 | Spring Boot 4.0.6 (Java 21) | 現代 Java 生態、自動設定 (Auto-Configuration) |
-| 持久層 | Spring Data JPA (Hibernate 7)+ SQLite | 檔案型資料庫，零安裝，適合小規模；預留 PostgreSQL 升級路徑 (見 ADR-007) |
+| 持久層 | Spring Data JPA (Hibernate 7)+ SQLite (WAL + Hikari 5) | 檔案型資料庫，零安裝，本地優先；`journal_mode=WAL` + `maximum-pool-size=5` 支援 4 讀 1 寫併發（見 ADR-014），PostgreSQL 路徑已移除（見 ADR-007 修訂） |
 | 認證授權 | Spring Security + JWT (jjwt 0.12)+ BCrypt | 無狀態登入、角色權限 (RBAC) |
 | API 規格 | springdoc (OpenAPI 3)+ Swagger UI | Controller 即規格來源，前端型別自動生成 |
 | AI 整合 | Spring AI 2.0 (ChatClient) | 以 OpenAI 相容格式串接本機 llama.cpp |
 | 前端 | Vue 3 + TypeScript + Pinia + Vue Router + Bootstrap 5 (`data-bs-theme` 深色模式) | 組合式 API、型別安全；`ui-theme`（light/dark/auto，`stores/theme.ts` + `localStorage`） |
 | 錯誤處理 | 全域例外處理 (@RestControllerAdvice) | 統一錯誤結構，避免堆疊外洩 (見 ADR-010) |
+
+> 併發：`journal_mode=WAL` + `Hikari maximum-pool-size=5`，4 讀 1 寫不卡，`P95(ab -n 20 -c 4 GET /api/cases) <150ms`，備份需含 `-wal/-shm`（見 `persistence` 規格與 ADR-014）。
 
 ## 3. 後端結構 (分層架構)
 
@@ -160,23 +162,23 @@ graph TD
     Vite["Vite :5173<br/>(dev 代理 /api)"]
     SpringBoot["Spring Boot :8080<br/>Security / JWT(雙時效) / CaseService<br/>BrowserOpener(dev::5173/prod:/)"]
     SQLite["SQLite<br/>diagnoses.db<br/>v_case_search"]
-    Llama["llama-server :11435<br/>Spring AI"]
+    AI["AI Provider<br/>local: llama-server :11435<br/>external: OpenAI 相容<br/>Viewer 過濾"]
     Tray["SystemTray<br/>(dorkbox)"]
 
     Browser -- "/ (dev:5173/prod:8080)" --> Vite
     Vite -- "/api 代理" --> SpringBoot
     SpringBoot -- "JPA / SQL" --> SQLite
-    SpringBoot -- "OpenAI 相容" --> Llama
+    SpringBoot -- "OpenAI 相容<br/>Viewer 隔離" --> AI
     SpringBoot -- "ApplicationReadyEvent" --> Tray
     Tray -- "Open / Backup / Logs / Quit" --> Browser
 ```
 
 ### AI 診斷流程
 
-1. 前端表單收集欄位 → `POST /api/ai/analyze`
-2. `AIService` 用 Spring AI `ChatClient` 組出 System (角色與回覆規則)+ User (表單內容) 提示詞
-3. 非串流 `.call ()` 等待完整回覆 → 回傳建議文字與耗時
-4. `GET /api/ai/health` 由後端主動檢查 llama-server 存活，供前端顯示模型狀態
+1. 前端表單收集欄位 → `POST /api/ai/analyze`（`ai.provider` 決定 `local` 本機或 `external` 外部，預設 `local`）
+2. `AIService` 經 `ViewerFilter` 將個人資料（`name/phone/address/displayName` → `***`）過濾，僅保留 Viewer 可見範圍後組出 System + User 提示詞
+3. Spring AI `ChatClient` 以 OpenAI 相容格式送至對應 `base-url`，非串流 `.call ()` 等待完整回覆 → 回傳建議文字與耗時（外部模式日誌標 `provider=external`，不印明文）
+4. `GET /api/ai/health` 依 `provider` 探測對應端點（`local` 查 `health`，`external` 查 `base-url`），前端顯示模型狀態與「外部模式：僅送 Viewer 可見資料」提示
 
 ### 監控與日誌 (Phase 2, api-observability)
 
@@ -274,5 +276,4 @@ types/    openapi-typescript 由 /v3/api-docs 自動生成的 API 型別 (與後
 - `app.rate-limit.*`：`enabled` / `requests-per-minute` / `window-seconds`（登入/註冊限流，`test` 預設 false）
 - `app.security-headers.enabled`：安全標頭開關（`prod` 自動 true）
 - `management.endpoints.web.exposure.include`：`health,info,metrics`（非 dev `metrics` 僅 ADMIN）
-- `application-postgres.yaml`：PostgreSQL 升級 profile (見 ADR-007)
 - 日誌：`logback-spring.xml`（`logs/phytotrack-%d{yyyy-MM-dd}.%i.log.gz`，見上節）

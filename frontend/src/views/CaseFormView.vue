@@ -90,6 +90,7 @@ const selectedCropCategoryId = ref<number | null>(null)
 const selectedSenderCityId = ref<number | null>(null)
 const selectedFieldCityId = ref<number | null>(null)
 const fieldSameAsSender = ref (false)
+const aiProvider = ref ('local')
 
 // 害物三段式列編輯：每列為一害物 (類型→分類→學名：描述)，可同分類多筆
 interface PestRow {
@@ -677,6 +678,10 @@ async function loadCase (id: number) {
 onMounted (async () => {
   await loadRefs ()
   loading.value = false
+  try {
+    const { data } = await aiApi.health ()
+    if ((data as any).provider) aiProvider.value = (data as any).provider
+  } catch {}
 })
 
 // 切換多選 (Checkbox) 的輔助函式
@@ -1145,7 +1150,8 @@ async function runAi () {
         </div>
       </div>
 
-      <div v-if="diagnosisVisible" class="d-flex gap-2 justify-content-end">
+      <div v-if="diagnosisVisible" class="d-flex gap-2 justify-content-end align-items-center">
+        <small v-if="aiProvider === 'external'" class="text-muted me-auto">外部模式：僅送 Viewer 可見資料</small>
         <button
           v-if="auth.isStaff"
           type="button"

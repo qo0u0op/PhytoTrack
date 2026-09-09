@@ -1,10 +1,4 @@
-# Ops Backup Specification
-
-## Purpose
-
-提供簡單的 SQLite 資料庫備份腳本與操作文件，保障診斷記錄不因誤刪或損壞而遺失，並支援排程自動備份與還原驗證流程。
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: 備份腳本
 
