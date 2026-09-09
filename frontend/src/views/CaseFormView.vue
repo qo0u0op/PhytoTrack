@@ -157,7 +157,7 @@ interface SenderSnapshot {
   senderDistrictId: number
   senderTypeId: number
 }
-let senderSnapshot: SenderSnapshot | null = null
+const senderSnapshot = ref<SenderSnapshot | null> (null)
 
 function snapshotSender (): SenderSnapshot {
   return {
@@ -172,19 +172,20 @@ function snapshotSender (): SenderSnapshot {
 }
 
 function restoreSender () {
-  if (!senderSnapshot) return
-  form.senderId = senderSnapshot.senderId
-  form.senderName = senderSnapshot.senderName
-  form.senderDisplayName = senderSnapshot.senderDisplayName
-  form.senderPhone = senderSnapshot.senderPhone
-  form.senderAddress = senderSnapshot.senderAddress
-  form.senderDistrictId = senderSnapshot.senderDistrictId
-  form.senderTypeId = senderSnapshot.senderTypeId
+  if (!senderSnapshot.value) return
+  const s = senderSnapshot.value
+  form.senderId = s.senderId
+  form.senderName = s.senderName
+  form.senderDisplayName = s.senderDisplayName
+  form.senderPhone = s.senderPhone
+  form.senderAddress = s.senderAddress
+  form.senderDistrictId = s.senderDistrictId
+  form.senderTypeId = s.senderTypeId
 }
 
 const senderDirty = computed (() => {
-  if (!senderSnapshot) return false
-  const s = senderSnapshot
+  if (!senderSnapshot.value) return false
+  const s = senderSnapshot.value
   return form.senderName !== s.senderName
     || form.senderDisplayName !== s.senderDisplayName
     || form.senderPhone !== s.senderPhone
@@ -280,7 +281,7 @@ function resetSenderForm () {
   selectedFieldCityId.value = null
   fieldSameAsSender.value = false
   lastFuzzyQuery = ''
-  senderSnapshot = snapshotSender ()
+  senderSnapshot.value = snapshotSender ()
 }
 
 // 獨立儲存送件人：有 senderId 時 PUT 更新，否則 POST 建立；成功後鎖定 senderId 並解鎖診斷區段
@@ -345,14 +346,14 @@ function applyCandidate (id: number, candidates: any[]) {
     if (chosen.districtId) form.senderDistrictId = chosen.districtId
     if (chosen.senderTypeId) form.senderTypeId = chosen.senderTypeId
   }
-  senderSnapshot = snapshotSender ()
+  senderSnapshot.value = snapshotSender ()
   inlineCandidates.value = []
   inlineCandidatesQuery.value = ''
 }
 
 function useNewSender () {
   form.senderId = null
-  senderSnapshot = snapshotSender ()
+  senderSnapshot.value = snapshotSender ()
   inlineCandidates.value = []
   inlineCandidatesQuery.value = ''
   selectedInlineCandidateId.value = ''
@@ -428,7 +429,7 @@ async function saveSender () {
       const { data } = await senderApi.create (payload)
       form.senderId = (data as any).senderId
     }
-    senderSnapshot = snapshotSender ()
+    senderSnapshot.value = snapshotSender ()
     lastFuzzyQuery = ''
     Swal.fire ({ icon: 'success', title: '送件人已儲存', timer: 1200, showConfirmButton: false })
   } catch {}
@@ -579,7 +580,7 @@ async function loadRefs () {
 
   // 新增模式亦初始化快照，確保髒污判定正確
   if (!editId) {
-    senderSnapshot = snapshotSender ()
+    senderSnapshot.value = snapshotSender ()
   }
 
   if (editId) {
@@ -628,7 +629,7 @@ async function loadCase (id: number) {
     fieldSameAsSender.value = false
   }
   // 編輯模式快照：用於髒污判定與取消還原，修復編輯時無法更新 sender 的 bug
-  senderSnapshot = snapshotSender ()
+  senderSnapshot.value = snapshotSender ()
   form.damageIds = d.damages?.map ((x) => x.id).filter ((x): x is number => x != null) ?? []
   form.hintIds = d.hints?.map ((x) => x.id).filter ((x): x is number => x != null) ?? []
   // 新結構：pestCategoryWithNotes (含 note)，回退舊 pestCategoryIds
@@ -847,7 +848,7 @@ async function runAi () {
               {{ savingSender ? '儲存中…' : '儲存送件人' }}
             </button>
             <button
-              v-if="!editId"
+              v-if="!editId && !(form.senderId && senderDirty)"
               type="button"
               class="btn btn-sm btn-outline-light"
               @click="resetSenderForm"

@@ -24,15 +24,15 @@
 
 ### Requirement: JWT 密鑰 fail-fast
 
-非 dev profile 啟動時若仍使用開發預設密鑰，應用程式 SHALL 於啟動階段失敗並提示需提供正式密鑰。
+非 dev profile 啟動時若仍使用開發預設密鑰，應用程式 SHALL 於啟動階段失敗並提示需於 `phytotrack.toml` 的 `app.jwt.secret` 提供正式密鑰（不再經由環境變數 `JWT_SECRET`）。
 
 #### Scenario: 以預設密鑰啟動非 dev 環境
-- **WHEN** 以 production profile 啟動且未提供 JWT_SECRET
-- **THEN** 應用程式啟動失敗，並明確提示設定密鑰
+- **WHEN** 以 production profile 啟動且 `phytotrack.toml` 的 `app.jwt.secret` 仍為開發預設
+- **THEN** 應用程式啟動失敗，並明確提示於 `phytotrack.toml` 設定正式密鑰
 
 ### Requirement: 帳號初始化
 
-系統 SHALL 依 profile 決定預設帳號：`dev`/`test` 建立 `admin`/`staff`/`viewer` 三帳號，`prod`（含 binary）僅建立 `admin` 單一帳號與其簽名人；`staff`/`viewer` 於 prod 不自動建立。
+系統 SHALL 依 profile 決定初始帳號：`dev`/`test` 建立 `admin`/`staff`/`viewer` 三帳號，`prod`（含 binary）僅建立 `admin` 單一帳號與其簽名人；`staff`/`viewer` 於 prod 不自動建立。`prod` 首次啟動資料庫為空時 SHALL 仍可使用內建預設 `admin/admin123` 建號並以 `BCrypt(12)` 儲存（行為不變），但該預設帳密 SHALL 不以可配置項出現在任何 `phytotrack.toml` 設定檔（僅以註釋提醒）。
 
 #### Scenario: dev/test 三帳號
 - **WHEN** 以 `dev` 或 `test` 啟動且無既有帳號
@@ -94,13 +94,25 @@
 - **WHEN** 以 `PUT /api/account/profile` 送 `{"displayName":"診斷員"}`
 - **THEN** 回 `200` 且持久化為該值
 
+#### Scenario: 案件內聯送件人名稱含 HTML
+- **WHEN** 以 `POST /api/cases` 送 `{"senderDisplayName":"<script>alert(1)</script>"}` 或 `{"senderName":"<img onerror=...>"}`
+- **THEN** 回 `400` 且 `error.code=VALIDATION_ERROR`，`details.senderDisplayName` 或 `details.senderName` 含「不可包含 < 或 >」，不建立 `senders` 亦不建立 `cases`
+
+#### Scenario: 案件更新內聯送件人地址含 HTML
+- **WHEN** 以 `PUT /api/cases/{id}` 送 `{"senderAddress":"<svg>"}`
+- **THEN** 回 `400 VALIDATION_ERROR`，原案件與送件人不變更
+
+#### Scenario: Service 層直調亦阻擋
+- **WHEN** 以 Service 直調 `findOrCreateSender` 傳 `displayName="<b>"`
+- **THEN** 拋 `ApiException VALIDATION_ERROR` 且 `details` 含對應欄位（防 `@Valid` 旁路）
+
 ### Requirement: 生產環境預設帳號覆寫
 
-生產部署 SHALL 以環境變數 `ADMIN_USERNAME/ADMIN_PASSWORD/STAFF_USERNAME/STAFF_PASSWORD/VIEWER_USERNAME/VIEWER_PASSWORD` 與 `JWT_SECRET` 覆寫開發預設，且啟動期若仍為預設密鑰 SHALL fail-fast。
+生產部署 SHALL 於 `phytotrack.toml` 的 `app.bootstrap` 與 `app.jwt.secret` 覆寫開發預設，不再經由環境變數 `ADMIN_USERNAME/ADMIN_PASSWORD/JWT_SECRET` 覆寫；啟動期若仍為預設密鑰 SHALL fail-fast。
 
 #### Scenario: 生產以環境變數覆寫
-- **WHEN** 以 `prod` 啟動且提供 `ADMIN_PASSWORD=...` 與 `JWT_SECRET=...`
-- **THEN** 預設 `admin:admin123` 不再生效，新密碼方可登入
+- **WHEN** 於 `phytotrack.toml` 設定 `app.jwt.secret` 與 `app.bootstrap.admin-username` 等
+- **THEN** 預設 `admin:admin123` 與開發密鑰不再生效，新設定值方可登入與簽章
 
 ### Requirement: 生產文件端點關閉
 
@@ -113,3 +125,35 @@
 #### Scenario: dev 文件可訪問
 - **WHEN** 以 `dev` 取得 `GET /v3/api-docs`
 - **THEN** 回 `200` 且含完整規格（供開發檢視）
+
+### Requirement: 記住我雙時效 JWT
+
+系統 SHALL 支援 `rememberMe` 分支的 JWT 時效：`POST /api/auth/login` 帶 `rememberMe=true` 時簽發長效 token（`app.jwt.remember-me-expiration-ms`，預設 7 天 = 604800000 ms），未帶或 `false` 時維持 `app.jwt.expiration-ms`（預設 1 小時 = 3600000 ms）。兩時效 SHALL 皆符合 `issuer=phytotrack` 簽章與 `BCrypt(12)` 密碼校驗既有約束，長效時間 MUST 可由 `JWT_REMEMBER_ME_EXPIRATION_MS` / `phytotrack.toml` 的 `app.jwt.remember-me-expiration-ms` 覆蓋。
+
+#### Scenario: 勾選記住我取得長效 token
+- **WHEN** 使用者以正確帳密與 `{"rememberMe": true}` 呼叫 `POST /api/auth/login`
+- **THEN** 回 `200` 且 `token` 的 `exp - iat` 約為 7 天（容差 ±60s），且 `GET /api/cases` 等受保護 API 於 6 天後仍可驗證通過
+
+#### Scenario: 未勾選維持短效
+- **WHEN** 使用者以 `{"rememberMe": false}` 或省略該欄位呼叫 `POST /api/auth/login`
+- **THEN** `token` 的 `exp - iat` 約為 1 小時，且 1 小時後驗證失敗（401）
+
+#### Scenario: 長效可由設定覆蓋
+- **WHEN** 以 `app.jwt.remember-me-expiration-ms=259200000`（3 天）啟動並以 `rememberMe=true` 登入
+- **THEN** `token` 時效為 3 天而非 7 天
+
+#### Scenario: 錯誤帳密仍拒絕
+- **WHEN** 以錯誤密碼與 `rememberMe=true` 呼叫登入
+- **THEN** 回 `401 BAD_CREDENTIALS`，不簽發 token
+
+### Requirement: 設定檔不得含帳密配置
+
+`phytotrack.toml.example` 與首次自動生成的 `phytotrack.toml` SHALL 不包含任何 `app.bootstrap` 可配置項（`admin-username` / `*-password` 等皆不以有效配置行出現）；`[app.bootstrap]` 段落 SHALL 僅以註釋提醒預設帳密（admin/admin123 等由程式內建）與「首次登入後請立即修改」。`application.yaml` 的內建預設值可保留供後端內部使用，但 TOML 層 SHALL 不提供帳密配置行。既有 TOML 含舊帳密者 SHALL 仍可讀取（相容），但新生成檔 SHALL 不含任何有效帳密配置。
+
+#### Scenario: 範例檔僅註釋提醒
+- **WHEN** 檢視 `backend/phytotrack.toml.example`
+- **THEN** `grep -E "^admin-username|^admin-password|^staff-username|^viewer-username" backend/phytotrack.toml.example` 無結果，且含「帳號密碼不可在設定檔配置」註釋
+
+#### Scenario: 自動生成僅註釋
+- **WHEN** 刪除既有 `phytotrack.toml` 後首次啟動
+- **THEN** 生成檔含亂數 `app.jwt.secret` 但 `[app.bootstrap]` 段落不含任何有效 `*-username`/`*-password` 行（僅註釋）

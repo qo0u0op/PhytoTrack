@@ -9,7 +9,7 @@ DeepSec 靜態掃描（`deepsec.sarif`，已 gitignore，不進版控）回報 6
 ### 1. `hardcoded_secret_high_entropy_assignment`（error）— 誤報，接受
 
 - 位置：`config/JwtSecretValidator.java:19`，`DEV_DEFAULT_SECRET` 字面值。
-- 查核：該常數僅用於 `DEV_DEFAULT_SECRET.equals(secret)` 比對（fail-fast 守衛，見 ADR-004），從未用於簽章；實際簽章密鑰來自 `app.jwt.secret`（非 dev 強制 `JWT_SECRET` env）。
+- 查核：該常數僅用於 `DEV_DEFAULT_SECRET.equals(secret)` 比對（fail-fast 守衛，見 ADR-004），從未用於簽章；實際簽章密鑰來自 `app.jwt.secret`（`phytotrack.toml`，非 dev 強制設定）。
 - 處置：保留；掃描器無法區分「哨兵比對值」與「使用中密鑰」，列為已知誤報。
 
 ### 2. `insecure_config_spring_permit_all` ×4（warning）— 設計使然，接受

@@ -3,8 +3,7 @@ spring:
     # 應用程式名稱（顯示於 Spring 啟動資訊）
     name: PhytoTrack
   config:
-    # TOML 配置由 PhytotrackTomlEnvironmentPostProcessor 載入（phytotrack.toml），
-    # 此處不再主動 import .env；.env 僅保留 AI_API_KEY 的 env 覆蓋相容（見 .env.example 棄用說明）
+    # TOML 配置由 PhytotrackTomlEnvironmentPostProcessor 載入（phytotrack.toml）
     import: optional:file:./config/phytotrack.toml
   datasource:
     # SQLite DataSource（本機檔案型資料庫），可由 phytotrack.toml 的 spring.datasource.url 覆蓋
@@ -40,13 +39,13 @@ spring:
     openai:
       # llama-server / LlamaStash proxy 的 base-url（含 /v1 前綴）。
       # 注意：llama-server 預設 port 8080 與 Spring Boot 相衝，本專案以 11435 錯開。
-      base-url: ${AI_BASE_URL:http://localhost:11435}/v1
+      base-url: http://localhost:11435/v1
       # llama.cpp 不驗證 API Key，此處僅為滿足 Spring AI 的必填欄位
-      api-key: ${AI_API_KEY:llama-local-dummy-key}
+      api-key: llama-local-dummy-key
       chat:
         options:
           # 需對應 llama-server 載入的模型名稱（可查 GET /v1/models）
-          model: ${AI_MODEL:qwen_qwen2.5-coder-3b-instruct-q8_0}
+          model: qwen_qwen2.5-coder-3b-instruct-q8_0
           temperature: 0.7
           max-tokens: 512
 
@@ -75,32 +74,32 @@ logging:
 app:
   jwt:
     # JWT 簽章密鑰（HS256 至少需 32 bytes）。
-    # 正式環境請以環境變數 JWT_SECRET 覆蓋，切勿沿用開發預設值。
-    secret: ${JWT_SECRET:phytotrack-dev-secret-please-change-in-production-0123456789}
+    # 正式環境請於 phytotrack.toml 的 app.jwt.secret 設定正式密鑰，切勿沿用開發預設值。
+    secret: phytotrack-dev-secret-please-change-in-production-0123456789
     # Token 有效期限（毫秒）：預設 1 小時
     expiration-ms: 3600000
     # 記住我時長（毫秒）：預設 7 天，勾選記住我時使用
-    remember-me-expiration-ms: ${JWT_REMEMBER_ME_EXPIRATION_MS:604800000}
+    remember-me-expiration-ms: 604800000
   ai:
     # llama-server / LlamaStash proxy 存活檢查端點（不含 /v1 前綴）
-    health-url: ${AI_BASE_URL:http://localhost:11435}/health
+    health-url: http://localhost:11435/health
   bootstrap:
     # 首次啟動自動建立的管理者、員工與檢視者帳號（見 DataInitializer，僅 dev/test 啟用）
-    admin-username: ${ADMIN_USERNAME:admin}
-    admin-password: ${ADMIN_PASSWORD:admin123}
-    staff-username: ${STAFF_USERNAME:staff}
-    staff-password: ${STAFF_PASSWORD:staff123}
-    viewer-username: ${VIEWER_USERNAME:viewer}
-    viewer-password: ${VIEWER_PASSWORD:viewer123}
+    admin-username: admin
+    admin-password: admin123
+    staff-username: staff
+    staff-password: staff123
+    viewer-username: viewer
+    viewer-password: viewer123
   rate-limit:
     # 登入/註冊速率限制（security-review Phase2）
     enabled: true
     requests-per-minute: 10
     window-seconds: 60
   cors:
-    # CORS 白名單（逗號分隔），由 env CORS_ALLOWED_ORIGINS 驅動
+    # CORS 白名單（逗號分隔），由 phytotrack.toml 的 app.cors.allowed-origins 設定
     # dev 為空沿用 *，prod 為空預設拒絕跨源
-    allowed-origins: ${CORS_ALLOWED_ORIGINS:}
+    allowed-origins:
   security-headers:
     # 安全標頭開關，prod 覆寫為 true
     enabled: false

@@ -60,7 +60,7 @@
 
 ### C 維持現狀 (審查判定安全)
 
-CSRF off (Bearer header 無 cookie 面)、無狀態登出 (前端丟 token)、登入錯誤訊息統一 (防帳號列舉)、HS256 簽章 (jjwt 固定 HMAC key 無 alg confusion)、`JWT_SECRET` fail-fast、500 泛化訊息不洩內部、`npm audit` 0 漏洞。
+CSRF off (Bearer header 無 cookie 面)、無狀態登出 (前端丟 token)、登入錯誤訊息統一 (防帳號列舉)、HS256 簽章 (jjwt 固定 HMAC key 無 alg confusion)、`app.jwt.secret` fail-fast、500 泛化訊息不洩內部、`npm audit` 0 漏洞。
 
 ## 產出約定
 

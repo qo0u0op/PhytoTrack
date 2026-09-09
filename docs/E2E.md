@@ -344,7 +344,7 @@ terminal-browser ls   # 確認 browser key / tab id
 | `terminal-browser: no terminal browsers running` | 需先 `terminal-browser open` 啟動瀏覽器，再用 `terminal-browser action -- <cmd>` |
 | `playwright-cli: command not found` | `mise install` 後以 `mise exec -- playwright-cli --help` 或 `npx @playwright/cli --help` 執行 |
 | `snapshot` 為空或 ref 對不上 | 先 `reload`，再 `snapshot --depth=4` / `find "關鍵字"` 縮小範圍；避免用 CSS selector 硬寫 |
-| 登入後仍導回 `/login` | 檢查 `localStorage`：`playwright-cli localstorage-get token`；確認後端 `JWT_SECRET` 與 `app.bootstrap.*` 是否正確 |
+| 登入後仍導回 `/login` | 檢查 `localStorage`：`playwright-cli localstorage-get token`；確認後端 `phytotrack.toml` 的 `app.jwt.secret` 與預設帳號是否正確 |
 | 5173 無法連線 | 確認 `mise run dev` 已就緒，或 `curl -sf http://localhost:5173` 是否通 |
 
 ## 10. 相關文件

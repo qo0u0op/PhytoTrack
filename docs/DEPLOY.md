@@ -32,10 +32,10 @@ mvn spring-boot:run                      # 已安裝 mise (mise 提供 maven 3.9
 
 | 設定 | 預設 | 說明 |
 |------|------|------|
-| `app.jwt.secret` | 開發用密鑰 | JWT 簽章密鑰。正式環境務必以 `JWT_SECRET` 環境變數覆蓋 |
+| `app.jwt.secret` | 開發用密鑰 | JWT 簽章密鑰。正式環境請於 `phytotrack.toml` 的 `app.jwt.secret` 設定正式密鑰 |
 | `app.bootstrap.*` | 內建預設 admin/admin123 等（不在 `phytotrack.toml` 配置，僅註釋提醒） | 首次啟動自動建立的帳號（`app.bootstrap` 不在設定檔配置，首次登入後請立即修改密碼） |
 | `app.ai.health-url` | `http://localhost:11435/health` | llama-server 存活檢查端點 |
-| `CORS_ALLOWED_ORIGINS` / `app.cors.allowed-origins` | 空（`dev`→`*`、`prod`→拒絕） | CORS 白名單，逗號分隔。例 `https://app.example.com,https://admin.example.com`。同源部署可空，跨源 `prod` 需明確配置，否則瀏覽器阻擋 |
+| `app.cors.allowed-origins` | 空（`dev`→`*`、`prod`→拒絕） | CORS 白名單，逗號分隔。例 `https://app.example.com,https://admin.example.com`。同源部署可空，跨源 `prod` 需明確配置，否則瀏覽器阻擋 |
 | `app.rate-limit.enabled` | `true`（`test`→`false`） | 登入/註冊限流開關。`POST /api/auth/login|register|abandon-deactivate` 每 IP 10/min，超限 `429` + `Retry-After: 60` |
 | `app.security-headers.enabled` | `false`（`prod`→`true`） | 安全標頭（`CSP / HSTS / nosniff / DENY`）開關。`prod` 自動注入，`dev` 不強制 |
 
@@ -98,7 +98,7 @@ npm run preview          # 本機預覽 http://localhost:4173
 
 ### 部署前檢查清單
 
-- [ ] 已設定強固的 `JWT_SECRET` (勿用預設值)
+- [ ] 已於 `phytotrack.toml` 設定強固的 `app.jwt.secret` (勿用預設值)
 - [ ] 已變更 bootstrap 預設帳號密碼
 - [ ] 後端 `diagnoses.db` 有定期備份
 - [ ] llama-server 已隨開機啟動 (如需 AI 診斷)
@@ -232,7 +232,7 @@ sqlite3 backend/diagnoses.db "ALTER TABLE identifiers ADD COLUMN former_user_id 
 
 ## 10. 安全加固 (Phase 2, security-review)
 
-- CORS 白名單：`CORS_ALLOWED_ORIGINS` 控制 `Access-Control-Allow-Origin`。`dev` 未配置沿用 `*`，`prod` 未配置預設拒絕（同源不受影響）。詳見 `application.yaml` 與 ADR-012。
+- CORS 白名單：`app.cors.allowed-origins`（`phytotrack.toml`）控制 `Access-Control-Allow-Origin`。`dev` 未配置沿用 `*`，`prod` 未配置預設拒絕（同源不受影響）。詳見 `application.yaml` 與 ADR-012。
 - 速率限制：`POST /api/auth/login|register|abandon-deactivate` 每 IP 10/min，超限 `429` + `Retry-After: 60` + `error.code=RATE_LIMITED` + `requestId`，日誌 `log.warn` 可追溯。`test` 預設關閉。
 - 安全標頭：`prod` 自動注入 `Content-Security-Policy`（`style-src 'unsafe-inline'` 相容 Swagger）、`Strict-Transport-Security`、`X-Content-Type-Options: nosniff`、`X-Frame-Options: DENY`。見 ADR-012。
 - Token 儲存：維持 `localStorage`（無 XSS 面，遷移 `httpOnly` 需恢復 CSRF，見 ADR-012）。
@@ -259,7 +259,7 @@ mvn spring-boot:run -Dspring-boot.run.profiles=postgres  # 或 ./mvnw ... (Unix/
 
 - 首次啟動若 `phytotrack.toml` 不存在，自動生成預設（含註解、全量鍵、`server.port=8080`、`ai.enabled=true`、`app.jwt.secret=<random>`），並 `mkdirs` 對應目錄；二次啟動不覆蓋。
 - `app.jwt.secret` 首次亂數 48 bytes Base64URL，console 印「首次啟動已生成亂數密鑰，舊 token 失效請重新登入」。
-- 僅 `AI_API_KEY` 支援 `env AI_API_KEY` 覆蓋 TOML，其餘走 `phytotrack.toml`；`backend/.env` 已棄用（僅相容一版，啟動印 WARN）。
+- 所有設定皆走 `phytotrack.toml`；`backend/.env` 已移除。
 
 ### 單一配置 `phytotrack.toml`
 

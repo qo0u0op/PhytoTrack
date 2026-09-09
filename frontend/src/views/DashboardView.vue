@@ -77,8 +77,8 @@ const percent = (count?: number) => {
 const statusLabel = (status?: string) =>
   status === 'PENDING' ? '待處理' : status === 'RESOLVED' ? '已診斷' : '已結案'
 
-const barClass = (status?: string) =>
-  status === 'PENDING' ? 'bg-warning' : status === 'RESOLVED' ? 'bg-success' : 'bg-secondary'
+const barColor = (status?: string) =>
+  status === 'PENDING' ? '#f59e0b' : status === 'RESOLVED' ? '#10b981' : '#64748b'
 </script>
 
 <template>
@@ -208,8 +208,7 @@ const barClass = (status?: string) =>
           </div>
           <div class="progress" role="progressbar" :aria-valuenow="percent (sc.count)"
             aria-valuemin="0" aria-valuemax="100">
-            <div class="progress-bar" :class="barClass (sc.status)"
-              :style="{ width: percent (sc.count) + '%' }"></div>
+            <div class="progress-bar" :style="{ width: percent (sc.count) + '%', backgroundColor: barColor (sc.status) }"></div>
           </div>
         </div>
       </div>

@@ -85,7 +85,7 @@ HTTP 請求
 - 送件人更新：update 依「有提供的 name/phone (未提供沿用現送件人身分)」比照 create 的去重語意關聯或建立送件人，不直接修改可能被多案件共享的既有 Sender row (避免撞 `UNIQUE (name, phone)`)
 - 密碼一律 BCrypt 單向雜湊，永不存明文；`/api/auth/register` 僅能建立 VIEWER，防止越權提權；`phytotrack.toml` 的 `[app.bootstrap]` 僅以註釋提醒預設帳密，不提供可配置項（`loadToml` 仍相容舊檔），`app.bootstrap` 預設由程式內建
 - 安全錯誤語意：**未認證** (無 token／無效／過期) 由 `RestAuthenticationEntryPoint` 回 `401 UNAUTHORIZED` (統一錯誤格式)，前端攔截器據此清除本機 token 並導向登入頁；**已登入但角色不足**由全域例外處理回 `403 ACCESS_DENIED` (見 ADR-010)
-- **CORS 白名單**（見 ADR-012）：`CorsConfig` 由 `app.cors.allowed-origins=${CORS_ALLOWED_ORIGINS:}` 驅動，`dev` 為空沿用 `*`，`prod` 為空預設拒絕跨源（不回 `Allow-Origin`），明確白名單才回 `Access-Control-Allow-Origin` + `Vary: Origin`；方法限 `GET/POST/PUT/PATCH/DELETE/OPTIONS`、暴露 `Authorization/Content-Disposition/X-Request-Id`
+- **CORS 白名單**（見 ADR-012）：`CorsConfig` 由 `app.cors.allowed-origins`（`phytotrack.toml: app.cors.allowed-origins`，逗號分隔） 驅動，`dev` 為空沿用 `*`，`prod` 為空預設拒絕跨源（不回 `Allow-Origin`），明確白名單才回 `Access-Control-Allow-Origin` + `Vary: Origin`；方法限 `GET/POST/PUT/PATCH/DELETE/OPTIONS`、暴露 `Authorization/Content-Disposition/X-Request-Id`
 - **速率限制**（見 ADR-012）：`POST /api/auth/login|register|abandon-deactivate` 每 IP 10/min（`app.rate-limit.*`），超限回 `429 RATE_LIMITED` + `Retry-After: 60` + `requestId`，`test` 預設關閉，前端 `api/http.ts` 對 `429` 彈「請求過於頻繁」且不重試
 - **安全標頭**（見 ADR-012）：`SecurityHeadersFilter` 於非 dev（`prod` 或 `app.security-headers.enabled=true`）注入 `Content-Security-Policy`（含 `style-src 'unsafe-inline'` 相容 Swagger）、`Strict-Transport-Security: max-age=31536000; includeSubDomains`、`X-Content-Type-Options: nosniff`、`X-Frame-Options: DENY`
 
@@ -266,11 +266,11 @@ types/    openapi-typescript 由 /v3/api-docs 自動生成的 API 型別 (與後
 
 後端設定集中在 `backend/src/main/resources/application.yaml`：
 
-- `app.jwt.secret`：JWT 簽章密鑰，正式環境以環境變數 `JWT_SECRET` 覆蓋
+- `app.jwt.secret`：JWT 簽章密鑰，正式環境請於 `phytotrack.toml` 的 `app.jwt.secret` 設定正式密鑰
 - `app.bootstrap.*`：首次啟動自動建立的帳號（程式內建預設，`phytotrack.toml` 僅註釋提醒，不可配置；首次登入後請立即修改）
 - `app.jwt.remember-me-expiration-ms`：記住我時效（預設 7 天，`JWT_REMEMBER_ME_EXPIRATION_MS` 覆蓋）
 - `spring.ai.openai.*`：llama-server 連線設定
-- `app.cors.allowed-origins`：CORS 白名單（`CORS_ALLOWED_ORIGINS`，逗號分隔；`dev` 空→`*`、`prod` 空→拒絕）
+- `app.cors.allowed-origins`：CORS 白名單（`app.cors.allowed-origins`，逗號分隔；`dev` 空→`*`、`prod` 空→拒絕）
 - `app.rate-limit.*`：`enabled` / `requests-per-minute` / `window-seconds`（登入/註冊限流，`test` 預設 false）
 - `app.security-headers.enabled`：安全標頭開關（`prod` 自動 true）
 - `management.endpoints.web.exposure.include`：`health,info,metrics`（非 dev `metrics` 僅 ADMIN）

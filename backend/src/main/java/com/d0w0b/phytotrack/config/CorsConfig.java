@@ -21,7 +21,7 @@ import java.util.stream.Collectors;
  * 前後分離後，Vue 開發伺服器 (http://localhost:5173) 與後端 (:8080) 不同源，
  * 瀏覽器會擋下跨來源請求，因此需要允許前端來源。
  *
- * Phase2（security-review）：由 env CORS_ALLOWED_ORIGINS 白名單驅動，
+ * Phase2（security-review）：由 phytotrack.toml 的 app.cors.allowed-origins 白名單驅動，
  * dev 為空沿用 *，prod 為空預設拒絕跨源。
  */
 @Configuration
