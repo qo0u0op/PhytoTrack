@@ -23,9 +23,19 @@ remember-me-expiration-ms = 604800000
 [ai]
 # AI 總開關：false 時 /api/ai/* 回 404 且前端隱藏 AI 入口
 enabled = true
+# 供應商：local（本機 llama.cpp）或 external（任意 OpenAI 相容端點），預設 local
+provider = "local"
 base-url = "http://localhost:11435"
-model = "qwen_qwen2.5-coder-3b-instruct-q8_0"
+model = "qwen_qwen3vl-8b-instruct-q4_k_m"
 api-key = "llama-local-dummy-key"
+# 外部範例（provider = "external" 時）：
+# base-url = "https://api.openai.com/v1"
+# model = "gpt-4o"
+# api-key = "sk-..."
+# OpenAI 相容額外標頭（選填，auto 時每次 UUID）：
+# [ai.headers]
+# x-opencode-session = "auto"
+# User-Agent = "PhytoTrack/1.0"
 
 [app.cors]
 # CORS 白名單（逗號分隔），prod 建議明確列出前端位址

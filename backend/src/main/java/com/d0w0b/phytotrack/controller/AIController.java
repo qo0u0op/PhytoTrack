@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 
 import com.d0w0b.phytotrack.dto.AiDtos.AnalyzeRequest;
@@ -29,9 +30,12 @@ import java.util.Map;
 public class AIController {
 
   private final AIService aiService;
+  private final String provider;
 
-  public AIController (AIService aiService) {
+  public AIController (AIService aiService,
+      @Value ("${app.ai.provider:local}") String provider) {
     this.aiService = aiService;
+    this.provider = provider;
   }
 
   /** AI 診斷 (非串流，一次回傳完整建議) */
@@ -41,9 +45,9 @@ public class AIController {
     return ResponseEntity.ok (aiService.analyze (request));
   }
 
-  /** llama.cpp 健康檢查 (公開端點) */
+  /** 健康檢查 (公開端點，依 provider 探測) */
   @GetMapping ("/health")
-  public ResponseEntity<Map<String, Boolean>> health () {
-    return ResponseEntity.ok (Map.of ("healthy", aiService.isHealthy ()));
+  public ResponseEntity<Map<String, Object>> health () {
+    return ResponseEntity.ok (Map.of ("healthy", aiService.isHealthy (), "provider", provider));
   }
 }

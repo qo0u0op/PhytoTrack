@@ -1,4 +1,4 @@
-package com.d0w0b.phytotrack.service;
+package com.d0w0b.phytotrack.util.validation;
 
 import org.springframework.http.HttpStatus;
 import com.d0w0b.phytotrack.exception.ApiException;
@@ -6,6 +6,7 @@ import com.d0w0b.phytotrack.exception.ApiException;
 /**
  * 輸入消毒工具：防止 Stored XSS
  * 阻擋 < > 字元，避免 <script> 等標籤被持久化
+ * 遷自 service/InputSanitizer（reduce-complexity 去重）
  */
 public final class InputSanitizer {
   private InputSanitizer () {}

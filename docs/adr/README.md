@@ -24,6 +24,8 @@
 | [ADR-010](ADR-010-unified-error-handling.md) | 統一錯誤處理 (@RestControllerAdvice) | 已實作 |
 | [ADR-011](ADR-011-sender-management.md) | 送件人管理 (displayName、去重、遮蔽、刪除策略) | 已決定 |
 | [ADR-012](ADR-012-rate-limit-cors-security-headers.md) | 認證限流、CORS 白名單與安全標頭 | 已實作 |
+| [ADR-013](ADR-013-deepsec-findings-triage.md) | DeepSec 掃描發現處置 | 已實作 |
+| [ADR-014](ADR-014-concurrency-wal-vs-cache.md) | 併發不卡改 WAL 而非全表快取 | 已實作 |
 
 ## 為何要寫 ADR
 

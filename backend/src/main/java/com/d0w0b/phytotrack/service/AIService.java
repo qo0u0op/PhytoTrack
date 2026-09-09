@@ -7,6 +7,7 @@ import org.springframework.web.client.RestClient;
 
 import com.d0w0b.phytotrack.dto.AiDtos.AnalyzeRequest;
 import com.d0w0b.phytotrack.dto.AiDtos.AnalyzeResponse;
+import com.d0w0b.phytotrack.util.ViewerFilter;
 
 import java.util.List;
 
@@ -27,12 +28,21 @@ public class AIService {
   private final ChatClient chatClient;
   private final RestClient restClient;
   private final String healthUrl;
+  private final String provider;
+  private final String baseUrl;
+  private final String apiKey;
 
   public AIService (ChatClient.Builder builder,
-                   @Value ("${app.ai.health-url}") String healthUrl) {
+                   @Value ("${app.ai.health-url}") String healthUrl,
+                   @Value ("${app.ai.provider:local}") String provider,
+                   @Value ("${spring.ai.openai.base-url:}") String baseUrl,
+                   @Value ("${spring.ai.openai.api-key:}") String apiKey) {
     this.chatClient = builder.build ();
     this.restClient = RestClient.builder ().build ();
     this.healthUrl = healthUrl;
+    this.provider = provider;
+    this.baseUrl = baseUrl;
+    this.apiKey = apiKey;
   }
 
   /**
@@ -43,24 +53,42 @@ public class AIService {
    *   - User：帶入使用者填寫的診斷表單內容
    */
   public AnalyzeResponse analyze (AnalyzeRequest request) {
+    // Viewer 權限隔離：無論呼叫者角色，外送 prompt 僅含 Viewer 可見範圍（個資已遮蔽）
+    AnalyzeRequest filtered = ViewerFilter.filterForViewer (request);
     long start = System.currentTimeMillis ();
     String suggestion = chatClient.prompt ()
         .system (buildSystemPrompt ())
-        .user (buildUserPrompt (request))
+        .user (buildUserPrompt (filtered))
         .call ()
         .content ();
     long elapsed = System.currentTimeMillis () - start;
+    // 日誌標記 provider 以利稽核，外部模式不印 prompt 明文
+    org.slf4j.LoggerFactory.getLogger (AIService.class).debug ("AI analyze provider={} elapsed={}ms", provider, elapsed);
     return new AnalyzeResponse (suggestion, elapsed);
   }
 
   /**
-   * 檢查 llama.cpp 是否存活且已載入模型
+   * 檢查 AI 是否健康
    *
-   * llama.cpp / LlamaStash 的 /health 回傳如 {"status":"ok","models_loaded":1}。
-   * 僅當 status 為 ok 且 models_loaded > 0（或 models_discovered>0 且已載入）視為健康；
-   * 否則即使 server 存活但未載入模型，前端仍應顯示未連線。
+   * local: 檢查 llama.cpp 的 /health（需 ok 且 models_loaded>0）
+   * external (opencode Go 等): 檢查 /v1/models 需 200 且含模型（健康等同可連線，/health 不存在）
    */
   public boolean isHealthy () {
+    // external 優先檢查 /v1/models（opencode Go 無 /health）
+    if ("external".equalsIgnoreCase (provider)) {
+      try {
+        String url = baseUrl.endsWith ("/v1") ? baseUrl + "/models" : baseUrl + "/v1/models";
+        // 部分 external 需 api-key，帶上 Authorization 以免 401 誤判為不健康
+        var req = restClient.get ().uri (url);
+        if (apiKey != null && !apiKey.isBlank () && !apiKey.equals ("llama-local-dummy-key")) {
+          req = req.header ("Authorization", "Bearer " + apiKey);
+        }
+        String body = req.retrieve ().body (String.class);
+        return body != null && body.contains ("mimo") || body != null && body.contains ("model");
+      } catch (Exception e) {
+        return false;
+      }
+    }
     try {
       String body = restClient.get ().uri (healthUrl).retrieve ().body (String.class);
       if (body == null || !body.contains ("ok")) return false;
@@ -79,14 +107,11 @@ public class AIService {
           }
         }
       }
-      // 亦檢查 models_discovered 為 0 的情況（無模型可載入）
       int idx2 = body.indexOf ("\"models_discovered\"");
       if (idx2 >= 0 && body.contains ("\"models_loaded\":0")) {
-        // 已在上方處理，確保未載入時不視為健康
       }
       return true;
     } catch (Exception e) {
-      // 模型未啟動或連線失敗都視為不健康
       return false;
     }
   }

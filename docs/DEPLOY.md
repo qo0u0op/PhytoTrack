@@ -51,7 +51,11 @@ for i in {1..11}; do curl -s -o /dev/null -w "%{http_code}\n" -X POST http://loc
 curl -i http://localhost:8080/api/cases | grep -i -E "Content-Security-Policy|Strict-Transport-Security|X-Content-Type-Options|X-Frame-Options"
 ```
 
-## 3. llama-server 啟動 (AI 診斷)
+## 3. AI 診斷（本機或外部 OpenAI 相容）
+
+`phytotrack.toml` 的 `[ai]` 以 `provider = "local" | "external"` 選擇供應商（預設 `local`），`base-url`/`model`/`api-key` 隨之切換；`local` 即本機 `llama-server`，`external` 為任意 OpenAI 相容端點。無論何種 provider，個資皆經 Viewer 過濾（`***`）後才外送。
+
+**本機模式**：
 
 ```bash
 # 以 OpenAI 相容模式啟動，port 用 11435 避開 Spring Boot 的 8080
@@ -65,7 +69,9 @@ curl http://localhost:11435/health        # 回傳 ok
 curl http://localhost:11435/v1/models     # 列出模型名稱 (須與後端 model 設定一致)
 ```
 
-若未啟動 llama-server，系統其餘功能 (案件管理、登入) 仍可正常使用，僅 AI 診斷無法執行。
+**外部模式**：`phytotrack.toml` 設 `provider = "external"`、`base-url = "https://api.openai.com/v1"`、`model = "gpt-4o"`、`api-key = "sk-..."`，`GET /api/ai/health` 將探測外部端點；前端在 `external` 時顯示「外部模式：僅送 Viewer 可見資料」。
+
+若未啟動對應 AI 端點，系統其餘功能 (案件管理、登入) 仍可正常使用，僅 AI 診斷無法執行。
 
 ## 4. 前端建置與啟動
 
@@ -117,6 +123,7 @@ ls backups/
 
 - 腳本會在專案根建立 `backups/` 目錄 (已於 `.gitignore` 忽略，不納版控)
 - 來源優先 `backend/diagnoses.db`，其次 `diagnoses.db`；不存在時回非零並提示
+- `journal_mode=WAL` 時自動含 `-wal/-shm` 三檔或先 `PRAGMA wal_checkpoint(TRUNCATE)` 後備份，確保還原完整
 - 檔名含本地時間戳 `YYYYmmdd-HHMMSS`，排序即時間排序
 - 建議頻率：每日一次或每次部署前執行；可加入 `cron` 排程
 
@@ -236,17 +243,6 @@ sqlite3 backend/diagnoses.db "ALTER TABLE identifiers ADD COLUMN former_user_id 
 - 速率限制：`POST /api/auth/login|register|abandon-deactivate` 每 IP 10/min，超限 `429` + `Retry-After: 60` + `error.code=RATE_LIMITED` + `requestId`，日誌 `log.warn` 可追溯。`test` 預設關閉。
 - 安全標頭：`prod` 自動注入 `Content-Security-Policy`（`style-src 'unsafe-inline'` 相容 Swagger）、`Strict-Transport-Security`、`X-Content-Type-Options: nosniff`、`X-Frame-Options: DENY`。見 ADR-012。
 - Token 儲存：維持 `localStorage`（無 XSS 面，遷移 `httpOnly` 需恢復 CSRF，見 ADR-012）。
-
-## 11. 升級到 PostgreSQL (選用)
-
-現階段使用 SQLite 起步 (理由見 ADR-007)。若未來資料量與並發需求增加，切換方式：
-
-```bash
-cd backend
-mvn spring-boot:run -Dspring-boot.run.profiles=postgres  # 或 ./mvnw ... (Unix/macOS)/ .\mvnw.cmd ... (Windows)，無 mise 時
-```
-
-搭配 `application-postgres.yaml` 設定連線資訊，並使用既有 schema 資料 (`schema.sql` 的 `INSERT` 語句相容 PostgreSQL)。
 
 ## 12. Binary 交付（Windows Portable / Unix XDG）
 

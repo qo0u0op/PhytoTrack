@@ -17,10 +17,12 @@
 
 **決策**:
 
-- 後端提供 **`POST /api/ai/analyze`** (限 STAFF+)：接收案件欄位 DTO → 用 Spring AI 組 System/User 提示詞 (Prompt)→ 呼叫 llama-server (**非串流** `.call ()`)→ 回傳診斷建議與耗時
-- 提供 **`GET /api/ai/health`** (公開) 檢查 llama-server 存活 (打 `/health` 端點)
-- 使用 **Spring AI 2.0** (`spring-ai-starter-model-openai`)，設定集中在 `application.yaml` 的 `spring.ai.openai.*`：`base-url: http://localhost:11435/v1`、`api-key` 填 dummy、`model: llama`
-- llama-server 掛 **11435** (避開 Spring Boot 預設 8080)
+- 後端提供 **`POST /api/ai/analyze`** (限 STAFF+)：接收案件欄位 DTO → 經 `ViewerFilter` 遮蔽個資（`name/phone/address/displayName → ***`，無論呼叫者角色）→ 用 Spring AI 組 System/User 提示詞 → 呼叫對應 provider (**非串流** `.call ()`)→ 回傳診斷建議與耗時
+- 提供 **`GET /api/ai/health`** (公開) 依 `ai.provider` 探測對應端點（`local` 查 `health`，`external` 查 `base-url`），前端顯示模型狀態與外部提示
+- 使用 **Spring AI 2.0** (`spring-ai-starter-model-openai`)，設定由 `phytotrack.toml` 的 `[ai] provider/base-url/model/api-key` 驅動（`provider=local|external`，預設 `local`），映射至 `spring.ai.openai.*`：`base-url` 預設 `http://localhost:11435/v1`、`api-key` 本機填 dummy、外部填真實 `sk-...`、`model` 隨 provider 變
+- `provider=local` 時 llama-server 掛 **11435** (避開 Spring Boot 預設 8080)；`provider=external` 時指向任意 OpenAI 相容端點
+
+**2026-09-09 修訂**：開放 `external` 供應商（本機或外部皆經 Viewer 過濾），資料主權與模型能力可選，預設 `local` 維持離線安全；外部模式需自行管理 `api-key` 且前端顯示「僅送 Viewer 可見資料」警示。
 
 **原因**:
 

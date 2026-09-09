@@ -51,18 +51,22 @@ public class BrowserOpener {
       System.out.println ("[PhytoTrack] Server started at " + url + " (前端)");
       System.out.println ("[PhytoTrack] API: " + url + "api, Swagger: " + url + "swagger-ui/index.html");
     }
-    try {
-      if (Desktop.isDesktopSupported () && Desktop.getDesktop ().isSupported (Desktop.Action.BROWSE)) {
-        Desktop.getDesktop ().browse (new URI (url));
-        return;
+    if (!java.awt.GraphicsEnvironment.isHeadless ()) {
+      try {
+        if (Desktop.isDesktopSupported () && Desktop.getDesktop ().isSupported (Desktop.Action.BROWSE)) {
+          Desktop.getDesktop ().browse (new URI (url));
+          return;
+        }
+      } catch (Throwable e) {
+        log.debug ("Desktop.browse 失敗：{}", e.getMessage ());
       }
-    } catch (Exception e) {
-      log.debug ("Desktop.browse 失敗：{}", e.getMessage ());
+    } else {
+      log.debug ("Headless 環境，跳過 Desktop.browse");
     }
-    // 回落：僅 Linux 用 xdg-open
+    // 回落：僅 Linux 用 xdg-open（headless 時亦嘗試，失敗僅警告）
     try {
       new ProcessBuilder ("xdg-open", url).start ();
-    } catch (Exception e) {
+    } catch (Throwable e) {
       log.warn ("自動開瀏覽器失敗，請手動開啟 {}", url);
     }
   }
