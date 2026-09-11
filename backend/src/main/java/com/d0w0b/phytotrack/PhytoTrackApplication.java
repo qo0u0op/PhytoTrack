@@ -14,23 +14,14 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 public class PhytoTrackApplication {
 
   public static void main (String[] args) {
-    // AppImage 需同時支援：SSH tty（無 DISPLAY）與 XWayland 桌面（有 DISPLAY）
-    // 無顯示環境時強制 headless，避免 AWT/XToolkit 初始化失敗毒化類別致後續 NoClassDefFoundError
+    // 桌面環境 headless 判斷集中於 DesktopEnvironment，避免重複
     try {
-      // SSH 會話（Linux→Windows / Windows→Linux / 任意方向）皆無桌面，直接 headless
-      boolean isSsh = System.getenv ("SSH_CONNECTION") != null
-          || System.getenv ("SSH_CLIENT") != null
-          || System.getenv ("SSH_TTY") != null;
-      if (isSsh) {
+      if (com.d0w0b.phytotrack.util.DesktopEnvironment.isSsh ()) {
         System.setProperty ("java.awt.headless", "true");
       } else {
-        String os = System.getProperty ("os.name", "").toLowerCase ();
-        boolean isWindows = os.contains ("win");
+        boolean isWindows = com.d0w0b.phytotrack.util.DesktopEnvironment.isWindows ();
         if (!isWindows) {
-          String display = System.getenv ("DISPLAY");
-          String wayland = System.getenv ("WAYLAND_DISPLAY");
-          boolean hasDisplay = (display != null && !display.isBlank ()) || (wayland != null && !wayland.isBlank ());
-          if (!hasDisplay) {
+          if (!com.d0w0b.phytotrack.util.DesktopEnvironment.hasDisplay ()) {
             System.setProperty ("java.awt.headless", "true");
           }
         } else {

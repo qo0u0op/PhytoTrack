@@ -59,9 +59,8 @@ public class SecurityConfig {
         // 未認證 (無 token / 無效 / 過期)→ 401 統一錯誤格式；已認證角色不足 → 403
         .exceptionHandling (e -> e.authenticationEntryPoint (new RestAuthenticationEntryPoint ()))
         .authorizeHttpRequests (auth -> auth
-            // 公開：前端靜態與 SPA 路由（binary 已內嵌 dist，/ 為前端，Vue Router 接管）
-            .requestMatchers (HttpMethod.GET, "/", "/index.html", "/assets/**", "/vite.svg", "/favicon.ico", "/*.js", "/*.css", "/*.png", "/*.jpg", "/*.svg", "/*.ico",
-                "/login", "/register", "/dashboard", "/cases", "/cases/**", "/users", "/admin/**", "/account").permitAll ()
+            // 公開：前端靜態（SpaConfig 回退 index.html，Vue Router 接管，無需枚舉 SPA 路由）
+            .requestMatchers (HttpMethod.GET, "/", "/index.html", "/assets/**", "/vite.svg", "/favicon.ico", "/*.js", "/*.css", "/*.png", "/*.jpg", "/*.svg", "/*.ico").permitAll ()
             // 公開：註冊與登入、放棄停用申請
             .requestMatchers ("/api/auth/register", "/api/auth/login", "/api/auth/abandon-deactivate", "/api/auth/check-username", "/api/auth/check-email").permitAll ()
             // 公開：llama-server 健康檢查

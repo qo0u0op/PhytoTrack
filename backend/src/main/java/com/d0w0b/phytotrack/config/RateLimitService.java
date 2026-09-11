@@ -31,10 +31,10 @@ public class RateLimitService {
     this.enabled = enabled;
     this.requestsPerMinute = requestsPerMinute;
     this.windowSeconds = windowSeconds;
-    // 過期時間比視窗略長，避免視窗內重建桶
+    // 過期時間比視窗略長，避免視窗內重建桶；5 人 LAN 場景僅需 100
     this.buckets = Caffeine.newBuilder ()
         .expireAfterWrite (Duration.ofSeconds (windowSeconds + 5))
-        .maximumSize (10_000)
+        .maximumSize (100)
         .build ();
   }
 
@@ -69,5 +69,9 @@ public class RateLimitService {
 
   public boolean isEnabled () {
     return enabled;
+  }
+
+  public int getWindowSeconds () {
+    return windowSeconds;
   }
 }

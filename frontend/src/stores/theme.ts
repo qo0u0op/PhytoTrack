@@ -1,4 +1,4 @@
-import { computed, ref, watch } from 'vue'
+import { computed, ref, watchEffect } from 'vue'
 import { defineStore } from 'pinia'
 
 export type Theme = 'light' | 'dark' | 'auto'
@@ -37,18 +37,13 @@ export const useThemeStore = defineStore ('theme', () => {
       mediaHandler = () => {
         if (theme.value === 'auto') applyTheme (effectiveTheme.value)
       }
-      // addEventListener 在新瀏覽器，addListener 相容舊版
       if (media.addEventListener) media.addEventListener ('change', mediaHandler)
       else (media as any).addListener (mediaHandler)
     }
-    // theme 變更時同步 DOM 與持久化
-    watch (theme, (v) => {
-      localStorage.setItem (STORAGE_KEY, v)
+    // 單一 watchEffect 同步 DOM 與持久化（涵蓋 theme 與 effectiveTheme）
+    watchEffect (() => {
+      localStorage.setItem (STORAGE_KEY, theme.value)
       applyTheme (effectiveTheme.value)
-    })
-    // auto 下系統變更也需透過 effectiveTheme 同步（watch theme 已覆蓋手動切換，另 watch effective）
-    watch (effectiveTheme, (v) => {
-      applyTheme (v)
     })
   }
 

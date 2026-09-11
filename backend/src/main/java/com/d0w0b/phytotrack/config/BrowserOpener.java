@@ -10,6 +10,8 @@ import org.springframework.stereotype.Component;
 import java.awt.Desktop;
 import java.net.URI;
 
+import com.d0w0b.phytotrack.util.DesktopEnvironment;
+
 /**
  * 啟動後自動開瀏覽器，預設開啟，可由 app.ui.auto-open-browser 關閉
  * - dev profile：開啟 vite 即時前端（app.ui.dev-frontend-url，預設 :5173）
@@ -43,7 +45,7 @@ public class BrowserOpener {
       // 診斷：GUI 仍未自動開瀏覽器時由此判斷
       log.info ("BrowserOpener：os={}, autoOpen={}, isDev={}, SSH={}, headlessProp={}, DISPLAY={}, WAYLAND_DISPLAY={}",
           System.getProperty ("os.name"), autoOpen, isDev,
-          System.getenv ("SSH_CONNECTION") != null || System.getenv ("SSH_CLIENT") != null || System.getenv ("SSH_TTY") != null,
+          DesktopEnvironment.isSsh (),
           System.getProperty ("java.awt.headless"),
           System.getenv ("DISPLAY"), System.getenv ("WAYLAND_DISPLAY"));
       if (!autoOpen) {
@@ -59,22 +61,12 @@ public class BrowserOpener {
         System.out.println ("[PhytoTrack] Server started at " + url + " (前端)");
         System.out.println ("[PhytoTrack] API: " + url + "api, Swagger: " + url + "swagger-ui/index.html");
       }
-      // SSH 會話（任意方向 Linux↔Windows）皆無桌面，直接跳過避免 XToolkit/WinStation 毒化
-      boolean isSsh = System.getenv ("SSH_CONNECTION") != null
-          || System.getenv ("SSH_CLIENT") != null
-          || System.getenv ("SSH_TTY") != null;
-      if (isSsh) {
+      if (DesktopEnvironment.isSsh ()) {
         log.info ("SSH 會話，跳過自動開瀏覽器，請手動開啟 {}", url);
         return;
       }
-      // 有顯示環境才嘗試 Desktop.browse，SSH tty 直接跳過避免 XToolkit 毒化
-      // Windows 本地不依賴 DISPLAY/WAYLAND_DISPLAY（直接可用 Desktop.browse / rundll32）
-      String osName = System.getProperty ("os.name", "").toLowerCase ();
-      boolean isWindows = osName.contains ("win");
-      String display = System.getenv ("DISPLAY");
-      String wayland = System.getenv ("WAYLAND_DISPLAY");
-      boolean hasDisplay = isWindows || (display != null && !display.isBlank ()) || (wayland != null && !wayland.isBlank ());
-      if (!hasDisplay) {
+      boolean isWindows = DesktopEnvironment.isWindows ();
+      if (!DesktopEnvironment.hasDisplay ()) {
         log.info ("無 DISPLAY/WAYLAND_DISPLAY，跳過自動開瀏覽器（支援 SSH tty），請手動開啟 {}", url);
         return;
       }

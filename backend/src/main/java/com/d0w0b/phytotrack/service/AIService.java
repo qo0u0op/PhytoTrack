@@ -7,7 +7,6 @@ import org.springframework.web.client.RestClient;
 
 import com.d0w0b.phytotrack.dto.AiDtos.AnalyzeRequest;
 import com.d0w0b.phytotrack.dto.AiDtos.AnalyzeResponse;
-import com.d0w0b.phytotrack.util.ViewerFilter;
 
 import java.util.List;
 
@@ -53,8 +52,8 @@ public class AIService {
    *   - User：帶入使用者填寫的診斷表單內容
    */
   public AnalyzeResponse analyze (AnalyzeRequest request) {
-    // Viewer 權限隔離：無論呼叫者角色，外送 prompt 僅含 Viewer 可見範圍（個資已遮蔽）
-    AnalyzeRequest filtered = ViewerFilter.filterForViewer (request);
+    // 當前 AnalyzeRequest 僅含作物/病蟲害/描述等非個資，已符合 Viewer 可見範圍，無需遮蔽
+    AnalyzeRequest filtered = request;
     long start = System.currentTimeMillis ();
     String suggestion = chatClient.prompt ()
         .system (buildSystemPrompt ())

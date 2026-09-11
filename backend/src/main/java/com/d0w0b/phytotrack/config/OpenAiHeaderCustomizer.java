@@ -2,8 +2,6 @@ package com.d0w0b.phytotrack.config;
 
 import org.springframework.ai.openai.http.okhttp.OpenAiHttpClientBuilderCustomizer;
 import org.springframework.ai.openai.http.okhttp.SpringAiOpenAiHttpClient;
-import org.springframework.boot.context.properties.bind.Binder;
-import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
@@ -13,15 +11,15 @@ import java.util.UUID;
 /**
  * OpenAI 相容 Header 注入（通用）
  * 讀取 ai.headers.*（phytotrack.toml 的 [ai.headers]），"auto" 時每次產生 UUID
- * 適用於 OpenCode Go 的 x-opencode-session 等 provider 專屬標頭，Anthropic 另起獨立 Customizer
+ * 任意鍵皆透傳，適用於 OpenCode Go 的 x-opencode-session 等 provider 專屬標頭
  */
 @Component
 public class OpenAiHeaderCustomizer implements OpenAiHttpClientBuilderCustomizer {
 
-  private final Environment env;
+  private final AiHeadersProperties headersProperties;
 
-  public OpenAiHeaderCustomizer (Environment env) {
-    this.env = env;
+  public OpenAiHeaderCustomizer (AiHeadersProperties headersProperties) {
+    this.headersProperties = headersProperties;
   }
 
   @Override
@@ -30,18 +28,7 @@ public class OpenAiHeaderCustomizer implements OpenAiHttpClientBuilderCustomizer
       var request = chain.request ();
       String host = request.url ().host ();
       boolean isOpencode = host != null && host.contains ("opencode.ai");
-      Map<String, String> headers = new HashMap<> ();
-      try {
-        Map<String, String> configured = Binder.get (env).bind ("ai.headers", Map.class).orElse (Map.of ());
-        if (configured.isEmpty ()) {
-          configured = new HashMap<> ();
-          for (String key : new String[]{"x-opencode-session", "User-Agent"}) {
-            String v = env.getProperty ("ai.headers." + key);
-            if (v != null) configured.put (key, v);
-          }
-        }
-        headers.putAll (configured);
-      } catch (Exception ignored) {}
+      Map<String, String> headers = new HashMap<> (headersProperties.getHeaders ());
 
       // opencode.ai 必須帶 x-opencode-session，未配置時自動補 auto
       if (isOpencode && !headers.containsKey ("x-opencode-session")) {

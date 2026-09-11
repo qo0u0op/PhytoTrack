@@ -76,8 +76,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
     response.setStatus (429);
     response.setContentType ("application/json;charset=UTF-8");
-    // 固定視窗簡化：Retry-After 60 秒
-    response.setHeader ("Retry-After", "60");
+    response.setHeader ("Retry-After", String.valueOf (rateLimitService.getWindowSeconds ()));
     // 若尚未有 requestId header，補上
     if (requestId != null && response.getHeader (RequestIdFilter.REQUEST_ID_HEADER) == null) {
       response.setHeader (RequestIdFilter.REQUEST_ID_HEADER, requestId);

@@ -14,8 +14,8 @@ spring:
   sql:
     init:
       mode: always
-      # 測試以業務初始基準建庫（含參照種子、無作物／業務資料）
-      schema-locations: classpath:schema-baseline.sql
+      # 測試以 schema.sql 單一真相建庫（schema-baseline 已合併為代理，僅為相容保留）
+      schema-locations: classpath:schema.sql
 
 app:
   rate-limit:
