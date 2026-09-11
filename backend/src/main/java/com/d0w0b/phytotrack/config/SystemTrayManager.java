@@ -53,12 +53,16 @@ public class SystemTrayManager {
         log.info ("系統匣已關閉（app.tray.enabled=false）");
         return;
       }
-      // 先檢查環境變數，避免無顯示時觸發 AWT/XToolkit 導致類別毒化（NoClassDefFoundError）
-      String display = System.getenv ("DISPLAY");
-      String wayland = System.getenv ("WAYLAND_DISPLAY");
-      if ((display == null || display.isBlank ()) && (wayland == null || wayland.isBlank ())) {
-        log.info ("無 DISPLAY/WAYLAND_DISPLAY，跳過系統匣（支援 SSH tty）");
-        return;
+      // 先檢查環境變數，避免 Linux 無顯示時觸發 AWT/XToolkit 導致類別毒化
+      // Windows 不依賴 DISPLAY/WAYLAND_DISPLAY，直接放行由 isHeadless / dorkbox 判斷
+      boolean isWindows = System.getProperty ("os.name", "").toLowerCase ().contains ("win");
+      if (!isWindows) {
+        String display = System.getenv ("DISPLAY");
+        String wayland = System.getenv ("WAYLAND_DISPLAY");
+        if ((display == null || display.isBlank ()) && (wayland == null || wayland.isBlank ())) {
+          log.info ("無 DISPLAY/WAYLAND_DISPLAY，跳過系統匣（支援 SSH tty）");
+          return;
+        }
       }
       try {
         if (java.awt.GraphicsEnvironment.isHeadless ()) {
@@ -112,10 +116,12 @@ public class SystemTrayManager {
     } catch (Throwable e) {
       log.warn ("dorkbox 匣建立失敗：{}，跳過系統匣（不影響 Server）", String.valueOf (e.getMessage ()), e);
       // 回落視窗亦需有顯示環境才嘗試，避免在 headless 時二次觸發 XToolkit
+      // Windows 不依賴 DISPLAY，直接由 isHeadless 判斷即可
       try {
+        boolean isWin = System.getProperty ("os.name", "").toLowerCase ().contains ("win");
         String d = System.getenv ("DISPLAY");
         String w = System.getenv ("WAYLAND_DISPLAY");
-        boolean hasDisplay = (d != null && !d.isBlank ()) || (w != null && !w.isBlank ());
+        boolean hasDisplay = isWin || (d != null && !d.isBlank ()) || (w != null && !w.isBlank ());
         if (hasDisplay && !java.awt.GraphicsEnvironment.isHeadless ()) {
           createFallbackWindow ();
         }

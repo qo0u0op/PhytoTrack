@@ -53,36 +53,42 @@ public class BrowserOpener {
         System.out.println ("[PhytoTrack] API: " + url + "api, Swagger: " + url + "swagger-ui/index.html");
       }
       // 有顯示環境才嘗試 Desktop.browse，SSH tty 直接跳過避免 XToolkit 毒化
+      // Windows 不依賴 DISPLAY/WAYLAND_DISPLAY（直接可用 Desktop.browse / rundll32）
+      String osName = System.getProperty ("os.name", "").toLowerCase ();
+      boolean isWindows = osName.contains ("win");
       String display = System.getenv ("DISPLAY");
       String wayland = System.getenv ("WAYLAND_DISPLAY");
-      boolean hasDisplay = (display != null && !display.isBlank ()) || (wayland != null && !wayland.isBlank ());
-      if (hasDisplay) {
-        try {
-          if (!java.awt.GraphicsEnvironment.isHeadless ()) {
-            try {
-              if (Desktop.isDesktopSupported () && Desktop.getDesktop ().isSupported (Desktop.Action.BROWSE)) {
-                Desktop.getDesktop ().browse (new URI (url));
-                return;
-              }
-            } catch (Throwable e) {
-              log.debug ("Desktop.browse 失敗：{}", String.valueOf (e.getMessage ()));
-            }
-          } else {
-            log.debug ("Headless 環境，跳過 Desktop.browse");
-          }
-        } catch (Throwable e) {
-          log.debug ("Headless 檢查失敗：{}", String.valueOf (e.getMessage ()));
-        }
-        // 回落 xdg-open（僅有顯示環境時）
-        try {
-          new ProcessBuilder ("xdg-open", url).start ();
-          return;
-        } catch (Throwable e) {
-          log.debug ("xdg-open 失敗：{}", String.valueOf (e.getMessage ()));
-        }
-      } else {
+      boolean hasDisplay = isWindows || (display != null && !display.isBlank ()) || (wayland != null && !wayland.isBlank ());
+      if (!hasDisplay) {
         log.info ("無 DISPLAY/WAYLAND_DISPLAY，跳過自動開瀏覽器（支援 SSH tty），請手動開啟 {}", url);
         return;
+      }
+      try {
+        if (!java.awt.GraphicsEnvironment.isHeadless ()) {
+          try {
+            if (Desktop.isDesktopSupported () && Desktop.getDesktop ().isSupported (Desktop.Action.BROWSE)) {
+              Desktop.getDesktop ().browse (new URI (url));
+              return;
+            }
+          } catch (Throwable e) {
+            log.debug ("Desktop.browse 失敗：{}", String.valueOf (e.getMessage ()));
+          }
+        } else {
+          log.debug ("Headless 環境，跳過 Desktop.browse");
+        }
+      } catch (Throwable e) {
+        log.debug ("Headless 檢查失敗：{}", String.valueOf (e.getMessage ()));
+      }
+      // 回落：依 OS 分流，Windows 用 rundll32，Linux 用 xdg-open
+      try {
+        if (isWindows) {
+          new ProcessBuilder ("rundll32", "url.dll,FileProtocolHandler", url).start ();
+        } else {
+          new ProcessBuilder ("xdg-open", url).start ();
+        }
+        return;
+      } catch (Throwable e) {
+        log.debug ("回落開啟瀏覽器失敗：{}", String.valueOf (e.getMessage ()));
       }
       log.debug ("自動開瀏覽器未成功，請手動開啟 {}", url);
     } catch (Throwable outer) {
