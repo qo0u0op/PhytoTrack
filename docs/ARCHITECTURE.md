@@ -264,13 +264,11 @@ types/    openapi-typescript 由 /v3/api-docs 自動生成的 API 型別 (與後
 
 完整規格：Swagger UI (`http://localhost:8080/swagger-ui/index.html`) 或 `/v3/api-docs`。
 
-## 6. 環境設定
+## 6. 環境設定 — 檔內手冊
 
-後端設定集中在 `backend/src/main/resources/application.yaml`：
+後端以 `phytotrack.toml` 為單一真相，落點與全量可配見 `backend/phytotrack.toml.example` 檔內手冊（單一真相、落點見檔內手冊）；`backend/src/main/resources/application.yaml` 僅為回落預設。詳見 `backend/phytotrack.toml.example`：
 
-- `app.jwt.secret`：JWT 簽章密鑰，正式環境請於 `phytotrack.toml` 的 `app.jwt.secret` 設定正式密鑰
-- `app.bootstrap.*`：首次啟動自動建立的帳號（程式內建預設，`phytotrack.toml` 僅註釋提醒，不可配置；首次登入後請立即修改）
-- `app.jwt.remember-me-expiration-ms`：記住我時效（預設 7 天，`phytotrack.toml`）
+- `app.jwt.secret` / `app.jwt.remember-me-expiration-ms` / `app.bootstrap.*`（僅註釋提醒，不可配）皆以檔內手冊為準
 - `spring.ai.openai.*`：llama-server 連線設定
 - `app.cors.allowed-origins`：CORS 白名單（`app.cors.allowed-origins`，逗號分隔；`dev` 空→`*`、`prod` 空→拒絕）
 - `app.rate-limit.*`：`enabled` / `requests-per-minute` / `window-seconds`（登入/註冊限流，`test` 預設 false）

@@ -49,12 +49,26 @@ public class SystemTrayManager {
   @EventListener (ApplicationReadyEvent.class)
   public void init () {
     try {
+      // 診斷：GUI 仍無托盤時由此日誌判斷是配置關閉、SSH 還是 headless
+      log.info ("系統匣初始化：os={}, trayEnabled={}, SSH={}, headlessProp={}, DISPLAY={}, WAYLAND_DISPLAY={}",
+          System.getProperty ("os.name"), trayEnabled,
+          System.getenv ("SSH_CONNECTION") != null || System.getenv ("SSH_CLIENT") != null || System.getenv ("SSH_TTY") != null,
+          System.getProperty ("java.awt.headless"),
+          System.getenv ("DISPLAY"), System.getenv ("WAYLAND_DISPLAY"));
       if (!trayEnabled) {
-        log.info ("系統匣已關閉（app.tray.enabled=false）");
+        log.info ("系統匣已關閉（app.tray.enabled=false），若為正式 binary 請確認以 --spring.profiles.active=prod 啟動或於 phytotrack.toml 設 [app.tray] enabled=true");
         return;
       }
-      // 先檢查環境變數，避免 Linux 無顯示時觸發 AWT/XToolkit 導致類別毒化
-      // Windows 不依賴 DISPLAY/WAYLAND_DISPLAY，直接放行由 isHeadless / dorkbox 判斷
+      // 先檢查是否為 SSH 會話（Linux→Windows / Windows→Linux 皆適用，無桌面勿初始化 AWT）
+      boolean isSsh = System.getenv ("SSH_CONNECTION") != null
+          || System.getenv ("SSH_CLIENT") != null
+          || System.getenv ("SSH_TTY") != null;
+      if (isSsh) {
+        log.info ("SSH 會話，跳過系統匣");
+        return;
+      }
+      // 再檢查環境變數，避免 Linux 無顯示時觸發 AWT/XToolkit 導致類別毒化
+      // Windows 本地執行不依賴 DISPLAY/WAYLAND_DISPLAY，直接放行由 isHeadless / dorkbox 判斷
       boolean isWindows = System.getProperty ("os.name", "").toLowerCase ().contains ("win");
       if (!isWindows) {
         String display = System.getenv ("DISPLAY");
@@ -116,8 +130,12 @@ public class SystemTrayManager {
     } catch (Throwable e) {
       log.warn ("dorkbox 匣建立失敗：{}，跳過系統匣（不影響 Server）", String.valueOf (e.getMessage ()), e);
       // 回落視窗亦需有顯示環境才嘗試，避免在 headless 時二次觸發 XToolkit
-      // Windows 不依賴 DISPLAY，直接由 isHeadless 判斷即可
+      // SSH 會話無桌面；Windows 本地不依賴 DISPLAY
       try {
+        boolean isSshFallback = System.getenv ("SSH_CONNECTION") != null
+            || System.getenv ("SSH_CLIENT") != null
+            || System.getenv ("SSH_TTY") != null;
+        if (isSshFallback) return;
         boolean isWin = System.getProperty ("os.name", "").toLowerCase ().contains ("win");
         String d = System.getenv ("DISPLAY");
         String w = System.getenv ("WAYLAND_DISPLAY");

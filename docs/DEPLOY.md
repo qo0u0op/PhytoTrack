@@ -257,9 +257,9 @@ sqlite3 backend/diagnoses.db "ALTER TABLE identifiers ADD COLUMN former_user_id 
 - `app.jwt.secret` 首次亂數 48 bytes Base64URL，console 印「首次啟動已生成亂數密鑰，舊 token 失效請重新登入」。
 - 所有設定皆走 `phytotrack.toml`；`backend/.env` 已移除。
 
-### 單一配置 `phytotrack.toml`
+### 單一配置 `phytotrack.toml` — 檔內手冊
 
-見 `backend/phytotrack.toml.example`，全量可配：`server.port`、`spring.datasource.url`、`logging.file.name`、`app.jwt.secret/expiration-ms`、`app.bootstrap.*`、`ai.base-url/model/api-key/enabled`、`app.cors.allowed-origins`、`app.rate-limit.*`、`app.security-headers.enabled`、`springdoc`、`app.ui.auto-open-browser`。
+以檔內手冊為準。詳見 `backend/phytotrack.toml.example` 檔內註釋（每鍵含 類型/預設/可選值，保存起點 `cp backend/phytotrack.toml.example ~/.config/phytotrack/phytotrack.toml`），此處不重複欄位表。
 
 ```bash
 # 改 port
