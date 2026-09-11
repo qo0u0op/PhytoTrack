@@ -226,6 +226,7 @@ function restoreStateFromQuery () {
   const city = num (q.cityId); if (city) filters.cityId = city
   const dist = num (q.districtId); if (dist) filters.districtId = dist
   if (str (q.senderQuery)) filters.senderName = str (q.senderQuery) as string
+  // @deprecated senderName 僅為舊連結相容，下一版移除
   else if (str (q.senderName)) filters.senderName = str (q.senderName) as string
   const st = num (q.senderTypeId); if (st) filters.senderTypeId = st
   const svc = num (q.serviceId); if (svc) filters.serviceId = svc

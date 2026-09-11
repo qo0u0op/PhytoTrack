@@ -7,15 +7,11 @@ import org.springframework.data.repository.query.Param;
 import com.d0w0b.phytotrack.models.Sender;
 
 import java.util.List;
-import java.util.Optional;
 
 /**
  * 送件人資料存取層 (Data Access Layer)
  */
 public interface SenderRepository extends JpaRepository<Sender, Long> {
-
-  @Deprecated
-  java.util.Optional<Sender> findByNameAndPhone (String name, String phone);
 
   boolean existsBySenderTypeSenderTypeId (Long senderTypeId);
 

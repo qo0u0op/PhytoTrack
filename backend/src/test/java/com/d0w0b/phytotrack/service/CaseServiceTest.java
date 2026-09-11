@@ -133,7 +133,6 @@ class CaseServiceTest {
 
   @Test
   void create_shouldCreateSenderWhenNotExists () {
-    when (senderRepository.findByNameAndPhone ("王小明", "0912345678")).thenReturn (Optional.empty ());
     when (senderTypeRepository.findById (1L))
         .thenReturn (Optional.of (senderType (1L, "農民")));
     when (districtRepository.findById (1L)).thenReturn (Optional.of (district (1L)));

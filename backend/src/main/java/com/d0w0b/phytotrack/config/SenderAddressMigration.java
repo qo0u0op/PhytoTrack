@@ -12,8 +12,11 @@ import org.springframework.stereotype.Component;
  * 歷史 schema 為 NOT NULL，但 case-sender-address-nullable 已改為 nullable。
  * SQLite 的 CREATE TABLE IF NOT EXISTS 與 ddl-auto:update 不會自動放寬既有欄位，
  * 因此在此以 PRAGMA 檢測並在必要時重建表（保留資料，僅改約束）。
+ *
+ * @deprecated 新庫 schema.sql 已為 address TEXT 可空，此遷移僅為舊庫相容保留一版，下一版刪除
  */
 @Component
+@Deprecated (since = "2026-09-11", forRemoval = true)
 public class SenderAddressMigration {
 
   private static final Logger log = LoggerFactory.getLogger (SenderAddressMigration.class);

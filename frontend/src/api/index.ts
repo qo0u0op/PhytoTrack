@@ -33,6 +33,7 @@ export const caseApi = {
     size?: number
     cropId?: number
     serviceId?: number
+    /** @deprecated 已棄用，請用 senderQuery */
     senderName?: string
     senderQuery?: string
     receiveDateFrom?: string
@@ -57,6 +58,7 @@ export const caseApi = {
   exportCsv: (params?: {
     cropId?: number
     serviceId?: number
+    /** @deprecated 已棄用，請用 senderQuery */
     senderName?: string
     senderQuery?: string
     receiveDateFrom?: string

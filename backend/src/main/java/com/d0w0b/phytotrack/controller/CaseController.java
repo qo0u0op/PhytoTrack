@@ -28,6 +28,8 @@ import com.d0w0b.phytotrack.dto.CaseDtos.CaseUpdateRequest;
 import com.d0w0b.phytotrack.dto.StatisticsDtos.CaseStatisticsResponse;
 import com.d0w0b.phytotrack.service.CaseService;
 
+import io.swagger.v3.oas.annotations.Parameter;
+
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 
@@ -60,7 +62,7 @@ public class CaseController {
   @PreAuthorize ("isAuthenticated ()")
   public ResponseEntity<Page<CaseSummaryResponse>> list (@RequestParam (required = false) Long cropId,
       @RequestParam (required = false) Long serviceId,
-      @RequestParam (required = false) String senderName,
+      @Deprecated @Parameter (deprecated = true, description = "已棄用，請用 senderQuery") @RequestParam (required = false) String senderName,
       @RequestParam (required = false) String senderQuery,
       @RequestParam (required = false) Long senderTypeId,
       @RequestParam (required = false) Long methodId,
@@ -100,7 +102,7 @@ public class CaseController {
   @PreAuthorize ("hasAnyRole ('STAFF','ADMIN')")
   public ResponseEntity<byte[]> export (@RequestParam (required = false) Long cropId,
       @RequestParam (required = false) Long serviceId,
-      @RequestParam (required = false) String senderName,
+      @Deprecated @Parameter (deprecated = true, description = "已棄用，請用 senderQuery") @RequestParam (required = false) String senderName,
       @RequestParam (required = false) String senderQuery,
       @RequestParam (required = false) Long senderTypeId,
       @RequestParam (required = false) Long methodId,

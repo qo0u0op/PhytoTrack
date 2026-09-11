@@ -2,8 +2,6 @@ package com.d0w0b.phytotrack.security;
 
 import io.jsonwebtoken.Claims;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
@@ -36,8 +34,6 @@ import com.d0w0b.phytotrack.repository.UserRepository;
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-  private static final Logger log = LoggerFactory.getLogger (JwtAuthenticationFilter.class);
-
   private final JwtTokenProvider jwtTokenProvider;
   private final UserRepository userRepository;
 
@@ -65,17 +61,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
       if (claims != null) {
         Long userId = claims.get ("userId", Long.class);
-        Optional<User> userOpt = Optional.empty ();
-        if (userId != null) {
-          userOpt = userRepository.findById (userId);
-        } else {
-          // 相容舊 token (無 userId)：以 subject 回落查詢 TODO: remove after migration
-          log.warn ("舊 token 無 userId，以 username 回落查詢 subject={}", claims.getSubject ());
-          String subject = claims.getSubject ();
-          if (subject != null) {
-            userOpt = userRepository.findByUsername (subject);
-          }
+        if (userId == null) {
+          filterChain.doFilter (request, response);
+          return;
         }
+        Optional<User> userOpt = userRepository.findById (userId);
 
         // 停用或不存在的帳號不寫入 SecurityContext，後續由 SecurityFilterChain 回 401
         if (userOpt.isEmpty () || !userOpt.get ().isActive ()) {

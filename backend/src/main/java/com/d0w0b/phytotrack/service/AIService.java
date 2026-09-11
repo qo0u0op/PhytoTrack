@@ -107,9 +107,6 @@ public class AIService {
           }
         }
       }
-      int idx2 = body.indexOf ("\"models_discovered\"");
-      if (idx2 >= 0 && body.contains ("\"models_loaded\":0")) {
-      }
       return true;
     } catch (Exception e) {
       return false;
