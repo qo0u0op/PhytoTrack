@@ -5,17 +5,17 @@
 
 ## Requirements
 
-### Requirement: 移除 Spring Boot 2 相容檔
+### Requirement: 保留 spring.factories 註冊檔（imports 單獨無效）
 
-系統 SHALL 僅以 `META-INF/spring/org.springframework.context.ApplicationListener.imports` 註冊 `PhytotrackTomlEnvironmentPostProcessor`，`META-INF/spring.factories` SHALL 刪除；`validate` 與啟動日誌 SHALL 不再引用舊檔。
+系統 SHALL 以 `META-INF/spring.factories`（`org.springframework.context.ApplicationListener=com.d0w0b.phytotrack.config.PhytotrackTomlEnvironmentPostProcessor`）註冊 `PhytotrackTomlEnvironmentPostProcessor`，`META-INF/spring/org.springframework.context.ApplicationListener.imports` 保留共存。實證：Boot 4.0.6 下僅頂層 `.imports` 不觸發 `ApplicationEnvironmentPreparedEvent` 監聽（`clean` 建置的 AppImage 出現 `bin/config` 未生成、`DB=./diagnoses.db` 扁平、`JwtSecretValidator` 因開發預設 `secret` 失敗），僅恢復 `spring.factories` 後 `任意目錄 + CWD/OWD 後備` 的可攜落點才正常。
 
-#### Scenario: 僅保留 imports 檔
-- **WHEN** 檢視 `backend/src/main/resources/META-INF/spring/`
-- **THEN** 僅存在 `org.springframework.context.ApplicationListener.imports` 含 `PhytotrackTomlEnvironmentPostProcessor`，無 `spring.factories`
+#### Scenario: 雙檔共存
+- **WHEN** 檢視 `backend/src/main/resources/META-INF/`
+- **THEN** 同時存在 `spring.factories`（含 `PhytotrackTomlEnvironmentPostProcessor`）與 `spring/org.springframework.context.ApplicationListener.imports`
 
-#### Scenario: 啟動不依賴舊檔
-- **WHEN** 以 `mvn spring-boot:run` 啟動
-- **THEN** `PhytotrackTomlEnvironmentPostProcessor` 仍由 `imports` 載入，啟動成功且無 `spring.factories` 警告
+#### Scenario: clean 建置仍觸發監聽
+- **WHEN** 以 `mvn clean package` 建置後於任意目錄（含 `*.AppImage` 的 CWD）執行
+- **THEN** 啟動日誌含 `config 探測` 且生成 `./config/phytotrack.toml`（prod patch），不回落扁平 `./diagnoses.db`
 
 ### Requirement: 移除 SenderRepository 棄用方法
 

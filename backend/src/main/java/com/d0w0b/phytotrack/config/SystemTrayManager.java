@@ -25,7 +25,7 @@ import com.d0w0b.phytotrack.util.DesktopEnvironment;
  * 系統匣（dorkbox SystemTray）：Windows / Linux AppIndicator
  * - 支援 Wayland AppIndicator，自動去背
  * - 右鍵選單：開啟 PhytoTrack / 備份資料庫 / 開啟資料夾 / 開啟日誌資料夾 / 退出
- * - 系統通知：notify-send / Windows Toast / 備用 Swing
+ * - 有頭→無頭臨時回落（不寫盤）：SSH（含 linux→windows server）或無 DISPLAY 時跳過，TOML 保持有頭
  */
 @Component
 public class SystemTrayManager {
@@ -51,22 +51,24 @@ public class SystemTrayManager {
   @EventListener (ApplicationReadyEvent.class)
   public void init () {
     try {
-      // 診斷：GUI 仍無托盤時由此日誌判斷是配置關閉、SSH 還是 headless
-      log.info ("系統匣初始化：os={}, trayEnabled={}, SSH={}, headlessProp={}, DISPLAY={}, WAYLAND_DISPLAY={}",
+      // 診斷：GUI 仍無托盤時由此日誌判斷是配置關閉、SSH 還是 headless（isSsh 優先於 isWindows，臨時回落不寫盤）
+      log.info ("系統匣初始化：os={}, trayEnabled={}, SSH={}, hasDisplay={}, headlessProp={}, DISPLAY={}, WAYLAND_DISPLAY={}",
           System.getProperty ("os.name"), trayEnabled,
           DesktopEnvironment.isSsh (),
+          DesktopEnvironment.hasDisplay (),
           System.getProperty ("java.awt.headless"),
           System.getenv ("DISPLAY"), System.getenv ("WAYLAND_DISPLAY"));
       if (!trayEnabled) {
         log.info ("系統匣已關閉（app.tray.enabled=false），若為正式 binary 請確認以 --spring.profiles.active=prod 啟動或於 phytotrack.toml 設 [app.tray] enabled=true");
         return;
       }
+      // 有頭→無頭臨時回落（不寫盤，下次 GUI 仍有頭）；isSsh 優先於 isWindows（含 linux→windows server）
       if (DesktopEnvironment.isSsh ()) {
-        log.info ("SSH 會話，跳過系統匣");
+        log.info ("SSH 會話（含 linux→windows server），跳過系統匣（臨時回落，不改 TOML）");
         return;
       }
       if (!DesktopEnvironment.hasDisplay ()) {
-        log.info ("無 DISPLAY/WAYLAND_DISPLAY，跳過系統匣（支援 SSH tty）");
+        log.info ("無 DISPLAY/WAYLAND_DISPLAY，跳過系統匣（支援 SSH tty，臨時回落不寫盤）");
         return;
       }
       try {

@@ -20,6 +20,11 @@ public final class TomlGenerator {
   public static void generateDefaultToml (Path path, boolean isProd) throws IOException {
     Files.createDirectories (path.getParent ());
     String secret = generateSecret ();
+    // isProd patch：binary 交付物必為 prod，首次生成即 prod 值（不提供切回 dev）
+    // dev/test 走 example 原值，prod 走 patch（security-headers true / springdoc false）
+    String shEnabled = isProd ? "true" : "false";
+    String apiDocsEnabled = isProd ? "false" : "true";
+    String swaggerEnabled = isProd ? "false" : "true";
     String content = """
         # PhytoTrack 配置手冊 — phytotrack.toml
         # 單檔離線手冊，無需跳轉外部文件；每鍵含 類型/預設/可選值
@@ -113,8 +118,8 @@ public final class TomlGenerator {
 
         # ── [app.security-headers] ── 安全標頭 → SecurityHeadersFilter → ADR-012
         [app.security-headers]
-        # 用途: 安全標頭開關 | 類型: boolean | 預設: false（prod→true） | 取值: true/false | 生效: 重啟後；注入 CSP/HSTS/nosniff/DENY
-        enabled = false
+        # 用途: 安全標頭開關 | 類型: boolean | 預設: false（prod→true，binary 的 isProd patch 為 true） | 取值: true/false | 生效: 重啟後；注入 CSP/HSTS/nosniff/DENY
+        enabled = %s
 
         # ── [app.tray] ── 系統托盤常駐 → SystemTrayManager (dorkbox)
         [app.tray]
@@ -123,24 +128,24 @@ public final class TomlGenerator {
 
         # ── [app.ui] ── 自動開瀏覽器 → BrowserOpener
         [app.ui]
-        # 用途: 啟動後自動開瀏覽器 | 類型: boolean | 預設: true | 取值: true/false | 生效: 重啟後；SSH/無 DISPLAY 時自動跳過
+        # 用途: 啟動後自動開瀏覽器 | 類型: boolean | 預設: true | 取值: true/false | 生效: 重啟後；SSH/無 DISPLAY 時自動跳過（臨時回落，不寫盤）
         auto-open-browser = true
         # 用途: dev 模式自動開啟的 vite 位址 | 類型: string (url) | 預設: http://localhost:5173/ | 取值: 任意 http(s) URL | 生效: 重啟後；僅 dev profile 有效，prod 固定開同 port /
         # dev-frontend-url = "http://localhost:5173/"
 
         # ── [springdoc] ── OpenAPI / Swagger UI → springdoc
         [springdoc]
-        # 用途: 暴露 /v3/api-docs | 類型: boolean | 預設: true | 取值: true/false | 生效: 重啟後
-        api-docs-enabled = true
-        # 用途: 暴露 /swagger-ui | 類型: boolean | 預設: true | 取值: true/false | 生效: 重啟後
-        swagger-ui-enabled = true
+        # 用途: 暴露 /v3/api-docs | 類型: boolean | 預設: true（prod patch 為 false） | 取值: true/false | 生效: 重啟後
+        api-docs-enabled = %s
+        # 用途: 暴露 /swagger-ui | 類型: boolean | 預設: true（prod patch 為 false） | 取值: true/false | 生效: 重啟後
+        swagger-ui-enabled = %s
 
         # ── 可選覆蓋：資料庫與日誌位置（預設由 BinaryPaths 依 OS 決定，不配即用預設） ──
         # 用途: SQLite 連線 URL | 類型: string | 預設: Windows: ./data/diagnoses.db / XDG: ~/.local/share/... | 取值: 例 jdbc:sqlite:./data/diagnoses.db | 生效: 重啟後
         # spring.datasource.url = "jdbc:sqlite:./data/diagnoses.db"
         # 用途: 日誌主檔路徑 | 類型: string | 預設: Windows: ./logs/phytotrack.log / XDG: ~/.local/state/... | 取值: 例 logs/phytotrack.log | 生效: 重啟後
         # logging.file.name = "logs/phytotrack.log"
-        """.formatted (secret);
+        """.formatted (secret, shEnabled, apiDocsEnabled, swaggerEnabled);
     Files.writeString (path, content, StandardCharsets.UTF_8);
     Path data = BinaryPaths.isAppImage () ? BinaryPaths.appImageData ()
         : (BinaryPaths.isWindows () ? BinaryPaths.windowsData () : BinaryPaths.xdgData ());

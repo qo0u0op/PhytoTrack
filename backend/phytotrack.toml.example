@@ -12,6 +12,8 @@
 # ── 首次生成與冪等 ──
 # 缺檔自動生成含亂數密鑰的預設檔與 data/logs 目錄，冪等不覆蓋既有檔
 # 刪檔重啟即重生成（舊 token 失效）；首次 console 印「已生成亂數密鑰，舊 token 失效請重新登入」
+# binary 交付物（AppImage/win exe/deb/rpm 的 jpackage）必為 prod：isProd=true 時自動 patch
+#   app.security-headers.enabled→true、springdoc.*→false，其餘與本範例一致；dev/test 為本範例原值
 #
 # ── 保存起點 ──
 #   cp backend/phytotrack.toml.example ~/.config/phytotrack/phytotrack.toml
@@ -90,26 +92,27 @@ window-seconds = 60
 
 # ── [app.security-headers] ── 安全標頭 → SecurityHeadersFilter → ADR-012
 [app.security-headers]
-# 用途: 安全標頭開關 | 類型: boolean | 預設: false（prod→true） | 取值: true/false | 生效: 重啟後；注入 CSP/HSTS/nosniff/DENY
+# 用途: 安全標頭開關 | 類型: boolean | 預設: false（prod→true，binary 的 isProd patch 為 true） | 取值: true/false | 生效: 重啟後；注入 CSP/HSTS/nosniff/DENY
 enabled = false
 
 # ── [app.tray] ── 系統托盤常駐 → SystemTrayManager (dorkbox)
 [app.tray]
 # 用途: 系統托盤開關 | 類型: boolean | 預設: true | 取值: true/false | 生效: 重啟後；false 時僅 console，不進托盤
+# 臨時回落：SSH（含 linux→windows server）或無 DISPLAY 時自動跳過，TOML 保持有頭不寫盤，下次 GUI 仍有頭
 enabled = true
 
 # ── [app.ui] ── 自動開瀏覽器 → BrowserOpener
 [app.ui]
-# 用途: 啟動後自動開瀏覽器 | 類型: boolean | 預設: true | 取值: true/false | 生效: 重啟後；SSH/無 DISPLAY 時自動跳過
+# 用途: 啟動後自動開瀏覽器 | 類型: boolean | 預設: true | 取值: true/false | 生效: 重啟後；SSH/無 DISPLAY 時自動跳過（臨時回落不寫盤，下次 GUI 仍有頭，含 linux→windows server）
 auto-open-browser = true
 # 用途: dev 模式自動開啟的 vite 位址 | 類型: string (url) | 預設: http://localhost:5173/ | 取值: 任意 http(s) URL | 生效: 重啟後；僅 dev profile 有效，prod 固定開同 port /
 # dev-frontend-url = "http://localhost:5173/"
 
 # ── [springdoc] ── OpenAPI / Swagger UI → springdoc
 [springdoc]
-# 用途: 暴露 /v3/api-docs | 類型: boolean | 預設: true | 取值: true/false | 生效: 重啟後
+# 用途: 暴露 /v3/api-docs | 類型: boolean | 預設: true（prod patch 為 false） | 取值: true/false | 生效: 重啟後
 api-docs-enabled = true
-# 用途: 暴露 /swagger-ui | 類型: boolean | 預設: true | 取值: true/false | 生效: 重啟後
+# 用途: 暴露 /swagger-ui | 類型: boolean | 預設: true（prod patch 為 false） | 取值: true/false | 生效: 重啟後
 swagger-ui-enabled = true
 
 # ── 可選覆蓋：資料庫與日誌位置（預設由 BinaryPaths 依 OS 決定，不配即用預設） ──

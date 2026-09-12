@@ -16,6 +16,7 @@ import com.d0w0b.phytotrack.util.DesktopEnvironment;
  * 啟動後自動開瀏覽器，預設開啟，可由 app.ui.auto-open-browser 關閉
  * - dev profile：開啟 vite 即時前端（app.ui.dev-frontend-url，預設 :5173）
  * - prod/binary：開啟同 port 內嵌前端（/）
+ * - 有頭→無頭臨時回落（不寫盤）：SSH（含 linux→windows server）或無 DISPLAY 時跳過，TOML 保持有頭
  */
 @Component
 public class BrowserOpener {
@@ -42,10 +43,11 @@ public class BrowserOpener {
     try {
       // dev 指向 vite，prod 指向同 port 內嵌前端（/）
       String url = isDev ? devFrontendUrl : "http://localhost:" + port + "/";
-      // 診斷：GUI 仍未自動開瀏覽器時由此判斷
-      log.info ("BrowserOpener：os={}, autoOpen={}, isDev={}, SSH={}, headlessProp={}, DISPLAY={}, WAYLAND_DISPLAY={}",
+      // 診斷：GUI 仍未自動開瀏覽器時由此判斷（isSsh 優先於 isWindows，臨時回落不寫盤）
+      log.info ("BrowserOpener：os={}, autoOpen={}, isDev={}, SSH={}, hasDisplay={}, headlessProp={}, DISPLAY={}, WAYLAND_DISPLAY={}",
           System.getProperty ("os.name"), autoOpen, isDev,
           DesktopEnvironment.isSsh (),
+          DesktopEnvironment.hasDisplay (),
           System.getProperty ("java.awt.headless"),
           System.getenv ("DISPLAY"), System.getenv ("WAYLAND_DISPLAY"));
       if (!autoOpen) {
@@ -61,13 +63,19 @@ public class BrowserOpener {
         System.out.println ("[PhytoTrack] Server started at " + url + " (前端)");
         System.out.println ("[PhytoTrack] API: " + url + "api, Swagger: " + url + "swagger-ui/index.html");
       }
+      // 有頭→無頭臨時回落（不寫盤，下次 GUI 仍有頭）；isSsh 優先於 isWindows（含 linux→windows server）
       if (DesktopEnvironment.isSsh ()) {
-        log.info ("SSH 會話，跳過自動開瀏覽器，請手動開啟 {}", url);
+        log.info ("SSH 會話（含 linux→windows server），跳過自動開瀏覽器，請手動開啟 {}（臨時回落，不改 TOML）", url);
         return;
       }
       boolean isWindows = DesktopEnvironment.isWindows ();
       if (!DesktopEnvironment.hasDisplay ()) {
-        log.info ("無 DISPLAY/WAYLAND_DISPLAY，跳過自動開瀏覽器（支援 SSH tty），請手動開啟 {}", url);
+        log.info ("無 DISPLAY/WAYLAND_DISPLAY，跳過自動開瀏覽器（支援 SSH tty，臨時回落不寫盤），請手動開啟 {}", url);
+        return;
+      }
+      // 亦檢查 headless 屬性，避免在 headless JVM 誤觸 Desktop
+      if (DesktopEnvironment.isHeadlessOrSsh ()) {
+        log.info ("Headless/SSH 環境，跳過自動開瀏覽器（臨時回落）請手動開啟 {}", url);
         return;
       }
       try {

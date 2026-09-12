@@ -272,6 +272,7 @@ types/    openapi-typescript 由 /v3/api-docs 自動生成的 API 型別 (與後
 - `spring.ai.openai.*`：llama-server 連線設定
 - `app.cors.allowed-origins`：CORS 白名單（`app.cors.allowed-origins`，逗號分隔；`dev` 空→`*`、`prod` 空→拒絕）
 - `app.rate-limit.*`：`enabled` / `requests-per-minute` / `window-seconds`（登入/註冊限流，`test` 預設 false）
-- `app.security-headers.enabled`：安全標頭開關（`prod` 自動 true）
+- `app.security-headers.enabled`：安全標頭開關（`prod` 自動 true；binary 的 `isProd patch` 為 true）
 - `management.endpoints.web.exposure.include`：`health,info,metrics`（非 dev `metrics` 僅 ADMIN）
 - 日誌：`logback-spring.xml`（`logs/phytotrack-%d{yyyy-MM-dd}.%i.log.gz`，見上節）
+- **binary 交付物必為 prod**：`jpackage` 全平台嵌入 `prod`，首次生成 `phytotrack.toml` 為 prod patch（`security-headers true / springdoc false`），不提供切回 `dev`；**有頭→無頭臨時回落**：SSH（含 `linux→windows server`）或無 DISPLAY 時 `BrowserOpener`/`SystemTrayManager` 僅 `log.info` 跳過，不改 TOML，下次 GUI 仍有頭

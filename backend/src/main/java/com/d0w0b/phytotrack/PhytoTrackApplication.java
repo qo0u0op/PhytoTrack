@@ -14,7 +14,8 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 public class PhytoTrackApplication {
 
   public static void main (String[] args) {
-    // 桌面環境 headless 判斷集中於 DesktopEnvironment，避免重複
+    // 有頭→無頭臨時回落（不寫盤）：SSH（含 linux→windows server）或無 DISPLAY 時 headless
+    // isSsh 優先於 isWindows，避免 Windows SSH 被誤判有頭；hasDisplay 的 Windows true 僅非 SSH 時成立
     try {
       if (com.d0w0b.phytotrack.util.DesktopEnvironment.isSsh ()) {
         System.setProperty ("java.awt.headless", "true");
@@ -25,7 +26,7 @@ public class PhytoTrackApplication {
             System.setProperty ("java.awt.headless", "true");
           }
         } else {
-          // Windows GUI 已有桌面，明確非 headless（修復 085ddb9 回歸：之前 static block 強制 false 被移除導致 GUI 仍可能 headless）
+          // Windows GUI 已有桌面，明確非 headless（修復 085ddb9 回歸）；SSH 已在上一分支回落，此處僅非 SSH Windows
           System.setProperty ("java.awt.headless", "false");
         }
       }

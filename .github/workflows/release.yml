@@ -47,7 +47,13 @@ jobs:
 
       - name: Build backend
         shell: bash
-        run: cd backend && mvn --batch-mode package -DskipTests
+        run: |
+          cd backend
+          # Jar 檔名與 pom 的 <version> 同組，避免硬編碼 0.0.1 導致 jpackage 找不到
+          JAR_VERSION=$(mvn -q -Dexpression=project.version -DforceStdout help:evaluate)
+          echo "JAR_VERSION=$JAR_VERSION"
+          echo "JAR_VERSION=$JAR_VERSION" >> $GITHUB_ENV
+          mvn --batch-mode clean package -DskipTests
 
       - name: Run jpackage (portable app-image, not installer)
         shell: bash
@@ -61,14 +67,18 @@ jobs:
           elif [ -f docs/img/icon.png ]; then
             ICON_ARG="--icon docs/img/icon.png"
           fi
-          EXTRA_JAVA=""
-          if [ "$RUNNER_OS" = "Windows" ]; then
-            EXTRA_JAVA="--java-options -Dspring.profiles.active=prod"
+          # Binary 交付物必為 prod（全平台嵌入，含 linux→windows SSH 亦 prod，直跑 bin/phytotrack 亦 prod）
+          EXTRA_JAVA="--java-options -Dspring.profiles.active=prod"
+          MAIN_JAR="phytotrack-${JAR_VERSION}.jar"
+          if [ ! -f "backend/target/$MAIN_JAR" ]; then
+            echo "main jar not found: backend/target/$MAIN_JAR"
+            ls -lh backend/target/*.jar
+            exit 1
           fi
           jpackage --type app-image \
             --name phytotrack \
             --input backend/target \
-            --main-jar phytotrack-0.0.1-SNAPSHOT.jar \
+            --main-jar "$MAIN_JAR" \
             --main-class org.springframework.boot.loader.launch.JarLauncher \
             --dest dist \
             --app-version "$VERSION" \
