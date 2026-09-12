@@ -16,6 +16,8 @@ public class PhytoTrackApplication {
   public static void main (String[] args) {
     // 有頭→無頭臨時回落（不寫盤）：SSH（含 linux→windows server）或無 DISPLAY 時 headless
     // isSsh 優先於 isWindows，避免 Windows SSH 被誤判有頭；hasDisplay 的 Windows true 僅非 SSH 時成立
+    // 注意：Spring Boot 預設 headless=true（configureHeadlessProperty，未設值即強制 true），
+    // 因此 Linux 有顯示時必須明確設 false，否則托盤/自動開瀏覽器永遠被跳過
     try {
       if (com.d0w0b.phytotrack.util.DesktopEnvironment.isSsh ()) {
         System.setProperty ("java.awt.headless", "true");
@@ -24,6 +26,9 @@ public class PhytoTrackApplication {
         if (!isWindows) {
           if (!com.d0w0b.phytotrack.util.DesktopEnvironment.hasDisplay ()) {
             System.setProperty ("java.awt.headless", "true");
+          } else {
+            // Linux 有顯示：明確非 headless，覆蓋 Spring Boot 預設，托盤方可建立
+            System.setProperty ("java.awt.headless", "false");
           }
         } else {
           // Windows GUI 已有桌面，明確非 headless（修復 085ddb9 回歸）；SSH 已在上一分支回落，此處僅非 SSH Windows

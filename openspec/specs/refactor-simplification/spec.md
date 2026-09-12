@@ -77,17 +77,21 @@ SSH/DISPLAY/WAYLAND/headless 判斷 SHALL 收斂至 `util/DesktopEnvironment`（
 - **WHEN** 2 執行緒同時 `ensureForUser` 同名使用者
 - **THEN** 僅一筆成功，另一回 `409 DISPLAY_NAME_EXISTS`，無重複簽名人
 
-### Requirement: SPA 授權精簡
+### Requirement: SPA 路由後端放行
 
-`SecurityConfig` SHALL 僅 `permitAll` `"/", "/index.html", "/assets/**", "/api/auth/**", "/api/ai/health", "/v3/api-docs/**", "/swagger-ui/**", "/actuator/health", "/actuator/info"`，前端路由 `/login,/register,/dashboard,/cases/**,/users,/admin/**,/account` SHALL 由 `SpaConfig` 回退 `index.html` 與 `router.beforeEach` 守衛，不在後端枚舉。
+`SecurityConfig` SHALL `permitAll` 前端靜態 `"/", "/index.html", "/assets/**"` 等與 SPA 路由 `/login,/register,/dashboard,/cases,/cases/**,/users,/admin/**,/account`（`HttpMethod.GET`）。實證：`Security` 攔截先於 `SpaConfig` 回退，`SpaConfig` 單獨無法讓未登入直開 `/login` 回 `index.html`（會先回 `401 JSON`）；放行後由 `SpaConfig` 回退 `index.html` 與 `router.beforeEach` 守衛接管。
 
-#### Scenario: 後端不枚舉 SPA
+#### Scenario: 後端放行 SPA
 - **WHEN** 檢視 `SecurityConfig.authorizeHttpRequests`
-- **THEN** 無 `"/login", "/register", "/dashboard", "/cases"` 等 SPA 字串
+- **THEN** 含 `"/login", "/register", "/dashboard", "/cases", "/cases/**", "/users", "/admin/**", "/account"` 的 `GET permitAll`
 
 #### Scenario: 前端仍可直連
-- **WHEN** 未登入直接訪問 `/cases/123`
-- **THEN** 後端回 `index.html`，前端守衛導至 `/login?redirect=/cases/123`
+- **WHEN** 未登入直接訪問 `/login` 或 `/cases/123`
+- **THEN** 後端回 `200 text/html`（`index.html`），前端守衛導至 `/login?redirect=/cases/123`
+
+#### Scenario: API 仍需登入
+- **WHEN** 未登入訪問 `/api/cases`
+- **THEN** 後端回 `401 UNAUTHORIZED`（`error.code=UNAUTHORIZED`），不受 SPA 放行影響
 
 ### Requirement: 限流一致性
 
