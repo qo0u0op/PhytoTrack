@@ -279,3 +279,36 @@ curl http://localhost:9090/actuator/health # 應回 UP
 phytotrack # 讀 ~/.config/phytotrack/phytotrack.toml，系統級 /etc/phytotrack/phytotrack.toml 為低優先
 systemctl --user enable phytotrack # 若提供 systemd unit
 ```
+
+#### Arch Linux（PKGBUILD / AUR）
+
+本倉已提供 `PKGBUILD`（`arch=('any')`，依 Arch Java 指引不綁 JRE）與 `.SRCINFO`、`phytotrack.install`，可直接 `makepkg` 或經 AUR 安裝。
+
+```bash
+# 1. 本地建包（在倉庫根，tag v$pkgver 對應 GitHub Releases tarball）
+makepkg -si
+# 或校驗和更新（改 pkgver 後）
+updpkgsums && makepkg --printsrcinfo > .SRCINFO && makepkg -si
+
+# 2. AUR（發布後）
+paru -S phytotrack          # 或 yay -S phytotrack
+# 開發版（若提供 phytotrack-git）
+# paru -S phytotrack-git
+
+# 3. 啟動與服務
+phytotrack                              # 前景啟動（prod，XDG 路徑）
+phytotrack --server.port=9090           # 改 port（透傳至 Spring Boot）
+systemctl --user enable --now phytotrack.service
+systemctl --user status phytotrack
+journalctl --user -u phytotrack -f
+curl http://localhost:8080/actuator/health  # {"status":"UP"}
+```
+
+打包細節（見 `PKGBUILD:1`）：
+
+- `depends=('java-runtime>=21' 'hicolor-icon-theme')`、`makedepends=('java-environment>=21' 'maven' 'nodejs' 'npm')`，`optdepends=('llama.cpp')`
+- `build()` 依序 `frontend: npm ci && npm run build → backend: mvn package -DskipTests`，前端 `dist` 嵌入 `backend/src/main/resources/static`
+- `package()` 安裝：`jar → /usr/share/java/phytotrack/phytotrack.jar`（兼容 symlink `/usr/share/phytotrack/`）、`wrapper → /usr/bin/phytotrack`（`java -Xmx512m -Dfile.encoding=UTF-8 -Dspring.profiles.active=prod -jar ... "$@"`）、`config 範例 → /etc/phytotrack/phytotrack.toml.example + /usr/share/doc/phytotrack/`、`desktop → /usr/share/applications/phytotrack.desktop`、`icons → hicolor + pixmaps`、`service → /usr/lib/systemd/user/phytotrack.service`、`backup=('etc/phytotrack/phytotrack.toml')`
+- 路徑契約不變：`~/.config/phytotrack/phytotrack.toml > /etc/phytotrack/phytotrack.toml`（`BinaryPaths.java:96`），資料 `~/.local/share/phytotrack/diagnoses.db`、日誌 `~/.local/state/phytotrack/phytotrack.log`
+- `PKGBUILD` 內 `pkgver()` 支援 `git+https` 源的 `git describe`（tarball 版回落靜態 `pkgver`）；發布新 tag 後記得 `updpkgsums && makepkg --printsrcinfo > .SRCINFO`
+```

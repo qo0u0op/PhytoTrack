@@ -1,0 +1,24 @@
+post_install() {
+  echo "==> PhytoTrack 已安裝"
+  echo "    啟動：  phytotrack"
+  echo "    參數：  phytotrack --server.port=9090"
+  echo "    配置：  ~/.config/phytotrack/phytotrack.toml（XDG，優先）"
+  echo "            /etc/phytotrack/phytotrack.toml（系統級，低優先）"
+  echo "            範例： /etc/phytotrack/phytotrack.toml.example"
+  echo "    資料：  ~/.local/share/phytotrack/diagnoses.db"
+  echo "    日誌：  ~/.local/state/phytotrack/phytotrack.log"
+  echo "    服務：  systemctl --user enable --now phytotrack.service"
+  echo "    桌面：  應用選單搜尋 PhytoTrack"
+  echo "    健康：  curl http://localhost:8080/actuator/health"
+}
+
+post_upgrade() {
+  post_install
+  echo "    備註：  /etc/phytotrack/phytotrack.toml 為 pacman backup，升級不覆蓋"
+}
+
+post_remove() {
+  echo "==> PhytoTrack 已移除，下列使用者資料未刪除（需手動清理）："
+  echo "    ~/.config/phytotrack/  ~/.local/share/phytotrack/  ~/.local/state/phytotrack/"
+  echo "    /etc/phytotrack/（若曾手動建立）"
+}

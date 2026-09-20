@@ -1,0 +1,20 @@
+pkgbase = phytotrack
+	pkgdesc = 農作物病蟲害診斷記錄系統（Spring Boot 4 + Vue 3 + SQLite，XDG/可攜雙路徑）
+	pkgver = 0.0.1
+	pkgrel = 1
+	url = https://github.com/qo0u0op/PhytoTrack
+	install = phytotrack.install
+	arch = any
+	license = GPL-3.0-only
+	makedepends = java-environment>=21
+	makedepends = maven
+	makedepends = nodejs
+	makedepends = npm
+	depends = java-runtime>=21
+	depends = hicolor-icon-theme
+	optdepends = llama.cpp: 本機 AI 診斷（llama-server --port 11435）
+	backup = etc/phytotrack/phytotrack.toml
+	source = phytotrack-0.0.1.tar.gz::https://github.com/qo0u0op/PhytoTrack/archive/v0.0.1.tar.gz
+	sha256sums = SKIP
+
+pkgname = phytotrack
