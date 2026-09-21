@@ -2,7 +2,9 @@
 <configuration>
   <include resource="org/springframework/boot/logging/logback/defaults.xml" />
 
-  <property name="LOG_FILE" value="logs/phytotrack.log" />
+  <!-- 由 PhytotrackTomlEnvironmentPostProcessor (HIGHEST_PRECEDENCE) 注入的 XDG/可攜路徑；未注入時回落 logs/ -->
+  <springProperty scope="context" name="LOG_FILE" source="logging.file.name" defaultValue="logs/phytotrack.log" />
+  <springProperty scope="context" name="LOG_DIR" source="phytotrack.logging.dir" defaultValue="logs" />
   <property name="LOG_PATTERN" value="%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level [%X{requestId}] %logger{36} - %msg%n" />
 
   <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
@@ -17,7 +19,7 @@
       <pattern>${LOG_PATTERN}</pattern>
     </encoder>
     <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-      <fileNamePattern>logs/phytotrack.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+      <fileNamePattern>${LOG_DIR}/phytotrack.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
       <maxFileSize>10MB</maxFileSize>
       <maxHistory>30</maxHistory>
       <totalSizeCap>1GB</totalSizeCap>

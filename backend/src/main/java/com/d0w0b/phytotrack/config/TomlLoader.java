@@ -120,9 +120,13 @@ public final class TomlLoader {
       Path log = BinaryPaths.isAppImage () ? BinaryPaths.appImageLog ()
           : (isWindows ? BinaryPaths.windowsLog () : BinaryPaths.xdgLog ());
       String logStr = log.toString ().replace ("\\", "/");
+      Path logDir = log.getParent ();
+      String logDirStr = logDir != null ? logDir.toString ().replace ("\\", "/") : "logs";
       props.put ("logging.file.name", logStr);
       props.put ("phytotrack.logging.file", logStr);
+      props.put ("phytotrack.logging.dir", logDirStr);
       System.setProperty ("phytotrack.logging.file", logStr);
+      System.setProperty ("phytotrack.logging.dir", logDirStr);
       System.setProperty ("logging.file.name", logStr);
     }
   }

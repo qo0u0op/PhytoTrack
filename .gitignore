@@ -61,8 +61,8 @@ todo.txt
 .playwright/
 
 ### Arch PKGBUILD 產物 ###
-pkg/
-src/
+/pkg/
+/src/
 *.pkg.tar.zst
 *.pkg.tar.xz
 # makepkg 下載的來源 tarball（v$pkgver），勿提交；AUP 審核以 PKGBUILD 的 source 遠端拉取
