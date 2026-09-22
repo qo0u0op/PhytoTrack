@@ -1,7 +1,7 @@
 pkgbase = phytotrack
-	pkgdesc = 農作物病蟲害診斷記錄系統（Spring Boot 4 + Vue 3 + SQLite，XDG/可攜雙路徑）
+	pkgdesc = 農作物病蟲害診斷記錄系統 (Spring Boot 4 + Vue 3 + SQLite)
 	pkgver = 0.0.1
-	pkgrel = 1
+	pkgrel = 2
 	url = https://github.com/qo0u0op/PhytoTrack
 	install = phytotrack.install
 	arch = any

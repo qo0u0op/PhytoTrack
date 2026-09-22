@@ -5,7 +5,7 @@
 
 pkgname=phytotrack
 pkgver=0.0.1
-pkgrel=1
+pkgrel=2
 pkgdesc="農作物病蟲害診斷記錄系統 (Spring Boot 4 + Vue 3 + SQLite)"
 arch=('any')
 url="https://github.com/qo0u0op/PhytoTrack"
