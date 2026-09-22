@@ -282,18 +282,17 @@ systemctl --user enable phytotrack # 若提供 systemd unit
 
 #### Arch Linux（PKGBUILD / AUR）
 
-本倉已提供 `PKGBUILD`（`arch=('any')`，依 Arch Java 指引不綁 JRE）與 `.SRCINFO`、`phytotrack.install`，可直接 `makepkg` 或經 AUR 安裝。
+本倉提供 `phytotrack-git`（`PKGBUILD:1` `arch=('any')`，依 Arch Java/VCS 指引，`provides/conflicts phytotrack`）與 `.SRCINFO`、`phytotrack.install`，為 `-git` 版：`pkgver()` 以 `git describe --long`（`v0.0.2-3-g2b0a1e1 → 0.0.2.r3.g2b0a1e1`）隨提交自動更新，無需手動改 `pkgver`。
 
 ```bash
-# 1. 本地建包（在倉庫根，tag v$pkgver 對應 GitHub Releases tarball）
-makepkg -si
-# 或校驗和更新（改 pkgver 後）
-updpkgsums && makepkg --printsrcinfo > .SRCINFO && makepkg -si
+# 1. 本地建包（倉庫根，-git 版直接取 HEAD，含最新 log 修復）
+makepkg -C -si -d                      # -d 略過 pacman maven 檢查（mise 提供）；或 sudo pacman -S maven
+# 強制重建或切換自 phytotrack 穩定版
+paru -R phytotrack 2>/dev/null; makepkg -C -sir -d  # -sir 自動清理 makedepends
 
-# 2. AUR（發布後）
-paru -S phytotrack          # 或 yay -S phytotrack
-# 開發版（若提供 phytotrack-git）
-# paru -S phytotrack-git
+# 2. AUR
+paru -S phytotrack-git                 # 或 yay -S phytotrack-git
+paru -Syu --devel                      # -git 版隨 git 更新，需 --devel 才檢查新提交
 
 # 3. 啟動與服務
 phytotrack                              # 前景啟動（prod，XDG 路徑）
@@ -306,9 +305,10 @@ curl http://localhost:8080/actuator/health  # {"status":"UP"}
 
 打包細節（見 `PKGBUILD:1`）：
 
-- `depends=('java-runtime>=21' 'hicolor-icon-theme')`、`makedepends=('java-environment>=21' 'maven' 'nodejs' 'npm')`，`optdepends=('llama.cpp')`
+- `pkgname=phytotrack-git`（`_pkgname=phytotrack`），`provides/conflicts=('phytotrack')`，`source=phytotrack::git+https://github.com/qo0u0op/PhytoTrack.git`，`pkgver()` 自動 `git describe`，`makedepends=('java-environment>=21' 'maven' 'nodejs' 'npm' 'git')`
 - `build()` 依序 `frontend: npm ci && npm run build → backend: mvn package -DskipTests`，前端 `dist` 嵌入 `backend/src/main/resources/static`
-- `package()` 安裝：`jar → /usr/share/java/phytotrack/phytotrack.jar`（兼容 symlink `/usr/share/phytotrack/`）、`wrapper → /usr/bin/phytotrack`（`java -Xmx512m -Dfile.encoding=UTF-8 -Dspring.profiles.active=prod -jar ... "$@"`）、`config 範例 → /etc/phytotrack/phytotrack.toml.example + /usr/share/doc/phytotrack/`、`desktop → /usr/share/applications/phytotrack.desktop`、`icons → hicolor + pixmaps`、`service → /usr/lib/systemd/user/phytotrack.service`、`backup=('etc/phytotrack/phytotrack.toml')`
-- 路徑契約不變：`~/.config/phytotrack/phytotrack.toml > /etc/phytotrack/phytotrack.toml`（`BinaryPaths.java:96`），資料 `~/.local/share/phytotrack/diagnoses.db`、日誌 `~/.local/state/phytotrack/phytotrack.log`
-- `PKGBUILD` 內 `pkgver()` 支援 `git+https` 源的 `git describe`（tarball 版回落靜態 `pkgver`）；發布新 tag 後記得 `updpkgsums && makepkg --printsrcinfo > .SRCINFO`
+- `package()` 安裝：`jar → /usr/share/java/phytotrack/phytotrack.jar`（-git 仍提供 `phytotrack` 名稱）、`wrapper → /usr/bin/phytotrack`（`java -Xmx512m -Dfile.encoding=UTF-8 -Dspring.profiles.active=prod -jar ... "$@"`）、`config 範例 → /etc/phytotrack/phytotrack.toml.example + /usr/share/doc/phytotrack/`、`desktop/service/icons` 皆 `phytotrack` 名稱，`backup=('etc/phytotrack/phytotrack.toml')`
+- 路徑契約不變：`~/.config/phytotrack/phytotrack.toml > /etc/phytotrack/phytotrack.toml`（`BinaryPaths.java:96`），資料 `~/.local/share/phytotrack/diagnoses.db`、日誌 `~/.local/state/phytotrack/phytotrack.log`（`LoggingPathEnvironmentPostProcessor.java:20` `addFirst` 覆蓋 `logs/`，`logback-spring.xml:5` `springProperty`）
+- 更新：`git pull` 後 `makepkg -C -si` 即新版；推送前執行 `makepkg --printsrcinfo > .SRCINFO`
+- 穩定版（`phytotrack` tarball）發布時切回 `source tarball` 並 `updpkgsums`，見 `PKGBUILD` 註釋
 ```

@@ -3,10 +3,11 @@
 # AUR: phytotrack（Release tag 對應 GitHub Releases）/ 本地 makepkg 皆可用
 # 參考：https://wiki.archlinux.org/title/PKGBUILD / https://wiki.archlinux.org/title/Java_package_guidelines
 
-pkgname=phytotrack
-pkgver=0.0.2.r2.g8fcca26
+pkgname=phytotrack-git
+_pkgname=phytotrack
+pkgver=0.0.2.r3.g2b0a1e1
 pkgrel=1
-pkgdesc="農作物病蟲害診斷記錄系統 (Spring Boot 4 + Vue 3 + SQLite)"
+pkgdesc="農作物病蟲害診斷記錄系統 (Spring Boot 4 + Vue 3 + SQLite) - git 開發版，隨提交自動更新"
 arch=('any')
 url="https://github.com/qo0u0op/PhytoTrack"
 license=('GPL-3.0-only')
@@ -15,32 +16,27 @@ makedepends=('java-environment>=21' 'maven' 'nodejs' 'npm' 'git')
 optdepends=(
   'llama.cpp: 本機 AI 診斷（llama-server --port 11435）'
 )
+provides=("$_pkgname")
+conflicts=("$_pkgname")
 backup=('etc/phytotrack/phytotrack.toml')
-install="$pkgname.install"
-# 開發版：直接取 git HEAD（含 log 修復），確保 makepkg -sir 即含最新碼
-# AUR 正式發布時改回 tarball： source=("$pkgname-$pkgver.tar.gz::https://github.com/qo0u0op/PhytoTrack/archive/v$pkgver.tar.gz")
-source=("$pkgname::git+https://github.com/qo0u0op/PhytoTrack.git")
+install="$_pkgname.install"
+# -git 版：直接取 git HEAD，pkgver() 隨提交自動更新（v0.0.2-3-g2b0a1e1 → 0.0.2.r3.g2b0a1e1）
+source=("$_pkgname::git+https://github.com/qo0u0op/PhytoTrack.git")
 sha256sums=('SKIP')
 
-# VCS 版自動 pkgver（僅 git source 時生效，tarball 版忽略）
 pkgver() {
-  if [[ -d "$pkgname" && -d "$pkgname/.git" ]]; then
-    cd "$pkgname"
-    # v0.0.1-5-gabc123 → 0.0.1.r5.gabc123
-    git describe --long --tags --abbrev=7 2>/dev/null |
-      sed 's/^v//;s/\([^-]*-g\)/r\1/;s/-/./g' || echo "$pkgver"
-  else
-    echo "$pkgver"
-  fi
+  cd "$_pkgname"
+  git describe --long --tags --abbrev=7 2>/dev/null |
+    sed 's/^v//;s/\([^-]*-g\)/r\1/;s/-/./g' || echo "${pkgver}"
 }
 
 prepare() {
-  # tarball 解壓後目錄為 PhytoTrack-$pkgver；git source 為 $pkgname
+  # tarball 解壓後目錄為 PhytoTrack-$pkgver；git source 為 $_pkgname
   local srcdir_name
   if [[ -d "$srcdir/PhytoTrack-$pkgver" ]]; then
     srcdir_name="PhytoTrack-$pkgver"
   else
-    srcdir_name="$pkgname"
+    srcdir_name="$_pkgname"
   fi
   cd "$srcdir/$srcdir_name"
 
@@ -55,7 +51,7 @@ build() {
   if [[ -d "$srcdir/PhytoTrack-$pkgver" ]]; then
     srcdir_name="PhytoTrack-$pkgver"
   else
-    srcdir_name="$pkgname"
+    srcdir_name="$_pkgname"
   fi
   cd "$srcdir/$srcdir_name"
 
@@ -83,7 +79,7 @@ package() {
   if [[ -d "$srcdir/PhytoTrack-$pkgver" ]]; then
     srcdir_name="PhytoTrack-$pkgver"
   else
-    srcdir_name="$pkgname"
+    srcdir_name="$_pkgname"
   fi
   cd "$srcdir/$srcdir_name"
 
@@ -95,14 +91,13 @@ package() {
     return 1
   fi
 
-  # ——— Jar ———
-  install -Dm644 "$jar" "$pkgdir/usr/share/java/$pkgname/$pkgname.jar"
-  # 兼容部分腳本預期路徑 /usr/share/phytotrack/
-  install -d "$pkgdir/usr/share/$pkgname"
-  ln -s "/usr/share/java/$pkgname/$pkgname.jar" "$pkgdir/usr/share/$pkgname/$pkgname.jar"
+  # ——— Jar ———（-git 版仍提供 phytotrack 名稱，保持與穩定版一致）
+  install -Dm644 "$jar" "$pkgdir/usr/share/java/$_pkgname/$_pkgname.jar"
+  install -d "$pkgdir/usr/share/$_pkgname"
+  ln -s "/usr/share/java/$_pkgname/$_pkgname.jar" "$pkgdir/usr/share/$_pkgname/$_pkgname.jar"
 
   # ——— 啟動 wrapper（prod，XDG 路徑由 BinaryPaths 決定） ———
-  install -Dm755 /dev/stdin "$pkgdir/usr/bin/$pkgname" <<'WRAPPER'
+  install -Dm755 /dev/stdin "$pkgdir/usr/bin/$_pkgname" <<'WRAPPER'
 #!/bin/sh
 # PhytoTrack 啟動器 — 委派至系統 JRE，不綁定 JRE（遵循 Arch Java 指引）
 # 額外參數透傳；可覆蓋：phytotrack --server.port=9090 / --spring.profiles.active=dev
@@ -112,13 +107,13 @@ WRAPPER
   # ——— 設定檔 ———
   # 範例（唯讀參照）
   install -Dm644 backend/phytotrack.toml.example "$pkgdir/etc/phytotrack/phytotrack.toml.example"
-  install -Dm644 backend/phytotrack.toml.example "$pkgdir/usr/share/doc/$pkgname/phytotrack.toml.example"
+  install -Dm644 backend/phytotrack.toml.example "$pkgdir/usr/share/doc/$_pkgname/phytotrack.toml.example"
   # 空的系統級 toml（由首次啟動生成邏輯補齊，不覆蓋使用者已建檔）
   # 僅在 /etc/phytotrack/phytotrack.toml 不存在時由備份機制保留，此處不主動建立
   # 保留 backup 條目以供 pacman 追蹤
 
-  # ——— systemd user service ———
-  install -Dm644 /dev/stdin "$pkgdir/usr/lib/systemd/user/$pkgname.service" <<'SERVICE'
+  # ——— systemd user service ———（-git 仍提供 phytotrack 名稱，保持與穩定版一致）
+  install -Dm644 /dev/stdin "$pkgdir/usr/lib/systemd/user/$_pkgname.service" <<'SERVICE'
 [Unit]
 Description=PhytoTrack — 農作物病蟲害診斷記錄系統
 After=network.target
@@ -137,7 +132,7 @@ WantedBy=default.target
 SERVICE
 
   # ——— Desktop Entry ———
-  install -Dm644 /dev/stdin "$pkgdir/usr/share/applications/$pkgname.desktop" <<'DESKTOP'
+  install -Dm644 /dev/stdin "$pkgdir/usr/share/applications/$_pkgname.desktop" <<'DESKTOP'
 [Desktop Entry]
 Name=PhytoTrack
 GenericName=農作物病蟲害診斷記錄系統
@@ -153,23 +148,23 @@ DESKTOP
 
   # ——— Icons ———
   if [[ -f docs/img/icon.svg ]]; then
-    install -Dm644 docs/img/icon.svg "$pkgdir/usr/share/icons/hicolor/scalable/apps/$pkgname.svg"
+    install -Dm644 docs/img/icon.svg "$pkgdir/usr/share/icons/hicolor/scalable/apps/$_pkgname.svg"
   fi
   if [[ -f docs/img/icon.png ]]; then
-    install -Dm644 docs/img/icon.png "$pkgdir/usr/share/icons/hicolor/512x512/apps/$pkgname.png"
-    install -Dm644 docs/img/icon.png "$pkgdir/usr/share/pixmaps/$pkgname.png"
+    install -Dm644 docs/img/icon.png "$pkgdir/usr/share/icons/hicolor/512x512/apps/$_pkgname.png"
+    install -Dm644 docs/img/icon.png "$pkgdir/usr/share/pixmaps/$_pkgname.png"
   fi
   if [[ -f docs/img/icon.ico ]]; then
-    install -Dm644 docs/img/icon.ico "$pkgdir/usr/share/pixmaps/$pkgname.ico"
+    install -Dm644 docs/img/icon.ico "$pkgdir/usr/share/pixmaps/$_pkgname.ico"
   fi
 
-  # ——— 文件與授權 ———
+  # ——— 文件與授權 ———（授權目錄依 pkgname，文件兼容穩定版路徑）
   install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
-  install -Dm644 README.md "$pkgdir/usr/share/doc/$pkgname/README.md"
-  install -Dm644 docs/DEPLOY.md "$pkgdir/usr/share/doc/$pkgname/DEPLOY.md"
-  install -Dm644 docs/ARCHITECTURE.md "$pkgdir/usr/share/doc/$pkgname/ARCHITECTURE.md"
-  install -Dm644 backend/phytotrack.toml.example "$pkgdir/usr/share/doc/$pkgname/examples/phytotrack.toml.example"
+  install -Dm644 README.md "$pkgdir/usr/share/doc/$_pkgname/README.md"
+  install -Dm644 docs/DEPLOY.md "$pkgdir/usr/share/doc/$_pkgname/DEPLOY.md"
+  install -Dm644 docs/ARCHITECTURE.md "$pkgdir/usr/share/doc/$_pkgname/ARCHITECTURE.md"
+  install -Dm644 backend/phytotrack.toml.example "$pkgdir/usr/share/doc/$_pkgname/examples/phytotrack.toml.example"
   if [[ -f docs/img/icon.svg ]]; then
-    install -Dm644 docs/img/icon.svg "$pkgdir/usr/share/doc/$pkgname/icon.svg"
+    install -Dm644 docs/img/icon.svg "$pkgdir/usr/share/doc/$_pkgname/icon.svg"
   fi
 }
