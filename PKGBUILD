@@ -4,25 +4,23 @@
 # 參考：https://wiki.archlinux.org/title/PKGBUILD / https://wiki.archlinux.org/title/Java_package_guidelines
 
 pkgname=phytotrack
-pkgver=0.0.1
-pkgrel=2
+pkgver=0.0.2.r2.g8fcca26
+pkgrel=1
 pkgdesc="農作物病蟲害診斷記錄系統 (Spring Boot 4 + Vue 3 + SQLite)"
 arch=('any')
 url="https://github.com/qo0u0op/PhytoTrack"
 license=('GPL-3.0-only')
 depends=('java-runtime>=21' 'hicolor-icon-theme')
-makedepends=('java-environment>=21' 'maven' 'nodejs' 'npm')
+makedepends=('java-environment>=21' 'maven' 'nodejs' 'npm' 'git')
 optdepends=(
   'llama.cpp: 本機 AI 診斷（llama-server --port 11435）'
 )
 backup=('etc/phytotrack/phytotrack.toml')
 install="$pkgname.install"
-# Release tarball（tag v$pkgver）；本地遞交前以 `makepkg --printsrcinfo > .SRCINFO` 更新
-source=("$pkgname-$pkgver.tar.gz::https://github.com/qo0u0op/PhytoTrack/archive/v$pkgver.tar.gz")
+# 開發版：直接取 git HEAD（含 log 修復），確保 makepkg -sir 即含最新碼
+# AUR 正式發布時改回 tarball： source=("$pkgname-$pkgver.tar.gz::https://github.com/qo0u0op/PhytoTrack/archive/v$pkgver.tar.gz")
+source=("$pkgname::git+https://github.com/qo0u0op/PhytoTrack.git")
 sha256sums=('SKIP')
-# 若需從 git 直接打包（開發版），改用下列兩行並執行 `updpkgsums`：
-# source=("$pkgname::git+https://github.com/qo0u0op/PhytoTrack.git#tag=v$pkgver")
-# sha256sums=('SKIP')
 
 # VCS 版自動 pkgver（僅 git source 時生效，tarball 版忽略）
 pkgver() {
