@@ -5,7 +5,7 @@
 
 pkgname=phytotrack-git
 _pkgname=phytotrack
-pkgver=0.0.2.r3.g2b0a1e1
+pkgver=0.0.2.r4.g90af070
 pkgrel=1
 pkgdesc="農作物病蟲害診斷記錄系統 (Spring Boot 4 + Vue 3 + SQLite) - git 開發版，隨提交自動更新"
 arch=('any')

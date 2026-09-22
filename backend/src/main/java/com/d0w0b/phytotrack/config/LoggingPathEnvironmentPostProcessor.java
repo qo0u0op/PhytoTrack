@@ -12,17 +12,17 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * 日誌路徑早期注入：以 HIGHEST_PRECEDENCE 搶在 LoggingApplicationListener (20) 前
- * 注入 {@code logging.file.name} 與 {@code phytotrack.logging.dir}。
+ * 日誌路徑早期注入：以 HIGHEST_PRECEDENCE+11 搶在 LoggingApplicationListener (20) 前、
+ * 且晚於 ConfigDataEnvironmentPostProcessor (10) 以覆蓋 application.yaml 的 logs/phytotrack.log。
  * 僅設 XDG/可攜預設，TOML 明確值（由 PhytotrackTomlEnvironmentPostProcessor 以 addFirst 注入）
- * 會覆蓋此處預設；test profile 的 {@code app.rate-limit.enabled} 等不受影響。
+ * 會覆蓋此處預設。
  */
-@Order (Ordered.HIGHEST_PRECEDENCE)
+@Order (Ordered.HIGHEST_PRECEDENCE + 11)
 public class LoggingPathEnvironmentPostProcessor implements EnvironmentPostProcessor, Ordered {
 
   @Override
   public int getOrder () {
-    return Ordered.HIGHEST_PRECEDENCE;
+    return Ordered.HIGHEST_PRECEDENCE + 11;
   }
 
   @Override

@@ -2,6 +2,8 @@ package com.d0w0b.phytotrack.config;
 
 import org.springframework.boot.context.event.ApplicationEnvironmentPreparedEvent;
 import org.springframework.context.ApplicationListener;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
 import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.core.env.MapPropertySource;
 
@@ -14,8 +16,17 @@ import java.util.Map;
 /**
  * TOML 配置載入與首次自動生成（僅協調，實作委派 TomlGenerator/TomlLoader）
  * 優先順序：TOML > application.yaml 預設；首次啟動若無 TOML 則生成預設含亂數 JWT 密鑰
+ * 以 HIGHEST_PRECEDENCE+12 搶在 LoggingApplicationListener (20) 前注入，確保日誌路徑
+ * 在 logging 初始化前已為 XDG/可攜，覆蓋 LoggingPath 的預設；晚於 LoggingPath (+11)
  */
-public class PhytotrackTomlEnvironmentPostProcessor implements ApplicationListener<ApplicationEnvironmentPreparedEvent> {
+@Order (Ordered.HIGHEST_PRECEDENCE + 12)
+public class PhytotrackTomlEnvironmentPostProcessor
+    implements ApplicationListener<ApplicationEnvironmentPreparedEvent>, Ordered {
+
+  @Override
+  public int getOrder () {
+    return Ordered.HIGHEST_PRECEDENCE + 12;
+  }
 
   @Override
   public void onApplicationEvent (ApplicationEnvironmentPreparedEvent event) {
