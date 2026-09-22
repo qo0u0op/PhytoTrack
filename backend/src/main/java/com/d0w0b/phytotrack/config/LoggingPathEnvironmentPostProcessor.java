@@ -27,15 +27,8 @@ public class LoggingPathEnvironmentPostProcessor implements EnvironmentPostProce
 
   @Override
   public void postProcessEnvironment (ConfigurableEnvironment environment, SpringApplication application) {
-    // test profile 跳過 XDG 預設，避免干擾測試隔離（測試以 application-test.yaml 為準）
-    for (String p : environment.getActiveProfiles ()) {
-      if ("test".equals (p)) return;
-    }
-    String profiles = environment.getProperty ("spring.profiles.active", "");
-    if (profiles != null && profiles.contains ("test")) return;
-    // 若已由 TOML 或外部配置明確指定，則不覆蓋
-    if (environment.containsProperty ("logging.file.name")) return;
-
+    // 計算 XDG/可攜預設（依 BinaryPaths），以 addFirst 覆蓋 application.yaml 的 logs/phytotrack.log
+    // TOML 明確值由 PhytotrackTomlEnvironmentPostProcessor 以 addFirst 後續覆蓋此預設
     Path log = BinaryPaths.isAppImage () ? BinaryPaths.appImageLog ()
         : (BinaryPaths.isWindows () ? BinaryPaths.windowsLog () : BinaryPaths.xdgLog ());
     String logStr = log.toString ().replace ("\\", "/");
@@ -46,14 +39,10 @@ public class LoggingPathEnvironmentPostProcessor implements EnvironmentPostProce
     map.put ("logging.file.name", logStr);
     map.put ("phytotrack.logging.file", logStr);
     map.put ("phytotrack.logging.dir", logDirStr);
-    // 以 addLast 作為預設，TOML 的 addFirst 可覆蓋
-    environment.getPropertySources ().addLast (new MapPropertySource ("phytotrackLoggingPath", map));
-    // 同步 System property 供 logback 早期讀取（springProperty 會先查 Environment，System 為後備）
-    if (System.getProperty ("logging.file.name") == null) {
-      System.setProperty ("logging.file.name", logStr);
-    }
-    if (System.getProperty ("phytotrack.logging.dir") == null) {
-      System.setProperty ("phytotrack.logging.dir", logDirStr);
-    }
+    environment.getPropertySources ().addFirst (new MapPropertySource ("phytotrackLoggingPath", map));
+    // 同步 System property 供 logback 早期讀取
+    System.setProperty ("logging.file.name", logStr);
+    System.setProperty ("phytotrack.logging.file", logStr);
+    System.setProperty ("phytotrack.logging.dir", logDirStr);
   }
 }
